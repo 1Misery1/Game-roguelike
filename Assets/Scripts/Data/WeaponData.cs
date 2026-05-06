@@ -29,7 +29,17 @@ namespace Game.Data
 
         [Header("Enchant (附魔，仅蓝/紫可用)")]
         public int maxEnchantLevel = 5;
-        public float skillMultiplierPerEnchant = 0.1f;  // 每级附魔提升10%技能倍率
+        public float skillMultiplierPerEnchant = 0.1f;
+
+        [Header("HP Bonus (装备时提升最大生命值)")]
+        public float hpBonus = 0f;
+        public float hpBonusPerLevel = 0f;
+
+        [Header("Special Mechanics")]
+        [Tooltip("吸血率：每次普攻恢复伤害×rate的生命值")]
+        public float lifeStealRate = 0f;
+        [Tooltip("血量消耗：每次普攻扣除固定血量（真实伤害）")]
+        public float hpCostPerAttack = 0f;
 
         public bool HasSkill => rarity >= WeaponRarity.Blue && skill != null;
         public bool CanEnchant => HasSkill;

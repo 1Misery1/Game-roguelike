@@ -17,8 +17,12 @@ namespace Game.Player
         public float BonusDamageMultiplier { get; set; } = 1f;
 
         private CharacterStats _stats;
+        private Health _health;
         private float _lastAttackTime;
         private float _skillCooldownRemaining;
+
+        // Per-slot source objects for weapon HP bonus modifiers (removed on unequip)
+        private readonly object[] _weaponHPSources = { new object(), new object() };
 
         public WeaponInstance ActiveWeapon => Slots[ActiveSlotIndex];
 
@@ -39,6 +43,7 @@ namespace Game.Player
         private void Awake()
         {
             _stats = GetComponent<CharacterStats>();
+            _health = GetComponent<Health>();
         }
 
         private void Update()
@@ -61,7 +66,26 @@ namespace Game.Player
         public void EquipWeapon(WeaponInstance weapon, int slot)
         {
             if (slot < 0 || slot >= Slots.Length) return;
+            _stats?.RemoveModifiersFrom(_weaponHPSources[slot]);
             Slots[slot] = weapon;
+            ApplyWeaponHPBonus(slot);
+        }
+
+        private void ApplyWeaponHPBonus(int slot)
+        {
+            var weapon = Slots[slot];
+            if (weapon == null) return;
+            float bonus = weapon.HPBonus;
+            if (bonus <= 0f) return;
+            _stats?.AddModifier(new StatModifier(StatType.MaxHP, ModifierOp.Flat, bonus, _weaponHPSources[slot]));
+        }
+
+        // Call after upgrading a weapon to update its HP modifier
+        public void RefreshWeaponHPBonus(int slot)
+        {
+            if (slot < 0 || slot >= Slots.Length) return;
+            _stats?.RemoveModifiersFrom(_weaponHPSources[slot]);
+            ApplyWeaponHPBonus(slot);
         }
 
         // 普通攻击
@@ -120,6 +144,13 @@ namespace Game.Player
 
         private void ExecuteNormalAttack(WeaponInstance weapon, Vector2 aimDir, float bonusMul = 1f)
         {
+            // HP drain (耗血武器)
+            if (weapon.Data.hpCostPerAttack > 0f)
+                _health?.TakeDamage(new DamageInfo
+                {
+                    Amount = weapon.Data.hpCostPerAttack, Type = DamageType.True, Source = gameObject
+                });
+
             float damage = (weapon.EffectiveDamage + _stats.Get(StatType.Attack)) * bonusMul;
             bool isCrit = Random.value < _stats.Get(StatType.CritRate);
             if (isCrit) damage *= _stats.Get(StatType.CritDamage);
@@ -140,6 +171,10 @@ namespace Game.Player
                     MagicBlast(damage, aimDir, weapon.Data.attackRange, aoe, type, isCrit);
                     break;
             }
+
+            // Lifesteal (吸血武器)
+            if (weapon.Data.lifeStealRate > 0f)
+                _health?.Heal(damage * weapon.Data.lifeStealRate);
         }
 
         private void MeleeAttack(float damage, float range, DamageType type, bool isCrit)

@@ -269,7 +269,7 @@ namespace Game.Dev
                 return;
             }
 
-            OnNewRoomEntered(); // 限时天赋倒计时
+            if (index > 0) OnNewRoomEntered(); // 限时天赋倒计时（第0房不计入）
 
             var type = _floorRooms[index];
             _currentRoomRoot = new GameObject($"Room_{index}_{type}");
@@ -516,26 +516,78 @@ namespace Game.Dev
         private void BuildShopRoom()
         {
             ShowBanner("商店 — 靠近后按 E 购买 (可略过)");
-            OpenRightDoor(); // 购物可选，直接开右侧门
+            OpenRightDoor();
 
             int floorIdx   = Mathf.Clamp(CurrentFloor - 1, 0, ShopRarityTable.Length - 1);
             int[] rarities = ShopRarityTable[floorIdx];
             float priceScale = 1f + (CurrentFloor - 1) * 0.3f;
 
-            // 6 把武器分两排排列
+            // 6 把武器一排
             for (int i = 0; i < rarities.Length; i++)
             {
                 float x   = -5.5f + i * 2.2f;
-                float y   = 1.2f;
                 int   ri  = rarities[i];
                 int   price = Mathf.RoundToInt(WeaponBasePrice[ri] * priceScale);
-                var   weapon = GetWeaponOfRarity(ri);
-                SpawnShopWeaponPedestal(new Vector3(x, y, 0f), weapon, price);
+                SpawnShopWeaponPedestal(new Vector3(x, 1.5f, 0f), GetWeaponOfRarity(ri), price);
             }
 
-            // 天赋抽取台（固定在中下方）
-            int talentDrawPrice = Mathf.RoundToInt(30 * priceScale);
-            SpawnTalentDrawPedestal(new Vector3(0f, -1.5f, 0f), talentDrawPrice);
+            // 锻造台、天赋台、附魔台 排在下方
+            int uses = Mathf.Min(CurrentFloor, 2);
+            int forgePrice   = Mathf.RoundToInt((20 + CurrentFloor * 5) * priceScale);
+            int enchantPrice = Mathf.RoundToInt((30 + CurrentFloor * 5) * priceScale);
+            int talentPrice  = Mathf.RoundToInt(30 * priceScale);
+
+            SpawnActionPedestal(new Vector3(-3f, -1.5f, 0f), ActionPedestal.ActionType.Forge,   forgePrice,   uses);
+            SpawnTalentDrawPedestal(new Vector3(0f, -1.5f, 0f), talentPrice);
+            SpawnActionPedestal(new Vector3( 3f, -1.5f, 0f), ActionPedestal.ActionType.Enchant, enchantPrice, uses);
+        }
+
+        private void SpawnActionPedestal(Vector3 pos, ActionPedestal.ActionType actionType, int price, int uses)
+        {
+            bool isForge = actionType == ActionPedestal.ActionType.Forge;
+            var go = new GameObject(isForge ? "ForgeAltar" : "EnchantAltar");
+            go.transform.SetParent(_currentRoomRoot.transform, true);
+            go.transform.position   = pos;
+            go.transform.localScale = new Vector3(0.7f, 0.7f, 1f);
+
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite       = MakeUnitSquareSprite();
+            sr.color        = isForge ? new Color(1f, 0.65f, 0.2f) : new Color(0.55f, 0.3f, 1f);
+            sr.sortingOrder = 7;
+
+            var col = go.AddComponent<CircleCollider2D>();
+            col.radius    = 0.8f;
+            col.isTrigger = true;
+
+            var pedestal         = go.AddComponent<ActionPedestal>();
+            pedestal.action      = actionType;
+            pedestal.price       = price;
+            pedestal.usesLeft    = uses;
+            pedestal.GetCoins    = () => RunCoins;
+            pedestal.SpendCoins  = amt => RunCoins -= amt;
+            pedestal.ShowMessage = msg => ShowBanner(msg);
+            pedestal.TryApplyAction = () =>
+            {
+                var handler = _player?.GetComponent<PlayerWeaponHandler>();
+                if (handler == null) return false;
+                // Try active slot first, then other
+                for (int i = 0; i < 2; i++)
+                {
+                    int slotIdx = (handler.ActiveSlotIndex + i) % 2;
+                    var w = handler.Slots[slotIdx];
+                    if (w == null) continue;
+                    bool ok = actionType == ActionPedestal.ActionType.Forge ? w.TryUpgrade() : w.TryEnchant();
+                    if (ok)
+                    {
+                        handler.RefreshWeaponHPBonus(slotIdx);
+                        string verb = isForge ? "锻造" : "附魔";
+                        ShowBanner($"{verb}成功！{w.ShortName}");
+                        return true;
+                    }
+                }
+                ShowBanner(isForge ? "所有武器已达最高锻造等级！" : "没有可附魔的武器（需蓝/紫品质）！");
+                return false;
+            };
         }
 
         private void SpawnShopWeaponPedestal(Vector3 pos, WeaponInstance weapon, int price)
@@ -554,18 +606,20 @@ namespace Game.Dev
             col.radius    = 0.9f;
             col.isTrigger = true;
 
-            var pedestal       = go.AddComponent<WeaponPedestal>();
-            pedestal.Weapon    = weapon;
-            pedestal.OnEquipped = w =>
+            var pedestal         = go.AddComponent<WeaponShopPedestal>();
+            pedestal.Weapon      = weapon;
+            pedestal.Price       = price;
+            pedestal.GetCoins    = () => RunCoins;
+            pedestal.SpendCoins  = amt => RunCoins -= amt;
+            pedestal.ShowMessage = msg => ShowBanner(msg);
+            pedestal.OnPurchased = w =>
             {
                 if (_player == null) return;
                 var handler = _player.GetComponent<PlayerWeaponHandler>();
                 if (handler == null) return;
-                if (RunCoins < price) { ShowBanner($"金币不足！需要 {price} 金币"); return; }
-                RunCoins -= price;
+                if (TryHandleDuplicateWeapon(w, handler)) return;
                 handler.EquipWeapon(w, handler.ActiveSlotIndex);
-                ShowBanner($"已购买并装备: {w.Data.weaponName}  (-{price}金币)");
-                Destroy(go);
+                ShowBanner($"已购买并装备: {w.ShortName}  (-{price}金币)");
             };
         }
 
@@ -807,7 +861,7 @@ namespace Game.Dev
 
             var go = new GameObject("AltarPedestal");
             go.transform.SetParent(_currentRoomRoot.transform, true);
-            go.transform.position   = new Vector3(0f, 2.8f, 0f);
+            go.transform.position   = new Vector3(-6f, 2.8f, 0f);
             go.transform.localScale = new Vector3(0.8f, 0.8f, 1f);
 
             var sr = go.AddComponent<SpriteRenderer>();
@@ -981,8 +1035,11 @@ namespace Game.Dev
             {
                 if (_player == null) return;
                 var handler = _player.GetComponent<PlayerWeaponHandler>();
-                if (handler != null) handler.EquipWeapon(w, handler.ActiveSlotIndex);
-                ShowBanner($"已装备: {w.Data.weaponName}");
+                if (handler == null) return;
+                if (TryHandleDuplicateWeapon(w, handler)) { Destroy(go); return; }
+                handler.EquipWeapon(w, handler.ActiveSlotIndex);
+                ShowBanner($"已装备: {w.ShortName}");
+                Destroy(go);
             };
         }
 
@@ -1012,6 +1069,33 @@ namespace Game.Dev
                 avail.RemoveAt(ri);
             }
             return result;
+        }
+
+        // 重复武器检测：若玩家已持有同名武器，自动升级或附魔一次
+        private bool TryHandleDuplicateWeapon(WeaponInstance newWeapon, PlayerWeaponHandler handler)
+        {
+            for (int i = 0; i < handler.Slots.Length; i++)
+            {
+                var existing = handler.Slots[i];
+                if (existing == null) continue;
+                if (existing.Data.weaponName != newWeapon.Data.weaponName) continue;
+
+                if (existing.TryUpgrade())
+                {
+                    handler.RefreshWeaponHPBonus(i);
+                    ShowBanner($"获得重复武器！{existing.ShortName} 自动升级！");
+                    return true;
+                }
+                if (existing.TryEnchant())
+                {
+                    handler.RefreshWeaponHPBonus(i);
+                    ShowBanner($"获得重复武器！{existing.ShortName} 自动附魔！");
+                    return true;
+                }
+                ShowBanner($"获得重复武器！{existing.ShortName} 已满级，丢弃");
+                return true;
+            }
+            return false;
         }
 
         private void ScaleEnemyStats(GameObject enemy, float scale)
