@@ -15,6 +15,9 @@ namespace Game.Data
         // 实际基础伤害（含升级加成）
         public float EffectiveDamage => Data.baseDamage + Data.damagePerLevel * UpgradeLevel;
 
+        // 装备后提供的最大生命值加成（含升级追加）
+        public float HPBonus => Data.hpBonus + Data.hpBonusPerLevel * UpgradeLevel;
+
         // 实际技能倍率（含附魔加成）
         public float EffectiveSkillMultiplier =>
             Data.HasSkill
