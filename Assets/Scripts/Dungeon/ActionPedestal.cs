@@ -4,11 +4,11 @@ using UnityEngine.InputSystem;
 
 namespace Game.Dungeon
 {
-    // 锻造台 / 附魔台 — 商店中使用，每层限定次数
+    // 锻造台 / 附魔台 / 血药 — 商店中使用
     [RequireComponent(typeof(Collider2D))]
     public class ActionPedestal : MonoBehaviour
     {
-        public enum ActionType { Forge, Enchant }
+        public enum ActionType { Forge, Enchant, HealthPotion }
 
         public ActionType action;
         public int price;
@@ -85,16 +85,31 @@ namespace Game.Dungeon
             float x = screen.x - 90f;
             float y = Screen.height - screen.y - 20f;
 
-            bool isForge = action == ActionType.Forge;
-            string label = isForge ? "锻造台" : "附魔台";
-            Color labelColor = isForge ? new Color(1f, 0.65f, 0.2f) : new Color(0.6f, 0.4f, 1f);
+            string label;
+            Color labelColor;
+            string detail;
+            switch (action)
+            {
+                case ActionType.Forge:
+                    label = "锻造台"; labelColor = new Color(1f, 0.65f, 0.2f);
+                    detail = $"[{price}c]  剩{usesLeft}次";
+                    break;
+                case ActionType.Enchant:
+                    label = "附魔台"; labelColor = new Color(0.6f, 0.4f, 1f);
+                    detail = $"[{price}c]  剩{usesLeft}次";
+                    break;
+                default: // HealthPotion
+                    label = "血药"; labelColor = new Color(0.2f, 0.95f, 0.4f);
+                    detail = $"[{price}c]  回复40%HP";
+                    break;
+            }
 
             var titleStyle = new GUIStyle(GUI.skin.label)
             {
                 fontSize = 13, alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold,
                 normal = { textColor = labelColor }
             };
-            GUI.Label(new Rect(x, y, 180, 20), $"{label}  [{price}c]  剩{usesLeft}次", titleStyle);
+            GUI.Label(new Rect(x, y, 180, 20), $"{label}  {detail}", titleStyle);
 
             if (_inRange)
             {
@@ -103,7 +118,8 @@ namespace Game.Dungeon
                     fontSize = 12, alignment = TextAnchor.MiddleCenter,
                     normal = { textColor = Color.white }
                 };
-                GUI.Label(new Rect(x, y + 20f, 180, 18), "[E] 使用 (当前武器优先)", hint);
+                string hintText = action == ActionType.HealthPotion ? "[E] 使用" : "[E] 使用 (当前武器优先)";
+                GUI.Label(new Rect(x, y + 20f, 180, 18), hintText, hint);
             }
         }
     }
