@@ -384,17 +384,66 @@ namespace Game.Dev
 
         private void BuildMonsterRoom()
         {
-            ShowBanner("消灭所有敌人 → 获得随机武器");
+            ShowBanner("消灭所有敌人 → 三选一武器奖励");
             MaybeAddAltar();
             int count = GetRoomEnemyCount();
             SpawnRoomWave(count, () =>
             {
-                var offers = GetRandomWeaponOffers(1);
-                if (offers.Length > 0)
-                    SpawnWeaponPedestal(new Vector3(5f, 0f, 0f), offers[0]);
-                ShowBanner("战斗胜利！武器奖励已出现！");
+                ShowBanner("战斗胜利！选择一把武器！");
+                DropWeaponChoices();
                 OpenRightDoor();
             });
+        }
+
+        // 生成3把武器供玩家选一把，选后全部消失
+        private void DropWeaponChoices()
+        {
+            var offers = GetRandomWeaponOffers(3);
+            var gos    = new GameObject[offers.Length];
+
+            for (int i = 0; i < offers.Length; i++)
+            {
+                var weapon = offers[i];
+                float x  = -3f + i * 3f;
+                var go   = new GameObject("WeaponChoice_" + weapon.Data.weaponName);
+                go.transform.SetParent(_currentRoomRoot.transform, true);
+                go.transform.position   = new Vector3(x, -1.5f, 0f);
+                go.transform.localScale = new Vector3(0.65f, 0.65f, 1f);
+
+                var sr = go.AddComponent<SpriteRenderer>();
+                sr.sprite       = MakeUnitSquareSprite();
+                sr.color        = WeaponData.GetRarityColor(weapon.Data.rarity);
+                sr.sortingOrder = 7;
+
+                var col = go.AddComponent<CircleCollider2D>();
+                col.radius    = 0.9f;
+                col.isTrigger = true;
+
+                var ped          = go.AddComponent<WeaponShopPedestal>();
+                ped.Weapon       = weapon;
+                ped.Price        = 0;
+                ped.GetCoins     = () => 9999;
+                ped.SpendCoins   = _ => { };
+                ped.ShowMessage  = msg => ShowBanner(msg);
+                gos[i]           = go;
+            }
+
+            // 选中任何一把时销毁全部选项
+            for (int i = 0; i < gos.Length; i++)
+            {
+                var ped        = gos[i].GetComponent<WeaponShopPedestal>();
+                var allGos     = gos;
+                ped.OnPurchased = chosen =>
+                {
+                    foreach (var g in allGos) if (g != null) Destroy(g);
+                    if (_player == null) return;
+                    var handler = _player.GetComponent<PlayerWeaponHandler>();
+                    if (handler == null) return;
+                    if (TryHandleDuplicateWeapon(chosen, handler)) return;
+                    handler.EquipWeapon(chosen, handler.ActiveSlotIndex);
+                    ShowBanner($"已选择: {chosen.ShortName}");
+                };
+            }
         }
 
 
@@ -1472,7 +1521,7 @@ namespace Game.Dev
             float panelX = Screen.width - 420f;
             float panelY = 10f;
             float panelW = 410f;
-            float panelH = handler.ActiveWeapon?.Data?.HasSkill == true ? 110f : 70f;
+            float panelH = handler.ActiveWeapon?.Data?.HasSkill == true ? 132f : 92f;
 
             FillRect(new Rect(panelX - 6, panelY - 4, panelW + 12, panelH + 8), new Color(0f, 0f, 0f, 0.55f));
 
@@ -1485,32 +1534,49 @@ namespace Game.Dev
 
             for (int i = 0; i < 2; i++)
             {
-                var wi     = handler.Slots[i];
+                var wi      = handler.Slots[i];
                 bool active = handler.ActiveSlotIndex == i;
-                float y    = panelY + 20f + i * 24f;
+                float baseY = panelY + 20f + i * 36f;
 
                 Color slotColor = wi == null ? new Color(0.5f, 0.5f, 0.5f)
                                 : WeaponData.GetRarityColor(wi.Data.rarity);
                 if (!active) slotColor *= 0.65f;
 
-                string prefix   = active ? "▶" : "  ";
-                string slotText = wi == null
-                    ? $"{prefix} [{i + 1}] 空"
-                    : $"{prefix} [{i + 1}] {wi.ShortName}  {wi.CategoryLabel}  {wi.EffectiveDamage:0}伤  {wi.Data.attackSpeed:0.0}/s  HP+{wi.HPBonus:0}{WeaponSpecialLabel(wi)}";
+                string prefix = active ? "▶" : "  ";
 
-                var slotStyle = new GUIStyle(GUI.skin.label)
+                if (wi == null)
                 {
-                    fontSize  = active ? 13 : 12,
-                    fontStyle = active ? FontStyle.Bold : FontStyle.Normal,
-                    normal    = { textColor = slotColor }
-                };
-                GUI.Label(new Rect(panelX, y, panelW, 22), slotText, slotStyle);
+                    var emptyStyle = new GUIStyle(GUI.skin.label)
+                        { fontSize = 12, normal = { textColor = slotColor } };
+                    GUI.Label(new Rect(panelX, baseY, panelW, 20), $"{prefix} [{i + 1}] 空", emptyStyle);
+                }
+                else
+                {
+                    // 第一行：名称 + 类型 + 伤害 + 攻速
+                    var nameStyle = new GUIStyle(GUI.skin.label)
+                    {
+                        fontSize  = active ? 13 : 12,
+                        fontStyle = active ? FontStyle.Bold : FontStyle.Normal,
+                        normal    = { textColor = slotColor }
+                    };
+                    GUI.Label(new Rect(panelX, baseY, panelW, 20),
+                        $"{prefix} [{i + 1}] {wi.ShortName}  {wi.CategoryLabel}  {wi.EffectiveDamage:0}伤  {wi.Data.attackSpeed:0.0}/s",
+                        nameStyle);
+
+                    // 第二行：HP加成 + 特殊词条 + 升级/附魔进度
+                    string upgradeStr = $"升{wi.UpgradeLevel}/{wi.Data.maxUpgradeLevel}";
+                    if (wi.Data.CanEnchant) upgradeStr += $" 附{wi.EnchantLevel}/{wi.Data.maxEnchantLevel}";
+                    string subLine = $"   HP+{wi.HPBonus:0}{WeaponSpecialLabel(wi)}  [{upgradeStr}]";
+                    var subStyle = new GUIStyle(GUI.skin.label)
+                        { fontSize = 11, normal = { textColor = slotColor * 0.85f } };
+                    GUI.Label(new Rect(panelX, baseY + 18f, panelW, 16), subLine, subStyle);
+                }
             }
 
             var active_wi = handler.ActiveWeapon;
             if (active_wi?.Data?.HasSkill == true)
             {
-                float  skillY    = panelY + 70f;
+                float  skillY    = panelY + 92f;
                 string skillName = active_wi.Data.skill.skillName;
                 float  cdRem     = handler.SkillCooldownRemaining;
                 bool   ready     = handler.SkillReady;
@@ -1569,22 +1635,31 @@ namespace Game.Dev
             if (_activeTalents.Count == 0) return;
             float panelX = 10f;
             float panelY = 126f;
-            float panelW = 220f;
-            float rowH   = 20f;
-            float panelH = _activeTalents.Count * rowH + 8f;
-            FillRect(new Rect(panelX - 4, panelY - 4, panelW + 8, panelH + 8), new Color(0f, 0f, 0f, 0.5f));
+            float panelW = 240f;
+            const float rowH = 34f;
+            float panelH = _activeTalents.Count * rowH + 20f;
+            FillRect(new Rect(panelX - 4, panelY - 4, panelW + 8, panelH + 4), new Color(0f, 0f, 0f, 0.5f));
 
-            var title = new GUIStyle(GUI.skin.label) { fontSize = 11, normal = { textColor = new Color(0.7f, 0.7f, 0.7f) } };
-            GUI.Label(new Rect(panelX, panelY, panelW, 16), "── 天赋 ──", title);
+            var header = new GUIStyle(GUI.skin.label)
+                { fontSize = 11, normal = { textColor = new Color(0.7f, 0.7f, 0.7f) } };
+            GUI.Label(new Rect(panelX, panelY, panelW, 16), "── 天赋 ──", header);
 
             for (int i = 0; i < _activeTalents.Count; i++)
             {
                 var at    = _activeTalents[i];
+                float rowY = panelY + 18f + i * rowH;
                 string dur = at.IsPermanent ? "∞" : $"{at.RoomsLeft}房";
                 Color  c   = at.IsPermanent ? new Color(0.9f, 0.9f, 0.6f) : new Color(1f, 0.7f, 0.3f);
-                var st = new GUIStyle(GUI.skin.label) { fontSize = 12, normal = { textColor = c } };
-                GUI.Label(new Rect(panelX, panelY + 16f + i * rowH, panelW, rowH),
-                    $"[{i + 1}] {at.Data.talentName}  ({dur})", st);
+
+                var nameStyle = new GUIStyle(GUI.skin.label)
+                    { fontSize = 12, fontStyle = FontStyle.Bold, normal = { textColor = c } };
+                GUI.Label(new Rect(panelX, rowY, panelW, 18),
+                    $"[{i + 1}] {at.Data.talentName}  ({dur})", nameStyle);
+
+                var descStyle = new GUIStyle(GUI.skin.label)
+                    { fontSize = 11, normal = { textColor = new Color(0.75f, 0.75f, 0.75f) } };
+                GUI.Label(new Rect(panelX + 8f, rowY + 16f, panelW - 8f, 16),
+                    at.Data.description, descStyle);
             }
         }
 
@@ -1673,14 +1748,14 @@ namespace Game.Dev
                 fontSize = 48, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter,
                 normal   = { textColor = new Color(0.35f, 1f, 0.5f) }
             };
-            GUI.Label(new Rect(0, Screen.height * 0.2f, Screen.width, 70), $"第 {CurrentFloor} 层清除！", titleStyle);
+            GUI.Label(new Rect(0, Screen.height * 0.18f, Screen.width, 70), $"第 {CurrentFloor} 层清除！", titleStyle);
 
             var subStyle = new GUIStyle(GUI.skin.label)
             {
                 fontSize = 20, alignment = TextAnchor.MiddleCenter,
                 normal   = { textColor = Color.white }
             };
-            GUI.Label(new Rect(0, Screen.height * 0.36f, Screen.width, 30),
+            GUI.Label(new Rect(0, Screen.height * 0.32f, Screen.width, 30),
                 $"已获得 +{clearReward} 解锁货币   当前金币: {RunCoins}", subStyle);
 
             var nextFloor = new GUIStyle(GUI.skin.label)
@@ -1688,11 +1763,39 @@ namespace Game.Dev
                 fontSize = 16, alignment = TextAnchor.MiddleCenter,
                 normal   = { textColor = new Color(1f, 0.8f, 0.5f) }
             };
-            GUI.Label(new Rect(0, Screen.height * 0.44f, Screen.width, 26),
-                $"下一层难度: ×{1f + CurrentFloor * 0.3f:0.0}  (HP↑ ATK↑)", nextFloor);
+            GUI.Label(new Rect(0, Screen.height * 0.39f, Screen.width, 26),
+                $"下一层难度: ×{1f + CurrentFloor * 0.3f:0.0}  (敌人HP↑ ATK↑)", nextFloor);
+
+            // 当前HP状态
+            if (_playerHealth != null)
+            {
+                float ratio    = _playerHealth.Ratio;
+                Color hpColor  = ratio > 0.5f ? new Color(0.3f, 1f, 0.4f)
+                               : ratio > 0.25f ? new Color(1f, 0.85f, 0.1f)
+                                               : new Color(1f, 0.35f, 0.35f);
+                var hpStyle = new GUIStyle(GUI.skin.label)
+                    { fontSize = 17, alignment = TextAnchor.MiddleCenter, normal = { textColor = hpColor } };
+                GUI.Label(new Rect(0, Screen.height * 0.45f, Screen.width, 28),
+                    $"生命值: {Mathf.CeilToInt(_playerHealth.Current)} / {Mathf.CeilToInt(_playerHealth.Max)}  ({ratio * 100:0}%)", hpStyle);
+            }
+
+            // 花钱回血按钮
+            int   healCost  = 30 + CurrentFloor * 10;
+            bool  canHeal   = RunCoins >= healCost && _playerHealth != null && _playerHealth.Ratio < 0.999f;
+            float healBtnX  = Screen.width / 2f - 175f;
+            float healBtnY  = Screen.height * 0.52f;
+            var   healStyle = new GUIStyle(GUI.skin.button) { fontSize = 15 };
+            GUI.enabled = canHeal;
+            if (GUI.Button(new Rect(healBtnX, healBtnY, 350, 38),
+                $"花费 {healCost} 金币  回复50%最大生命值", healStyle))
+            {
+                RunCoins -= healCost;
+                _playerHealth?.Heal(_playerHealth.Max * 0.5f);
+            }
+            GUI.enabled = true;
 
             float btnX = Screen.width / 2f - 140f;
-            float btnY = Screen.height * 0.52f;
+            float btnY = Screen.height * 0.60f;
             var btn = new GUIStyle(GUI.skin.button) { fontSize = 20, fontStyle = FontStyle.Bold };
             if (GUI.Button(new Rect(btnX, btnY, 280, 50), $"进入第 {CurrentFloor + 1} 层 ▶", btn))
                 AdvanceFloor();
