@@ -64,6 +64,7 @@ namespace Game.Dev
             public object     Source   = new object();
             public int        RoomsLeft; // -1 = permanent
             public bool       IsPermanent => RoomsLeft < 0;
+            public System.Action OnRoomEntered; // 每进入房间触发的额外效果
         }
         private readonly List<ActiveTalent> _activeTalents = new List<ActiveTalent>();
         private TalentData _pendingTalent;
@@ -428,6 +429,8 @@ namespace Game.Dev
             ("急速",   "+50% 攻速 (3房)",     StatType.AttackSpeed,       ModifierOp.PercentMul, 0.50f, new Color(0.9f, 0.55f, 1f  ),  3),
             ("护甲",   "+25 防御 (4房)",      StatType.Defense,           ModifierOp.Flat,       25f,   new Color(0.5f, 0.80f, 1f  ),  4),
             ("暴走",   "+35% 暴击率 (3房)",   StatType.CritRate,          ModifierOp.Flat,       0.35f, new Color(1f,   0.95f, 0.05f),  3),
+            // 特殊效果天赋（stat modifier value=0，效果由OnRoomEntered实现）
+            ("生机",   "每进入新房间回复 5% 最大生命值", StatType.MaxHP, ModifierOp.Flat, 0f,   new Color(0.3f, 1f,   0.55f), -1),
         };
 
         private (string name, string desc, StatType stat, ModifierOp op, float value, Color color, int rooms)[]
@@ -540,6 +543,9 @@ namespace Game.Dev
             SpawnActionPedestal(new Vector3(-3f, -1.5f, 0f), ActionPedestal.ActionType.Forge,   forgePrice,   uses);
             SpawnTalentDrawPedestal(new Vector3(0f, -1.5f, 0f), talentPrice);
             SpawnActionPedestal(new Vector3( 3f, -1.5f, 0f), ActionPedestal.ActionType.Enchant, enchantPrice, uses);
+
+            int potionPrice = Mathf.RoundToInt(25 * priceScale);
+            SpawnHealthPotionPedestal(new Vector3(0f, -3.0f, 0f), potionPrice);
         }
 
         private void SpawnActionPedestal(Vector3 pos, ActionPedestal.ActionType actionType, int price, int uses)
@@ -587,6 +593,39 @@ namespace Game.Dev
                 }
                 ShowBanner(isForge ? "所有武器已达最高锻造等级！" : "没有可附魔的武器（需蓝/紫品质）！");
                 return false;
+            };
+        }
+
+        private void SpawnHealthPotionPedestal(Vector3 pos, int price)
+        {
+            var go = new GameObject("HealthPotion");
+            go.transform.SetParent(_currentRoomRoot.transform, true);
+            go.transform.position   = pos;
+            go.transform.localScale = new Vector3(0.65f, 0.65f, 1f);
+
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite       = MakeUnitSquareSprite();
+            sr.color        = new Color(0.2f, 0.92f, 0.38f);
+            sr.sortingOrder = 7;
+
+            var col = go.AddComponent<CircleCollider2D>();
+            col.radius    = 0.8f;
+            col.isTrigger = true;
+
+            var pedestal         = go.AddComponent<ActionPedestal>();
+            pedestal.action      = ActionPedestal.ActionType.HealthPotion;
+            pedestal.price       = price;
+            pedestal.usesLeft    = 1;
+            pedestal.GetCoins    = () => RunCoins;
+            pedestal.SpendCoins  = amt => RunCoins -= amt;
+            pedestal.ShowMessage = msg => ShowBanner(msg);
+            pedestal.TryApplyAction = () =>
+            {
+                if (_playerHealth == null) return false;
+                float heal = _playerHealth.Max * 0.40f;
+                _playerHealth.Heal(heal);
+                ShowBanner($"喝下血药！回复 {Mathf.RoundToInt(heal)} 点生命值！");
+                return true;
             };
         }
 
@@ -753,8 +792,10 @@ namespace Game.Dev
 
             var stats = _player.GetComponent<CharacterStats>();
             var at    = new ActiveTalent { Data = talent, RoomsLeft = talent.roomDuration };
+            at.OnRoomEntered = GetTalentRoomEffect(talent.talentName);
             foreach (var entry in talent.modifiers)
-                stats.AddModifier(new StatModifier(entry.stat, entry.op, entry.value, at.Source));
+                if (entry.value != 0f)
+                    stats.AddModifier(new StatModifier(entry.stat, entry.op, entry.value, at.Source));
 
             _activeTalents.Add(at);
 
@@ -763,6 +804,15 @@ namespace Game.Dev
 
             string dur = talent.roomDuration > 0 ? $" ({talent.roomDuration}房)" : "";
             ShowBanner($"获得天赋：{talent.talentName}{dur}");
+        }
+
+        private System.Action GetTalentRoomEffect(string talentName)
+        {
+            switch (talentName)
+            {
+                case "生机": return () => _playerHealth?.Heal((_playerHealth?.Max ?? 0f) * 0.05f);
+                default:    return null;
+            }
         }
 
         private void ReplaceTalentAt(int index)
@@ -914,6 +964,7 @@ namespace Game.Dev
             for (int i = _activeTalents.Count - 1; i >= 0; i--)
             {
                 var at = _activeTalents[i];
+                at.OnRoomEntered?.Invoke(); // 每房效果（如生机回血）
                 if (at.IsPermanent) continue;
                 at.RoomsLeft--;
                 if (at.RoomsLeft <= 0)
@@ -1405,15 +1456,22 @@ namespace Game.Dev
             }
         }
 
+        private static string WeaponSpecialLabel(WeaponInstance wi)
+        {
+            if (wi.Data.lifeStealRate > 0f)   return $"  吸血{wi.Data.lifeStealRate * 100:0}%";
+            if (wi.Data.hpCostPerAttack > 0f) return $"  耗血{wi.Data.hpCostPerAttack:0}/次";
+            return "";
+        }
+
         private void DrawWeaponHUD()
         {
             if (_player == null) return;
             var handler = _player.GetComponent<PlayerWeaponHandler>();
             if (handler == null) return;
 
-            float panelX = Screen.width - 340f;
+            float panelX = Screen.width - 420f;
             float panelY = 10f;
-            float panelW = 330f;
+            float panelW = 410f;
             float panelH = handler.ActiveWeapon?.Data?.HasSkill == true ? 110f : 70f;
 
             FillRect(new Rect(panelX - 6, panelY - 4, panelW + 12, panelH + 8), new Color(0f, 0f, 0f, 0.55f));
@@ -1438,7 +1496,7 @@ namespace Game.Dev
                 string prefix   = active ? "▶" : "  ";
                 string slotText = wi == null
                     ? $"{prefix} [{i + 1}] 空"
-                    : $"{prefix} [{i + 1}] {wi.ShortName}  {wi.CategoryLabel}  {wi.EffectiveDamage:0}伤害  {wi.Data.attackSpeed:0.0}/s";
+                    : $"{prefix} [{i + 1}] {wi.ShortName}  {wi.CategoryLabel}  {wi.EffectiveDamage:0}伤  {wi.Data.attackSpeed:0.0}/s  HP+{wi.HPBonus:0}{WeaponSpecialLabel(wi)}";
 
                 var slotStyle = new GUIStyle(GUI.skin.label)
                 {

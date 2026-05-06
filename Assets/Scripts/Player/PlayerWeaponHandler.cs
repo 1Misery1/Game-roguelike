@@ -144,12 +144,13 @@ namespace Game.Player
 
         private void ExecuteNormalAttack(WeaponInstance weapon, Vector2 aimDir, float bonusMul = 1f)
         {
-            // HP drain (耗血武器)
-            if (weapon.Data.hpCostPerAttack > 0f)
-                _health?.TakeDamage(new DamageInfo
-                {
-                    Amount = weapon.Data.hpCostPerAttack, Type = DamageType.True, Source = gameObject
-                });
+            // HP drain (耗血武器) — 保证不低于1点血量
+            if (weapon.Data.hpCostPerAttack > 0f && _health != null)
+            {
+                float cost = Mathf.Min(weapon.Data.hpCostPerAttack, _health.Current - 1f);
+                if (cost > 0f)
+                    _health.TakeDamage(new DamageInfo { Amount = cost, Type = DamageType.True, Source = gameObject });
+            }
 
             float damage = (weapon.EffectiveDamage + _stats.Get(StatType.Attack)) * bonusMul;
             bool isCrit = Random.value < _stats.Get(StatType.CritRate);
