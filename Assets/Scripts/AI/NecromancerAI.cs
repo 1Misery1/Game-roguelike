@@ -79,23 +79,20 @@ namespace Game.AI
             }
         }
 
-        // 灵魂汲取：远程魔法攻击 + 按比例回血
+        // 灵魂汲取飞弹：命中玩家后按比例回血
         private void CastSoulDrain()
         {
             _lastDrainTime = Time.time;
             if (target == null) return;
 
-            Vector2 dir  = ((Vector2)target.position - (Vector2)transform.position).normalized;
-            var     hits = Physics2D.RaycastAll(transform.position, dir, drainRange);
-            foreach (var hit in hits)
-            {
-                if (hit.collider.gameObject == gameObject) continue;
-                var d = hit.collider.GetComponent<IDamageable>();
-                if (d == null) continue;
-                d.TakeDamage(new DamageInfo { Amount = drainDamage, Type = DamageType.Magical, Source = gameObject });
-                _health?.Heal(drainDamage * drainHealRatio);
-                break;
-            }
+            Vector2 dir    = ((Vector2)target.position - (Vector2)transform.position).normalized;
+            var     health = _health;
+            float   heal   = drainDamage * drainHealRatio;
+            EnemyProjectile.Spawn(
+                transform.position, dir, speed: 7f, drainRange,
+                new DamageInfo { Amount = drainDamage, Type = DamageType.Magical, Source = gameObject },
+                new Color(0.55f, 0.1f, 0.75f), size: 0.3f, transform.parent,
+                onHit: _ => health?.Heal(heal));
         }
 
         // 召唤骷髅：在随机位置生成（委托 GameBootstrap 执行）

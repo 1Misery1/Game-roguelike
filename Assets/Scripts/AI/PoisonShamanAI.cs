@@ -80,23 +80,18 @@ namespace Game.AI
                 _rb.MovePosition(_rb.position - dir * speed * Time.fixedDeltaTime);
         }
 
-        // 毒素光线：命中后附加真实伤害DoT
+        // 毒素飞弹：命中后附加真实伤害DoT
         private void CastPoisonBolt()
         {
             _lastBoltTime = Time.time;
             if (target == null) return;
 
-            Vector2 dir  = ((Vector2)target.position - (Vector2)transform.position).normalized;
-            var     hits = Physics2D.RaycastAll(transform.position, dir, boltRange);
-            foreach (var hit in hits)
-            {
-                if (hit.collider.gameObject == gameObject) continue;
-                var d = hit.collider.GetComponent<IDamageable>();
-                if (d == null) continue;
-                d.TakeDamage(new DamageInfo { Amount = boltDamage, Type = DamageType.Physical, Source = gameObject });
-                StartCoroutine(ApplyPoisonDoT(d));
-                break;
-            }
+            Vector2 dir = ((Vector2)target.position - (Vector2)transform.position).normalized;
+            EnemyProjectile.Spawn(
+                transform.position, dir, speed: 7f, boltRange,
+                new DamageInfo { Amount = boltDamage, Type = DamageType.Physical, Source = gameObject },
+                new Color(0.2f, 0.85f, 0.25f), size: 0.25f, transform.parent,
+                onHit: d => { if (this != null) StartCoroutine(ApplyPoisonDoT(d)); });
         }
 
         // 强化附近毒蜘蛛

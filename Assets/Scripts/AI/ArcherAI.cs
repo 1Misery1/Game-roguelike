@@ -51,24 +51,12 @@ namespace Game.AI
 
         private void Shoot()
         {
-            Vector2 dir  = ((Vector2)target.position - (Vector2)transform.position).normalized;
-            var hits = Physics2D.RaycastAll(transform.position, dir, attackRange);
-            foreach (var hit in hits)
-            {
-                if (hit.collider.gameObject == gameObject) continue;
-                var d = hit.collider.GetComponent<IDamageable>();
-                if (d != null)
-                {
-                    float atk = _stats.Get(StatType.Attack);
-                    d.TakeDamage(new DamageInfo
-                    {
-                        Amount = projectileDamage + atk,
-                        Type   = DamageType.Physical,
-                        Source = gameObject
-                    });
-                    break; // 箭矢命中第一个目标
-                }
-            }
+            Vector2 dir = ((Vector2)target.position - (Vector2)transform.position).normalized;
+            float atk   = _stats.Get(StatType.Attack);
+            EnemyProjectile.Spawn(
+                transform.position, dir, speed: 8f, attackRange,
+                new DamageInfo { Amount = projectileDamage + atk, Type = DamageType.Physical, Source = gameObject },
+                new Color(0.95f, 0.8f, 0.2f), size: 0.25f, transform.parent);
         }
     }
 }

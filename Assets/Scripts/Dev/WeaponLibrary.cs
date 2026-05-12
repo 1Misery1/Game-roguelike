@@ -4,8 +4,8 @@ using UnityEngine;
 
 namespace Game.Dev
 {
-    // 全部20把武器的运行时定义
-    // 5类 × 4稀有度（白/绿/蓝/紫）= 20把武器
+    // 全部26把武器的运行时定义
+    // 5类 × 4稀有度（白/绿/蓝/紫）= 20基础 + 6扩充 = 26把
     // 稀有度升级上限: 白=2, 绿=3, 蓝=4, 紫=5
     // 附魔上限: 白/绿=0, 蓝=3, 紫=4
     public static class WeaponLibrary
@@ -111,6 +111,13 @@ namespace Game.Dev
                 WeaponSkillType.EarthShatter, cd: 7f, mul: 1.8f, radius: 3.5f, hits: 1, skillRange: 12f),
             hpBonus: 45f, hpBonusPerLevel: 9f);
 
+        // 铸铁锤 — 白色双手剑，极高HP加成，攻速极慢
+        public static WeaponInstance IronMallet() => Make(
+            "铸铁锤", "沉重铸铁大锤，攻击迟缓但坚若磐石，装备后大幅提升最大生命值。",
+            WeaponCategory.Greatsword, WeaponRarity.White, DamageType.Physical,
+            baseDmg: 28f, dmgPerLv: 9f, atkSpd: 0.4f, range: 2.2f,
+            hpBonus: 35f, hpBonusPerLevel: 9f);
+
         // 耗血12/次
         public static WeaponInstance DoomBlade() => Make(
             "末日巨剑", "传说中末日降临之剑，技能招致天空之力降临全场。攻击消耗自身血量。",
@@ -121,6 +128,24 @@ namespace Game.Dev
                 "召唤天空之力（R/右键），对全场所有敌人造成250%毁灭性伤害。",
                 WeaponSkillType.DoomFall, cd: 10f, mul: 2.5f, radius: 12f, hits: 1, skillRange: 15f),
             hpBonus: 60f, hpBonusPerLevel: 14f, hpCostPerAttack: 12f);
+
+        // 月牙弯刀 — 绿色长剑，高攻速快节奏
+        public static WeaponInstance CrescentBlade() => Make(
+            "月牙弯刀", "形如弯月的精良弯刀，攻速远超普通长剑，适合高频输出。",
+            WeaponCategory.Longsword, WeaponRarity.Green, DamageType.Physical,
+            baseDmg: 18f, dmgPerLv: 6f, atkSpd: 1.4f, range: 1.6f,
+            hpBonus: 20f, hpBonusPerLevel: 5f);
+
+        // 寒铁长枪 — 蓝色长剑（枪），技能直线穿刺
+        public static WeaponInstance FrostLance() => Make(
+            "寒铁长枪", "以寒铁铸造的长枪，攻击范围极长。技能可释放穿透所有敌人的冰枪突刺。",
+            WeaponCategory.Longsword, WeaponRarity.Blue, DamageType.Physical,
+            baseDmg: 26f, dmgPerLv: 7f, atkSpd: 0.9f, range: 2.6f,
+            skill: MakeSkill(
+                "冰枪突刺",
+                "向前方突刺（R/右键），冰枪直线贯穿所有敌人，造成130%伤害并附加20%冰霜真实伤害。",
+                WeaponSkillType.FrostThrust, cd: 5f, mul: 1.3f, radius: 0f, hits: 1, skillRange: 10f),
+            hpBonus: 32f, hpBonusPerLevel: 7f);
 
         // ============================================================
         // 弓系 (Bow) - 物理远程，直线射击
@@ -147,6 +172,31 @@ namespace Game.Dev
                 "射出穿透之矢（R/右键），沿鼠标方向贯穿直线上所有敌人，造成150%伤害。",
                 WeaponSkillType.PiercingArrow, cd: 5f, mul: 1.5f, radius: 0f, hits: 1, skillRange: 12f),
             hpBonus: 25f, hpBonusPerLevel: 6f);
+
+        // 骨弓 — 白色弓，攻速较低但基础可靠
+        public static WeaponInstance BoneBow() => Make(
+            "骨弓", "以兽骨制成的原始弓，比木弓更坚韧，攻速略低但箭矢更重。",
+            WeaponCategory.Bow, WeaponRarity.White, DamageType.Physical,
+            baseDmg: 14f, dmgPerLv: 4f, atkSpd: 1.0f, range: 7.5f,
+            hpBonus: 10f, hpBonusPerLevel: 3f);
+
+        // 精灵短弓 — 绿色弓，极高攻速
+        public static WeaponInstance ElfBow() => Make(
+            "精灵短弓", "精灵工匠打造的轻巧短弓，射速极快，适合连续输出。",
+            WeaponCategory.Bow, WeaponRarity.Green, DamageType.Physical,
+            baseDmg: 13f, dmgPerLv: 5f, atkSpd: 1.6f, range: 9f,
+            hpBonus: 14f, hpBonusPerLevel: 4f);
+
+        // 雷鸣战弓 — 蓝色弓，技能落雷链击
+        public static WeaponInstance ThunderBow() => Make(
+            "雷鸣战弓", "蕴含雷霆之力的战弓，技能射出落雷箭命中目标后进行闪电链跳。",
+            WeaponCategory.Bow, WeaponRarity.Blue, DamageType.Physical,
+            baseDmg: 19f, dmgPerLv: 6f, atkSpd: 1.2f, range: 11f,
+            skill: MakeSkill(
+                "落雷箭",
+                "射出雷属性箭矢（R/右键），命中首个目标后闪电链弹至周围3个敌人，各造成主伤害的60%。",
+                WeaponSkillType.ThunderShot, cd: 5f, mul: 1.5f, radius: 0f, hits: 1, skillRange: 11f),
+            hpBonus: 24f, hpBonusPerLevel: 6f);
 
         public static WeaponInstance CelestialBow() => Make(
             "天风弓", "借助天风之力的神弓，技能降下五连箭雨覆盖目标区域。",

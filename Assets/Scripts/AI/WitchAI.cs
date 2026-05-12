@@ -17,7 +17,6 @@ namespace Game.AI
         public float attackRange       = 8f;
         public float attackInterval    = 2.5f;
         public float attackDamage      = 18f;
-        public float blastRadius       = 1.8f;
 
         [Header("Summon (召唤蝙蝠)")]
         public float summonCooldown = 8f;
@@ -70,19 +69,10 @@ namespace Game.AI
             _lastAttackTime = Time.time;
             float dmg   = attackDamage + _stats.Get(StatType.Attack);
             Vector2 dir = ((Vector2)target.position - (Vector2)transform.position).normalized;
-            Vector2 blastCenter = (Vector2)transform.position + dir * Mathf.Min(attackRange, 5f);
-
-            var cols = Physics2D.OverlapCircleAll(blastCenter, blastRadius);
-            foreach (var col in cols)
-            {
-                if (col.gameObject == gameObject) continue;
-                col.GetComponent<IDamageable>()?.TakeDamage(new DamageInfo
-                {
-                    Amount = dmg,
-                    Type   = DamageType.Magical,
-                    Source = gameObject
-                });
-            }
+            EnemyProjectile.Spawn(
+                transform.position, dir, speed: 7f, attackRange,
+                new DamageInfo { Amount = dmg, Type = DamageType.Magical, Source = gameObject },
+                new Color(0.7f, 0.2f, 0.9f), size: 0.3f, transform.parent);
         }
 
         private void SummonBats()
