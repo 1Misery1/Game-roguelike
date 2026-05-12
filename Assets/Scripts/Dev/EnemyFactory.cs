@@ -15,7 +15,7 @@ namespace Game.Dev
         public static GameObject SpawnSkeleton(Vector3 pos, Transform player, Transform parent)
         {
             var go = MakeBase("骷髅怪", pos, 0.7f, new Color(0.85f, 0.85f, 0.75f),
-                hp: 30f, atk: 8f, def: 0f, spd: 4.5f, parent: parent);
+                hp: 30f, atk: 8f, def: 0f, spd: 4.5f, parent: parent, EnemyType.Skeleton);
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.Skeleton;
             var ai  = go.AddComponent<ChaseAI>();
             ai.target          = player;
@@ -29,7 +29,7 @@ namespace Game.Dev
         public static GameObject SpawnSoldier(Vector3 pos, Transform player, Transform parent)
         {
             var go = MakeBase("腐败小兵", pos, 0.75f, new Color(0.5f, 0.75f, 0.4f),
-                hp: 45f, atk: 12f, def: 2f, spd: 4.0f, parent: parent);
+                hp: 45f, atk: 12f, def: 2f, spd: 4.0f, parent: parent, EnemyType.Soldier);
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.Soldier;
             var ai  = go.AddComponent<ChaseAI>();
             ai.target          = player;
@@ -43,7 +43,7 @@ namespace Game.Dev
         public static GameObject SpawnArcher(Vector3 pos, Transform player, Transform parent)
         {
             var go = MakeBase("腐败弓箭手", pos, 0.65f, new Color(0.6f, 0.85f, 0.35f),
-                hp: 25f, atk: 0f, def: 0f, spd: 3.0f, parent: parent);
+                hp: 25f, atk: 0f, def: 0f, spd: 3.0f, parent: parent, EnemyType.Archer);
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.Archer;
             var ai  = go.AddComponent<ArcherAI>();
             ai.target           = player;
@@ -58,7 +58,7 @@ namespace Game.Dev
         public static GameObject SpawnBat(Vector3 pos, Transform player, Transform parent)
         {
             var go = MakeBase("飞天蝙蝠", pos, 0.55f, new Color(0.35f, 0.2f, 0.5f),
-                hp: 20f, atk: 0f, def: 0f, spd: 7.0f, parent: parent);
+                hp: 20f, atk: 0f, def: 0f, spd: 7.0f, parent: parent, EnemyType.Bat);
             go.GetComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Kinematic;
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.Bat;
             var ai  = go.AddComponent<BatAI>();
@@ -76,7 +76,7 @@ namespace Game.Dev
         public static GameObject SpawnShieldGuard(Vector3 pos, Transform player, Transform parent)
         {
             var go = MakeBase("腐败盾士", pos, 0.8f, new Color(0.3f, 0.5f, 0.8f),
-                hp: 70f, atk: 14f, def: 5f, spd: 3.5f, parent: parent);
+                hp: 70f, atk: 14f, def: 5f, spd: 3.5f, parent: parent, EnemyType.ShieldGuard);
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.ShieldGuard;
             var ai  = go.AddComponent<ShieldGuardAI>();
             ai.target          = player;
@@ -93,7 +93,7 @@ namespace Game.Dev
         public static GameObject SpawnPoisonSpider(Vector3 pos, Transform player, Transform parent)
         {
             var go = MakeBase("毒蜘蛛", pos, 0.5f, new Color(0.2f, 0.55f, 0.1f),
-                hp: 28f, atk: 10f, def: 0f, spd: 6.0f, parent: parent);
+                hp: 28f, atk: 10f, def: 0f, spd: 6.0f, parent: parent, EnemyType.PoisonSpider);
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.PoisonSpider;
             var ai  = go.AddComponent<PoisonSpiderAI>();
             ai.target             = player;
@@ -110,7 +110,7 @@ namespace Game.Dev
         public static GameObject SpawnShadowAssassin(Vector3 pos, Transform player, Transform parent)
         {
             var go = MakeBase("暗影刺客", pos, 0.6f, new Color(0.2f, 0.1f, 0.3f),
-                hp: 45f, atk: 22f, def: 0f, spd: 5.0f, parent: parent);
+                hp: 45f, atk: 22f, def: 0f, spd: 5.0f, parent: parent, EnemyType.ShadowAssassin);
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.ShadowAssassin;
             var ai  = go.AddComponent<ShadowAssassinAI>();
             ai.target           = player;
@@ -126,7 +126,7 @@ namespace Game.Dev
         public static GameObject SpawnExplosiveDemon(Vector3 pos, Transform player, Transform parent)
         {
             var go = MakeBase("爆炎恶魔", pos, 0.65f, new Color(0.9f, 0.4f, 0.1f),
-                hp: 35f, atk: 0f, def: 0f, spd: 4.5f, parent: parent);
+                hp: 35f, atk: 0f, def: 0f, spd: 4.5f, parent: parent, EnemyType.ExplosiveDemon);
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.ExplosiveDemon;
             var ai  = go.AddComponent<ExplosiveDemonAI>();
             ai.target           = player;
@@ -347,7 +347,8 @@ namespace Game.Dev
         // ── 内部工具 ──────────────────────────────────────────────
 
         private static GameObject MakeBase(string name, Vector3 pos, float size, Color color,
-            float hp, float atk, float def, float spd, Transform parent)
+            float hp, float atk, float def, float spd, Transform parent,
+            EnemyType spriteType = (EnemyType)(-1))
         {
             var go = new GameObject(name);
             go.transform.SetParent(parent, true);
@@ -355,8 +356,9 @@ namespace Game.Dev
             go.transform.localScale = new Vector3(size, size, 1f);
 
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite       = GetSquareSprite();
-            sr.color        = color;
+            var customSprite = (int)spriteType >= 0 ? EnemySprites.Get(spriteType) : null;
+            sr.sprite       = customSprite != null ? customSprite : GetSquareSprite();
+            sr.color        = customSprite != null ? Color.white : color;
             sr.sortingOrder = 5;
 
             var rb = go.AddComponent<Rigidbody2D>();
