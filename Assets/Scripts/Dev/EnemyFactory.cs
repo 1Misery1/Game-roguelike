@@ -172,7 +172,6 @@ namespace Game.Dev
             ai.attackRange         = 8f;
             ai.attackInterval      = 2.5f;
             ai.attackDamage        = 18f;
-            ai.blastRadius         = 1.8f;
             ai.summonCooldown      = 8f;
             ai.summonCount         = 2;
             ai.SpawnBatCallback    = spawnBatCallback;

@@ -30,6 +30,8 @@ namespace Game.Player
                 case WeaponSkillType.RainOfArrows: DoRainOfArrows(totalDmg, origin, aimDir, skill);  break;
                 case WeaponSkillType.FrostNova:    DoFrostNova(totalDmg, origin, skill);             break;
                 case WeaponSkillType.ChaosBurst:   DoChaosBurst(totalDmg, origin, aimDir, skill);    break;
+                case WeaponSkillType.FrostThrust:  DoFrostThrust(totalDmg, origin, aimDir, skill);   break;
+                case WeaponSkillType.ThunderShot:  DoThunderShot(totalDmg, origin, aimDir, skill);   break;
             }
         }
 
@@ -122,6 +124,51 @@ namespace Game.Player
             // 随机元素：0=火(Physical), 1=雷(Magical), 2=毒(True)
             var bonusType = (DamageType)Random.Range(0, 3);
             HitCircle(center, skill.skillRadius * 0.7f, dmg * 0.45f, bonusType, origin.gameObject);
+        }
+
+        // 寒铁长枪·冰枪突刺：直线穿透所有敌人，造成物理伤害并附加20%冰霜真实伤害
+        private static void DoFrostThrust(float dmg, Transform origin, Vector2 dir, WeaponSkillData skill)
+        {
+            var hits = Physics2D.RaycastAll(origin.position, dir, skill.skillRange);
+            foreach (var hit in hits)
+            {
+                if (hit.collider.gameObject == origin.gameObject) continue;
+                var target = hit.collider.GetComponent<IDamageable>();
+                if (target == null) continue;
+                target.TakeDamage(new DamageInfo { Amount = dmg, Type = DamageType.Physical, IsCrit = false, Source = origin.gameObject });
+                target.TakeDamage(new DamageInfo { Amount = dmg * 0.20f, Type = DamageType.True, IsCrit = false, Source = origin.gameObject });
+            }
+        }
+
+        // 雷鸣战弓·落雷箭：射出雷箭命中第一个目标，随后闪电链弹至附近最多3个敌人
+        private static void DoThunderShot(float dmg, Transform origin, Vector2 dir, WeaponSkillData skill)
+        {
+            var hits = Physics2D.RaycastAll(origin.position, dir, skill.skillRange);
+            GameObject firstHit = null;
+            foreach (var hit in hits)
+            {
+                if (hit.collider.gameObject == origin.gameObject) continue;
+                var target = hit.collider.GetComponent<IDamageable>();
+                if (target == null) continue;
+                target.TakeDamage(new DamageInfo { Amount = dmg, Type = DamageType.Magical, IsCrit = false, Source = origin.gameObject });
+                firstHit = hit.collider.gameObject;
+                break;
+            }
+            // 闪电链：对主目标周围3.5f范围内其他敌人造成60%伤害
+            if (firstHit != null)
+            {
+                var nearby = Physics2D.OverlapCircleAll(firstHit.transform.position, 3.5f);
+                int chained = 0;
+                foreach (var col in nearby)
+                {
+                    if (chained >= 3) break;
+                    if (col.gameObject == origin.gameObject || col.gameObject == firstHit) continue;
+                    var t = col.GetComponent<IDamageable>();
+                    if (t == null) continue;
+                    t.TakeDamage(new DamageInfo { Amount = dmg * 0.6f, Type = DamageType.Magical, IsCrit = false, Source = origin.gameObject });
+                    chained++;
+                }
+            }
         }
 
         private static void HitCircle(Vector2 center, float radius, float damage, DamageType type, GameObject source)

@@ -106,21 +106,16 @@ namespace Game.AI
             }
         }
 
-        // 冰霜光线：命中第一个有效目标
+        // 冰霜飞弹：向玩家发射可见飞弹
         private void DoRangedAttack()
         {
             _lastAttackTime = Time.time;
             if (target == null) return;
-            Vector2 dir  = ((Vector2)target.position - (Vector2)transform.position).normalized;
-            var     hits = Physics2D.RaycastAll(transform.position, dir, attackRange);
-            foreach (var hit in hits)
-            {
-                if (hit.collider.gameObject == gameObject) continue;
-                var d = hit.collider.GetComponent<IDamageable>();
-                if (d == null) continue;
-                d.TakeDamage(new DamageInfo { Amount = attackDamage, Type = DamageType.Magical, Source = gameObject });
-                break;
-            }
+            Vector2 dir = ((Vector2)target.position - (Vector2)transform.position).normalized;
+            EnemyProjectile.Spawn(
+                transform.position, dir, speed: 9f, attackRange,
+                new DamageInfo { Amount = attackDamage, Type = DamageType.Magical, Source = gameObject },
+                new Color(0.4f, 0.85f, 1f), size: 0.28f, transform.parent);
         }
 
         // 冰霜新星：AOE + 打断玩家
@@ -138,29 +133,24 @@ namespace Game.AI
             }
         }
 
-        // 冰锥齐射：扇形多条射线
+        // 冰锥齐射：扇形发射多枚飞弹
         private void CastIceVolley()
         {
             _lastVolleyTime = Time.time;
             if (target == null) return;
 
-            int     count    = _isPhase2 ? volleyCount_P2 : volleyCount_P1;
-            Vector2 baseDir  = ((Vector2)target.position - (Vector2)transform.position).normalized;
-            float   step     = 15f;                              // 每条间隔15°
-            float   start    = -step * (count - 1) * 0.5f;      // 对称展开
+            int     count   = _isPhase2 ? volleyCount_P2 : volleyCount_P1;
+            Vector2 baseDir = ((Vector2)target.position - (Vector2)transform.position).normalized;
+            float   step    = 15f;
+            float   start   = -step * (count - 1) * 0.5f;
 
             for (int i = 0; i < count; i++)
             {
-                Vector2 dir  = Rotate(baseDir, start + i * step);
-                var     hits = Physics2D.RaycastAll(transform.position, dir, volleyRange);
-                foreach (var hit in hits)
-                {
-                    if (hit.collider.gameObject == gameObject) continue;
-                    var d = hit.collider.GetComponent<IDamageable>();
-                    if (d == null) continue;
-                    d.TakeDamage(new DamageInfo { Amount = volleyDamage, Type = DamageType.Magical, Source = gameObject });
-                    break;
-                }
+                Vector2 dir = Rotate(baseDir, start + i * step);
+                EnemyProjectile.Spawn(
+                    transform.position, dir, speed: 8f, volleyRange,
+                    new DamageInfo { Amount = volleyDamage, Type = DamageType.Magical, Source = gameObject },
+                    new Color(0.65f, 0.9f, 1f), size: 0.2f, transform.parent);
             }
         }
 

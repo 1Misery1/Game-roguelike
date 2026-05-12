@@ -33,6 +33,8 @@ namespace Game.Data
         RainOfArrows,    // 箭雨     (天风弓)
         FrostNova,       // 冰霜新星 (寒冰法杖)
         ChaosBurst,      // 混沌爆发 (混沌魔杖)
+        FrostThrust,     // 冰枪突刺 (寒铁长枪)
+        ThunderShot,     // 落雷箭   (雷鸣战弓)
     }
 
     public enum DamageType
