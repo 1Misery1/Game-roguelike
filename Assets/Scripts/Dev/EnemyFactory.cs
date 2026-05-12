@@ -144,7 +144,7 @@ namespace Game.Dev
         public static GameObject SpawnCommander(Vector3 pos, Transform player, Transform parent)
         {
             var go = MakeBase("腐败士官", pos, 0.9f, new Color(0.9f, 0.6f, 0.2f),
-                hp: 150f, atk: 20f, def: 4f, spd: 3.5f, parent: parent);
+                hp: 150f, atk: 20f, def: 4f, spd: 3.5f, parent: parent, EnemyType.Commander);
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.Commander;
             var ai  = go.AddComponent<CommanderAI>();
             ai.target        = player;
@@ -164,7 +164,7 @@ namespace Game.Dev
             System.Func<Vector3, GameObject> spawnBatCallback)
         {
             var go = MakeBase("女巫", pos, 0.75f, new Color(0.75f, 0.3f, 0.9f),
-                hp: 100f, atk: 18f, def: 0f, spd: 3.0f, parent: parent);
+                hp: 100f, atk: 18f, def: 0f, spd: 3.0f, parent: parent, EnemyType.Witch);
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.Witch;
             var ai  = go.AddComponent<WitchAI>();
             ai.target              = player;
@@ -185,7 +185,7 @@ namespace Game.Dev
             System.Func<Vector3, float, float, float, GameObject> spawnLavaCallback)
         {
             var go = MakeBase("地狱巨人", pos, 1.2f, new Color(0.7f, 0.12f, 0.08f),
-                hp: 400f, atk: 35f, def: 8f, spd: 2.5f, parent: parent);
+                hp: 400f, atk: 35f, def: 8f, spd: 2.5f, parent: parent, EnemyType.HellGiant);
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.HellGiant;
             go.GetComponent<SpriteRenderer>().sortingOrder = 6;
 
@@ -214,7 +214,7 @@ namespace Game.Dev
         public static GameObject SpawnPoisonShaman(Vector3 pos, Transform player, Transform parent)
         {
             var go = MakeBase("毒蛇祭司", pos, 0.85f, new Color(0.3f, 0.7f, 0.2f),
-                hp: 130f, atk: 16f, def: 0f, spd: 3.0f, parent: parent);
+                hp: 130f, atk: 16f, def: 0f, spd: 3.0f, parent: parent, EnemyType.PoisonShaman);
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.PoisonShaman;
             var ai  = go.AddComponent<PoisonShamanAI>();
             ai.target             = player;
@@ -237,7 +237,7 @@ namespace Game.Dev
         public static GameObject SpawnNecromancer(Vector3 pos, Transform player, Transform parent)
         {
             var go = MakeBase("死灵术士", pos, 0.8f, new Color(0.3f, 0.1f, 0.5f),
-                hp: 140f, atk: 12f, def: 2f, spd: 2.8f, parent: parent);
+                hp: 140f, atk: 12f, def: 2f, spd: 2.8f, parent: parent, EnemyType.Necromancer);
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.Necromancer;
             var ai  = go.AddComponent<NecromancerAI>();
             ai.target          = player;
@@ -257,7 +257,7 @@ namespace Game.Dev
         public static GameObject SpawnFrostLich(Vector3 pos, Transform player, Transform parent)
         {
             var go = MakeBase("霜魂巫妖", pos, 1.1f, new Color(0.45f, 0.75f, 1f),
-                hp: 600f, atk: 25f, def: 5f, spd: 1.8f, parent: parent);
+                hp: 600f, atk: 25f, def: 5f, spd: 1.8f, parent: parent, EnemyType.FrostLich);
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.FrostLich;
             go.GetComponent<SpriteRenderer>().sortingOrder = 6;
 
@@ -285,7 +285,7 @@ namespace Game.Dev
         public static GameObject SpawnChaosLord(Vector3 pos, Transform player, Transform parent)
         {
             var go = MakeBase("混沌领主", pos, 1.4f, new Color(0.5f, 0.1f, 0.7f),
-                hp: 900f, atk: 45f, def: 12f, spd: 3.0f, parent: parent);
+                hp: 900f, atk: 45f, def: 12f, spd: 3.0f, parent: parent, EnemyType.ChaosLord);
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.ChaosLord;
             go.GetComponent<SpriteRenderer>().sortingOrder = 6;
 
