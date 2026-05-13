@@ -1409,8 +1409,9 @@ namespace Game.Dev
             _player.transform.localScale = new Vector3(0.8f, 0.8f, 1f);
 
             var sr = _player.AddComponent<SpriteRenderer>();
-            sr.sprite       = MakeUnitSquareSprite();
-            sr.color        = hero.tintColor;
+            var heroSpr = HeroSprites.Get(hero.heroName);
+            sr.sprite       = heroSpr != null ? heroSpr : MakeUnitSquareSprite();
+            sr.color        = heroSpr != null ? Color.white : hero.tintColor;
             sr.sortingOrder = 10;
 
             var rb = _player.AddComponent<Rigidbody2D>();
@@ -1780,7 +1781,11 @@ namespace Game.Dev
                          : selected  ? new Color(0.2f, 0.45f, 0.75f)
                                      : new Color(0.18f, 0.22f, 0.3f);
                 FillRect(rect, bg);
-                FillRect(new Rect(rect.x + 8, rect.y + 8, 34, 34), h.tintColor);
+                var portrait = HeroSprites.Get(h.heroName);
+                if (portrait != null)
+                    GUI.DrawTexture(new Rect(rect.x + 8, rect.y + 8, 34, 34), portrait.texture);
+                else
+                    FillRect(new Rect(rect.x + 8, rect.y + 8, 34, 34), h.tintColor);
 
                 var nameStyle = new GUIStyle(GUI.skin.label) { fontSize = 18, fontStyle = FontStyle.Bold, normal = { textColor = Color.white } };
                 GUI.Label(new Rect(rect.x + 50, rect.y + 8, cardW - 58, 26), h.heroName, nameStyle);
@@ -1903,11 +1908,27 @@ namespace Game.Dev
 
                 string prefix = active ? "▶" : "  ";
 
+                // 武器图标 28×28
+                var iconRect = new Rect(panelX, baseY + 4f, 28f, 28f);
+                if (wi != null)
+                {
+                    var wSprite = WeaponSprites.Get(wi.Data.weaponName);
+                    if (wSprite != null) GUI.DrawTexture(iconRect, wSprite.texture);
+                    else FillRect(iconRect, slotColor * 0.5f);
+                }
+                else
+                {
+                    FillRect(iconRect, new Color(0.3f, 0.3f, 0.3f, 0.5f));
+                }
+
+                float tx = panelX + 32f;
+                float tw = panelW - 32f;
+
                 if (wi == null)
                 {
                     var emptyStyle = new GUIStyle(GUI.skin.label)
                         { fontSize = 12, normal = { textColor = slotColor } };
-                    GUI.Label(new Rect(panelX, baseY, panelW, 20), $"{prefix} [{i + 1}] 空", emptyStyle);
+                    GUI.Label(new Rect(tx, baseY, tw, 20), $"{prefix} [{i + 1}] 空", emptyStyle);
                 }
                 else
                 {
@@ -1918,7 +1939,7 @@ namespace Game.Dev
                         fontStyle = active ? FontStyle.Bold : FontStyle.Normal,
                         normal    = { textColor = slotColor }
                     };
-                    GUI.Label(new Rect(panelX, baseY, panelW, 20),
+                    GUI.Label(new Rect(tx, baseY, tw, 20),
                         $"{prefix} [{i + 1}] {wi.ShortName}  {wi.CategoryLabel}  {wi.EffectiveDamage:0}伤  {wi.Data.attackSpeed:0.0}/s",
                         nameStyle);
 
@@ -1928,7 +1949,7 @@ namespace Game.Dev
                     string subLine = $"   HP+{wi.HPBonus:0}{WeaponSpecialLabel(wi)}  [{upgradeStr}]";
                     var subStyle = new GUIStyle(GUI.skin.label)
                         { fontSize = 11, normal = { textColor = slotColor * 0.85f } };
-                    GUI.Label(new Rect(panelX, baseY + 18f, panelW, 16), subLine, subStyle);
+                    GUI.Label(new Rect(tx, baseY + 18f, tw, 16), subLine, subStyle);
                 }
             }
 
