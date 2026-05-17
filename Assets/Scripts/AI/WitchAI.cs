@@ -1,5 +1,6 @@
 using Game.Combat;
 using Game.Data;
+using Game.Dev;
 using UnityEngine;
 
 namespace Game.AI
@@ -72,7 +73,7 @@ namespace Game.AI
             EnemyProjectile.Spawn(
                 transform.position, dir, speed: 7f, attackRange,
                 new DamageInfo { Amount = dmg, Type = DamageType.Magical, Source = gameObject },
-                new Color(0.7f, 0.2f, 0.9f), size: 0.3f, transform.parent);
+                ProjectileType.MagicOrb, size: 0.3f, transform.parent);
         }
 
         private void SummonBats()

@@ -34,7 +34,7 @@ namespace Game.Dev
         public int CurrentFloor  { get; private set; } = 1;
 
         // Enemy stats multiply by this each floor
-        private float FloorScale => 1f + (CurrentFloor - 1) * 0.3f;
+        private float FloorScale => 1f + (CurrentFloor - 1) * 0.25f;
 
         private State _state = State.Menu;
         private PersistentState _persistent;
@@ -89,27 +89,27 @@ namespace Game.Dev
             _heroes = new[]
             {
                 MakeHero("Warrior", "坚韧近战战士，擅长正面对抗。",
-                    120f, 12f, 3f, 5f,   1.0f, 0,   new Color(0.4f, 0.85f, 1f),
+                    100f, 14f, 5f, 5.5f, 1.0f, 0,   new Color(0.4f, 0.85f, 1f),
                     HeroSkillType.WarCry,        10f, "战吼",
                     HeroPassiveType.BattlefieldWill,  "战场意志"),
 
                 MakeHero("Ranger", "敏捷游侠，连击可叠加攻击加成。",
-                    85f,  11f, 0f, 7f,   1.3f, 30,  new Color(0.8f, 1f,   0.5f),
+                    70f,  12f, 0f, 8.0f, 1.4f, 30,  new Color(0.8f, 1f,   0.5f),
                     HeroSkillType.ShadowStep,    6f,  "影步",
                     HeroPassiveType.ComboStrike,      "连击"),
 
                 MakeHero("Mage", "玻璃炮，技能后下次普攻伤害翻倍。",
-                    70f,  20f, 0f, 4.5f, 0.8f, 60,  new Color(1f,   0.6f, 1f),
+                    55f,  22f, 0f, 5.0f, 0.8f, 60,  new Color(1f,   0.6f, 1f),
                     HeroSkillType.ArcaneSurge,   8f,  "奥术迸发",
                     HeroPassiveType.ManaAmplification,"魔力增幅"),
 
                 MakeHero("Paladin", "圣骑士，击杀敌人回复5HP。",
-                    130f, 10f, 5f, 4.5f, 0.9f, 100, new Color(1f,   0.9f, 0.4f),
+                    110f, 11f, 6f, 5.0f, 0.9f, 100, new Color(1f,   0.9f, 0.4f),
                     HeroSkillType.HolyLight,     12f, "神圣之光",
                     HeroPassiveType.SacredOath,       "神圣誓约"),
 
                 MakeHero("Hunter", "猎人，永久爆击率+20%、爆伤+30%。",
-                    80f,  15f, 0f, 6f,   1.1f, 150, new Color(1f,   0.55f, 0.3f),
+                    65f,  16f, 0f, 7.0f, 1.2f, 150, new Color(1f,   0.55f, 0.3f),
                     HeroSkillType.PrecisionShot, 7f,  "精准射击",
                     HeroPassiveType.EagleEye,         "鹰眼"),
             };
@@ -350,7 +350,7 @@ namespace Game.Dev
             if (sr == null) return;
             hp.OnDamaged += dmg =>
             {
-                StartCoroutine(FlashRoutine(sr, Color.white, 0.06f));
+                StartCoroutine(FlashRoutine(sr, new Color(1f, 0.35f, 0.35f), 0.14f));
                 if (tr != null) DamageNumbers.Instance?.Show(tr.position, dmg.Amount, dmg.IsCrit);
             };
         }
@@ -851,7 +851,7 @@ namespace Game.Dev
                 bossHp.OnDamaged += dmg =>
                 {
                     _totalDamageDealt += dmg.Amount;
-                    StartCoroutine(FlashRoutine(bossSr, Color.white, 0.08f));
+                    StartCoroutine(FlashRoutine(bossSr, new Color(1f, 0.35f, 0.35f), 0.14f));
                     if (bossTr != null) DamageNumbers.Instance?.Show(bossTr.position, dmg.Amount, dmg.IsCrit);
                 };
             bossHp.OnDied += () =>
@@ -918,8 +918,7 @@ namespace Game.Dev
 
             for (int i = 0; i < count; i++)
             {
-                float x = Random.Range(-4f, 6f), y = Random.Range(-2.5f, 2.5f);
-                var pos = new Vector3(x, y, 0f);
+                var pos = RandomEdgeSpawnPos();
                 GameObject enemy; int coins;
                 switch (Random.Range(0, 3))
                 {
@@ -941,7 +940,7 @@ namespace Game.Dev
             {
                 ShowBanner("第一波清除！混沌余波即将袭来……");
                 StartCoroutine(ChaosRiftSecondWave());
-            });
+            }, multiWave: false);
         }
 
         private System.Collections.IEnumerator ChaosRiftSecondWave()
@@ -957,7 +956,7 @@ namespace Game.Dev
                 ShowBanner($"混沌平息！获得 {goldBonus} 金币 + 武器选择！");
                 DropWeaponChoices();
                 OpenRightDoor();
-            });
+            }, multiWave: false);
         }
 
         private void ApplyTalentToPlayer(TalentData talent)
@@ -1014,6 +1013,8 @@ namespace Game.Dev
 
         private int GetRoomEnemyCount()
         {
+            if (_currentRoomIndex == 0) return 2;  // 第一间始终只有2只，让玩家熟悉操作
+            if (_currentRoomIndex == 1) return 3;  // 第二间固定3只
             int base_ = 3 + CurrentFloor; // Floor1=4, Floor2=5, Floor3=6
             return Random.Range(base_, base_ + 2);
         }
@@ -1023,17 +1024,33 @@ namespace Game.Dev
         // 各层楼敌人出现权重（索引0-7 → 骷髅/小兵/弓箭手/蝙蝠/盾士/毒蜘蛛/暗影刺客/爆炎恶魔）
         private float[] GetFloorEnemyWeights()
         {
+            // 前两间只刷基础小怪，不出现危险特殊敌人
+            if (_currentRoomIndex <= 1)
+                return new float[] { 4f, 4f, 2f, 3f, 0f, 0f, 0f, 0f };
+
+            // 第3间起逐步引入层主题敌人
+            bool earlyRoom = _currentRoomIndex <= 2;
             switch (CurrentFloor)
             {
-                case 1:  return new float[] { 1f, 2f, 1f, 1f, 3f, 1f, 1f, 4f }; // 炼狱：盾士+爆炎恶魔高发
-                case 2:  return new float[] { 4f, 1f, 3f, 3f, 1f, 1f, 1f, 1f }; // 霜境：骷髅+弓手+蝙蝠高发
-                default: return new float[] { 1f, 3f, 1f, 1f, 1f, 2f, 4f, 2f }; // 混沌：暗影刺客+毒蜘蛛高发
+                case 1:
+                    return earlyRoom
+                        ? new float[] { 2f, 3f, 2f, 2f, 1f, 1f, 0f, 1f }   // 盾士/爆炎恶魔权重压低
+                        : new float[] { 1f, 2f, 1f, 1f, 3f, 1f, 1f, 4f };  // 炼狱完全体
+                case 2:
+                    return earlyRoom
+                        ? new float[] { 4f, 1f, 3f, 3f, 0f, 0f, 0f, 0f }
+                        : new float[] { 4f, 1f, 3f, 3f, 1f, 1f, 1f, 1f };  // 霜境完全体
+                default:
+                    return earlyRoom
+                        ? new float[] { 1f, 3f, 1f, 1f, 1f, 2f, 2f, 1f }
+                        : new float[] { 1f, 3f, 1f, 1f, 1f, 2f, 4f, 2f };  // 混沌完全体
             }
         }
 
-        // 各层楼精英怪出现概率（15% / 30% / 55%）
+        // 各层楼精英怪出现概率（前两间永远不出精英）
         private float GetFloorEliteChance()
         {
+            if (_currentRoomIndex <= 1) return 0f;
             switch (CurrentFloor)
             {
                 case 1:  return 0.15f;
@@ -1234,31 +1251,66 @@ namespace Game.Dev
             }
         }
 
-        // 将 count 只敌人横向铺开，混入精英；全部死亡后调用 onAllDead
-        private void SpawnRoomWave(int count, System.Action onAllDead)
+        // 分两波刷怪（55%/45%）；每波从房间四壁边缘生成，第一波不出精英
+        private void SpawnRoomWave(int totalCount, System.Action onAllDead, bool multiWave = true)
         {
             if (_player == null) return;
-            float eliteChance = GetFloorEliteChance();
 
-            int remaining      = count;
-            System.Action dec  = () => { remaining--; if (remaining <= 0) onAllDead(); };
+            if (!multiWave || totalCount <= 2)
+            {
+                // 数量 ≤2 或明确禁用时直接单波
+                SpawnWaveGroup(totalCount, false, onAllDead);
+                return;
+            }
 
-            bool spawnedElite  = false;
+            int w1 = Mathf.CeilToInt(totalCount * 0.55f);
+            int w2 = totalCount - w1;
+
+            SpawnWaveGroup(w1, false, () =>
+            {
+                if (w2 <= 0) { onAllDead(); return; }
+                ShowBanner("第二波来袭！");
+                SpawnWaveGroup(w2, true, onAllDead);
+            });
+        }
+
+        // 在房间边缘生成一组敌人（Hades 风格：从四壁出现）
+        private void SpawnWaveGroup(int count, bool allowElite, System.Action onAllDead)
+        {
+            if (_player == null) return;
+            int remaining = count;
+            System.Action dec = () => { if (--remaining <= 0) onAllDead(); };
+            bool spawnedElite = false;
+            float eliteChance = allowElite ? GetFloorEliteChance() : 0f;
+
             for (int i = 0; i < count; i++)
             {
-                float x   = Random.Range(-4f, 6f);
-                float y   = Random.Range(-2.5f, 2.5f);
-                var   pos = new Vector3(x, y, 0f);
-
+                var pos = RandomEdgeSpawnPos(avoidLeftWall: !allowElite);
                 if (!spawnedElite && Random.value < eliteChance)
                 {
                     spawnedElite = true;
                     SpawnEliteEnemy(pos, dec);
                 }
                 else
-                {
                     SpawnRandomNormalEnemy(pos, dec);
-                }
+            }
+        }
+
+        // 从场景四壁边缘随机取一个刷怪点（Hades 风格入场）
+        private Vector3 RandomEdgeSpawnPos(bool avoidLeftWall = true)
+        {
+            // avoidLeftWall=true 时排除左侧（玩家起点），避免第一波立刻包围
+            int sides = avoidLeftWall ? 3 : 4;
+            switch (Random.Range(0, sides))
+            {
+                case 0: // 右壁
+                    return new Vector3(arenaHalfWidth - 1.6f, Random.Range(-3f, 3f), 0f);
+                case 1: // 上壁
+                    return new Vector3(Random.Range(-5f, 5f), arenaHalfHeight - 1.6f, 0f);
+                case 2: // 下壁
+                    return new Vector3(Random.Range(-5f, 5f), -arenaHalfHeight + 1.6f, 0f);
+                default: // 左壁（仅第二波）
+                    return new Vector3(-arenaHalfWidth + 2f, Random.Range(-3f, 3f), 0f);
             }
         }
 
@@ -1433,7 +1485,7 @@ namespace Game.Dev
             var playerTr = _player.transform;
             _playerHealth.OnDamaged += dmg =>
             {
-                StartCoroutine(FlashRoutine(sr, Color.white, 0.06f));
+                StartCoroutine(FlashRoutine(sr, new Color(1f, 0.4f, 0.4f), 0.18f));
                 if (playerTr != null) DamageNumbers.Instance?.Show(playerTr.position + Vector3.up * 0.5f, dmg.Amount, dmg.IsCrit);
             };
             _playerHealth.OnDied += () =>
@@ -1723,88 +1775,119 @@ namespace Game.Dev
             }
         }
 
-        private void FillRect(Rect rect, Color color)
+        private void FillRect(Rect r, Color c)
         {
             var prev = GUI.color;
-            GUI.color = color;
-            GUI.DrawTexture(rect, WhitePixel);
+            GUI.color = c;
+            GUI.DrawTexture(r, WhitePixel);
             GUI.color = prev;
         }
 
-        // --------------------------------------------------------------------
-        //  GUI
-        // --------------------------------------------------------------------
+        // ── 横条进度条 ──────────────────────────────────────────────
+        private void DrawBar(float x, float y, float w, float h, float ratio,
+                             Color bg, Color fill, Color border)
+        {
+            FillRect(new Rect(x - 1, y - 1, w + 2, h + 2), border);
+            FillRect(new Rect(x, y, w, h), bg);
+            if (ratio > 0f) FillRect(new Rect(x, y, w * Mathf.Clamp01(ratio), h), fill);
+        }
 
+        // ─────────────────────────────────────────────────────────────
+        //  OnGUI 入口
+        // ─────────────────────────────────────────────────────────────
         private void OnGUI()
         {
             switch (_state)
             {
-                case State.Menu:          DrawMenu();                                                break;
-                case State.Playing:       DrawHUD();                                                break;
-                case State.FloorComplete: DrawFloorComplete();                                      break;
-                case State.Victory:       DrawEndScreen("VICTORY!",  new Color(1f, 0.9f, 0.2f), true);  break;
-                case State.Death:         DrawEndScreen("YOU DIED",  new Color(1f, 0.3f, 0.3f), false); break;
+                case State.Menu:          DrawMenu();                                                                   break;
+                case State.Playing:       DrawHUD();                                                                   break;
+                case State.FloorComplete: DrawFloorComplete();                                                         break;
+                case State.Victory:       DrawEndScreen("胜利!", new Color(1f, 0.92f, 0.2f), true);                  break;
+                case State.Death:         DrawEndScreen("阵亡", new Color(1f, 0.3f, 0.3f), false);                    break;
             }
         }
 
+        // ─────────────────────────────────────────────────────────────
+        //  主菜单 — 英雄选择
+        // ─────────────────────────────────────────────────────────────
         private void DrawMenu()
         {
-            FillRect(new Rect(0, 0, Screen.width, Screen.height), new Color(0.08f, 0.08f, 0.12f));
+            // 渐变背景
+            FillRect(new Rect(0, 0, Screen.width, Screen.height), new Color(0.07f, 0.07f, 0.11f));
+            FillRect(new Rect(0, 0, Screen.width, 4), new Color(0.55f, 0.45f, 0.15f));
+            FillRect(new Rect(0, Screen.height - 4, Screen.width, 4), new Color(0.55f, 0.45f, 0.15f));
 
-            var title = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 44, alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold,
-                normal   = { textColor = new Color(0.95f, 0.95f, 0.4f) }
-            };
-            GUI.Label(new Rect(0, 30, Screen.width, 60), "2D ROGUELIKE", title);
+            // 标题
+            var titleS = MkLabel(52, TextAnchor.MiddleCenter, FontStyle.Bold, new Color(0.98f, 0.9f, 0.35f));
+            GUI.Label(new Rect(0, 22, Screen.width, 68), "深渊·轮回", titleS);
+            var subtitleS = MkLabel(15, TextAnchor.MiddleCenter, FontStyle.Normal, new Color(0.65f, 0.65f, 0.7f));
+            GUI.Label(new Rect(0, 82, Screen.width, 24), "Roguelike Dungeon  ·  选择英雄开始冒险", subtitleS);
 
-            var info = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 18, alignment = TextAnchor.MiddleCenter,
-                normal   = { textColor = Color.white }
-            };
-            GUI.Label(new Rect(0, 90, Screen.width, 28), $"Unlock Currency: {_persistent.UnlockCurrency}", info);
+            float currencyY = 112f;
+            var currS = MkLabel(15, TextAnchor.MiddleCenter, FontStyle.Normal, new Color(1f, 0.88f, 0.22f));
+            GUI.Label(new Rect(0, currencyY, Screen.width, 22), $"◈  解锁货币: {_persistent.UnlockCurrency}", currS);
 
-            float cardW = 195f, cardH = 210f, gap = 10f;
+            // 英雄卡片
+            const float cardW = 210f, cardH = 280f, gap = 14f;
             float totalW = _heroes.Length * cardW + (_heroes.Length - 1) * gap;
             float startX = (Screen.width - totalW) * 0.5f;
-            float y      = 135f;
+            float cardY  = 148f;
 
             for (int i = 0; i < _heroes.Length; i++)
             {
-                var h        = _heroes[i];
+                var h = _heroes[i];
                 bool unlocked = _persistent.IsHeroUnlocked(h.heroName);
                 bool selected = i == _selectedHeroIndex;
+                var rect = new Rect(startX + i * (cardW + gap), cardY, cardW, cardH);
 
-                var rect = new Rect(startX + i * (cardW + gap), y, cardW, cardH);
-                Color bg = !unlocked ? new Color(0.28f, 0.15f, 0.15f)
-                         : selected  ? new Color(0.2f, 0.45f, 0.75f)
-                                     : new Color(0.18f, 0.22f, 0.3f);
-                FillRect(rect, bg);
+                // 卡片背景
+                Color cardBg = !unlocked ? new Color(0.22f, 0.12f, 0.12f)
+                             : selected  ? new Color(0.14f, 0.26f, 0.44f)
+                                         : new Color(0.14f, 0.15f, 0.22f);
+                FillRect(rect, cardBg);
+
+                // 选中边框
+                if (selected)
+                {
+                    FillRect(new Rect(rect.x, rect.y, rect.width, 2), new Color(0.45f, 0.75f, 1f));
+                    FillRect(new Rect(rect.x, rect.yMax - 2, rect.width, 2), new Color(0.45f, 0.75f, 1f));
+                    FillRect(new Rect(rect.x, rect.y, 2, rect.height), new Color(0.45f, 0.75f, 1f));
+                    FillRect(new Rect(rect.xMax - 2, rect.y, 2, rect.height), new Color(0.45f, 0.75f, 1f));
+                }
+
+                // 英雄头像（72×72）
+                float portraitSize = 72f;
+                var portraitRect = new Rect(rect.x + (cardW - portraitSize) * 0.5f, rect.y + 12f, portraitSize, portraitSize);
+                FillRect(portraitRect, new Color(0.08f, 0.08f, 0.14f));
                 var portrait = HeroSprites.Get(h.heroName);
                 if (portrait != null)
-                    GUI.DrawTexture(new Rect(rect.x + 8, rect.y + 8, 34, 34), portrait.texture);
+                    GUI.DrawTexture(portraitRect, portrait.texture);
                 else
-                    FillRect(new Rect(rect.x + 8, rect.y + 8, 34, 34), h.tintColor);
+                    FillRect(portraitRect, h.tintColor * 0.5f);
+                // 头像底部颜色条
+                FillRect(new Rect(rect.x + (cardW - portraitSize) * 0.5f, rect.y + 12f + portraitSize - 4f, portraitSize, 4), h.tintColor * 0.8f);
 
-                var nameStyle = new GUIStyle(GUI.skin.label) { fontSize = 18, fontStyle = FontStyle.Bold, normal = { textColor = Color.white } };
-                GUI.Label(new Rect(rect.x + 50, rect.y + 8, cardW - 58, 26), h.heroName, nameStyle);
+                float iy = rect.y + 92f;
+                // 英雄名
+                GUI.Label(new Rect(rect.x + 8, iy, cardW - 16, 24),
+                    h.heroName, MkLabel(18, TextAnchor.MiddleCenter, FontStyle.Bold, unlocked ? Color.white : new Color(0.6f, 0.5f, 0.5f)));
+                // 简介
+                GUI.Label(new Rect(rect.x + 8, iy + 26, cardW - 16, 34),
+                    h.description, MkLabel(11, TextAnchor.UpperLeft, FontStyle.Normal, new Color(0.78f, 0.78f, 0.78f)) { wordWrap = true });
+                // 属性行
+                GUI.Label(new Rect(rect.x + 8, iy + 62, cardW - 16, 18),
+                    $"♥{h.baseMaxHP:0}  ⚔{h.baseAttack:0}  🛡{h.baseDefense:0}  ⚡{h.baseMoveSpeed:0.0}",
+                    MkLabel(11, TextAnchor.MiddleLeft, FontStyle.Normal, new Color(0.75f, 0.88f, 1f)));
+                // 主动技能
+                GUI.Label(new Rect(rect.x + 8, iy + 82, cardW - 16, 18),
+                    $"[F] {h.heroSkillName}  CD{h.heroSkillCooldown:0}s",
+                    MkLabel(11, TextAnchor.MiddleLeft, FontStyle.Normal, new Color(1f, 0.85f, 0.35f)));
+                // 被动
+                GUI.Label(new Rect(rect.x + 8, iy + 100, cardW - 16, 18),
+                    $"◆ {h.heroPassiveName}",
+                    MkLabel(11, TextAnchor.MiddleLeft, FontStyle.Normal, new Color(0.55f, 1f, 0.65f)));
 
-                var descStyle = new GUIStyle(GUI.skin.label) { fontSize = 11, wordWrap = true, normal = { textColor = new Color(0.85f, 0.85f, 0.85f) } };
-                GUI.Label(new Rect(rect.x + 8, rect.y + 48, cardW - 16, 36), h.description, descStyle);
-
-                var statStyle = new GUIStyle(GUI.skin.label) { fontSize = 11, normal = { textColor = new Color(0.8f, 0.9f, 1f) } };
-                GUI.Label(new Rect(rect.x + 8, rect.y + 88, cardW - 16, 18),
-                    $"HP {h.baseMaxHP:0}  ATK {h.baseAttack:0}  SPD {h.baseMoveSpeed:0.0}", statStyle);
-
-                var skillStyle = new GUIStyle(GUI.skin.label) { fontSize = 11, normal = { textColor = new Color(1f, 0.85f, 0.4f) } };
-                GUI.Label(new Rect(rect.x + 8, rect.y + 108, cardW - 16, 18),
-                    $"[F] {h.heroSkillName}  CD:{h.heroSkillCooldown:0}s", skillStyle);
-
-                var passiveStyle = new GUIStyle(GUI.skin.label) { fontSize = 11, normal = { textColor = new Color(0.6f, 1f, 0.7f) } };
-                GUI.Label(new Rect(rect.x + 8, rect.y + 126, cardW - 16, 18),
-                    $"[被动] {h.heroPassiveName}", passiveStyle);
-
+                // 按钮
                 var btnRect = new Rect(rect.x + 8, rect.y + cardH - 36, cardW - 16, 28);
                 if (unlocked)
                 {
@@ -1813,60 +1896,392 @@ namespace Game.Dev
                 }
                 else
                 {
-                    bool affordable = _persistent.UnlockCurrency >= h.unlockCost;
-                    GUI.enabled = affordable;
-                    if (GUI.Button(btnRect, $"解锁 ({h.unlockCost})"))
+                    bool canAfford = _persistent.UnlockCurrency >= h.unlockCost;
+                    GUI.enabled = canAfford;
+                    if (GUI.Button(btnRect, $"解锁  {h.unlockCost} ◈"))
                         _persistent.TryUnlockHero(h.heroName, h.unlockCost);
                     GUI.enabled = true;
                 }
             }
 
-            var startBtn = new GUIStyle(GUI.skin.button) { fontSize = 22, fontStyle = FontStyle.Bold };
+            // 开始按钮
+            float startY = cardY + cardH + 18f;
             bool canStart = _selectedHeroIndex >= 0 && _persistent.IsHeroUnlocked(_heroes[_selectedHeroIndex].heroName);
             GUI.enabled = canStart;
-            if (GUI.Button(new Rect(Screen.width / 2f - 140, y + cardH + 20, 280, 50), "开始冒险", startBtn))
+            var startS = new GUIStyle(GUI.skin.button) { fontSize = 22, fontStyle = FontStyle.Bold };
+            if (GUI.Button(new Rect(Screen.width * 0.5f - 150, startY, 300, 52), "▶  开始冒险", startS))
                 StartRun();
             GUI.enabled = true;
 
-            var hint = new GUIStyle(GUI.skin.label) { fontSize = 12, alignment = TextAnchor.MiddleCenter, normal = { textColor = new Color(0.6f, 0.6f, 0.7f) } };
-            GUI.Label(new Rect(0, Screen.height - 28, Screen.width, 20),
-                "Save file: " + Application.persistentDataPath, hint);
+            var pathS = MkLabel(11, TextAnchor.MiddleCenter, FontStyle.Normal, new Color(0.4f, 0.4f, 0.45f));
+            GUI.Label(new Rect(0, Screen.height - 24, Screen.width, 20), Application.persistentDataPath, pathS);
         }
 
+        // ─────────────────────────────────────────────────────────────
+        //  战斗 HUD
+        // ─────────────────────────────────────────────────────────────
         private void DrawHUD()
         {
-            var label = new GUIStyle(GUI.skin.label) { fontSize = 16, normal = { textColor = Color.white } };
-            string roomType = _currentRoomIndex < _floorRooms.Count ? _floorRooms[_currentRoomIndex] : "—";
-            string roomName = GetRoomDisplayName(roomType);
-            GUI.Label(new Rect(10, 10, 700, 26),
-                $"[{GetFloorName()}] {CurrentFloor}/{maxFloor}层 · {_currentRoomIndex + 1}/{_floorRooms.Count}间 · {roomName} · 难度×{FloorScale:0.0}", label);
-            GUI.Label(new Rect(10, 34, 800, 26),
-                "WASD移动 · Space/左键普攻 · R/右键武器技能 · F英雄技能 · Q切换武器 · E购买/装备 · 绿门进入下一间", label);
-            if (_playerHealth != null)
-            {
-                GUI.Label(new Rect(10, 58, 560, 26),
-                    $"HP: {Mathf.CeilToInt(_playerHealth.Current)} / {Mathf.CeilToInt(_playerHealth.Max)}   金币: {RunCoins}",
-                    label);
-            }
-            DrawHeroSkillHUD(label);
-
+            DrawTopBar();
+            DrawPlayerHPBar();
+            DrawGoldDisplay();
+            DrawHeroSkillHUD();
             DrawWeaponHUD();
-
+            DrawTalentStatus();
             DrawBossHPBar();
 
-            DrawTalentStatus();
-
-            if (_pendingTalent != null) DrawTalentReplacementOverlay();
-
+            // 提示横幅
             if (Time.time < _bannerUntil && !string.IsNullOrEmpty(_bannerMessage))
             {
-                var bannerStyle = new GUIStyle(GUI.skin.label)
-                {
-                    fontSize = 24, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter,
-                    normal   = { textColor = new Color(1f, 0.9f, 0.4f) }
-                };
-                GUI.Label(new Rect(0, Screen.height * 0.18f, Screen.width, 40), _bannerMessage, bannerStyle);
+                float bY = Screen.height * 0.15f;
+                FillRect(new Rect(Screen.width * 0.2f, bY - 4, Screen.width * 0.6f, 44), new Color(0f, 0f, 0f, 0.62f));
+                FillRect(new Rect(Screen.width * 0.2f, bY - 4, Screen.width * 0.6f, 2), new Color(0.95f, 0.8f, 0.2f, 0.8f));
+                GUI.Label(new Rect(0, bY, Screen.width, 36),
+                    _bannerMessage,
+                    MkLabel(22, TextAnchor.MiddleCenter, FontStyle.Bold, new Color(1f, 0.92f, 0.35f)));
             }
+
+            if (_pendingTalent != null) DrawTalentReplacementOverlay();
+        }
+
+        // 顶部细条：楼层/房间信息 + 操作提示
+        private void DrawTopBar()
+        {
+            FillRect(new Rect(0, 0, Screen.width, 28), new Color(0f, 0f, 0f, 0.62f));
+            string roomT = _currentRoomIndex < _floorRooms.Count ? _floorRooms[_currentRoomIndex] : "—";
+            string info = $"「{GetFloorName()}」 · 第{_currentRoomIndex + 1}/{_floorRooms.Count}间 · {GetRoomDisplayName(roomT)} · 难度×{FloorScale:0.00}";
+            GUI.Label(new Rect(10, 3, Screen.width * 0.55f, 22), info,
+                MkLabel(13, TextAnchor.MiddleLeft, FontStyle.Normal, new Color(0.85f, 0.85f, 0.85f)));
+            GUI.Label(new Rect(0, 3, Screen.width - 10, 22),
+                "WASD移动  Space/鼠标左键攻击  R/右键技能  F英雄技能  Q换武器  E互动  绿门进入下一间",
+                MkLabel(11, TextAnchor.MiddleRight, FontStyle.Normal, new Color(0.52f, 0.52f, 0.58f)));
+        }
+
+        // 底部中央：玩家血量条
+        private void DrawPlayerHPBar()
+        {
+            if (_playerHealth == null) return;
+            float barW = 480f;
+            float barH = 28f;
+            float barX = (Screen.width - barW) * 0.5f;
+            float barY = Screen.height - 48f;
+
+            float ratio = _playerHealth.Ratio;
+            Color fill = ratio > 0.6f ? Color.Lerp(new Color(0.85f, 0.7f, 0.08f), new Color(0.18f, 0.82f, 0.28f), (ratio - 0.6f) / 0.4f)
+                       : ratio > 0.25f ? Color.Lerp(new Color(0.88f, 0.18f, 0.1f), new Color(0.85f, 0.7f, 0.08f), (ratio - 0.25f) / 0.35f)
+                       :                 new Color(0.88f, 0.12f, 0.08f);
+
+            // 外框
+            FillRect(new Rect(barX - 2, barY - 2, barW + 4, barH + 4), new Color(0f, 0f, 0f, 0.8f));
+            FillRect(new Rect(barX - 1, barY - 1, barW + 2, barH + 2), new Color(0.35f, 0.35f, 0.35f, 0.6f));
+
+            DrawBar(barX, barY, barW, barH, ratio,
+                new Color(0.16f, 0.05f, 0.05f),
+                fill,
+                new Color(0f, 0f, 0f, 0f));
+
+            // 血量分段刻度线
+            int segs = 5;
+            for (int s = 1; s < segs; s++)
+            {
+                float sx = barX + barW * s / segs;
+                FillRect(new Rect(sx - 0.5f, barY, 1, barH), new Color(0f, 0f, 0f, 0.35f));
+            }
+
+            // 血量文字
+            var hpS = MkLabel(13, TextAnchor.MiddleCenter, FontStyle.Bold, Color.white);
+            GUI.Label(new Rect(barX, barY, barW, barH),
+                $"♥  {Mathf.CeilToInt(_playerHealth.Current)} / {Mathf.CeilToInt(_playerHealth.Max)}", hpS);
+        }
+
+        // 血条左侧金币
+        private void DrawGoldDisplay()
+        {
+            float barW = 480f;
+            float barX = (Screen.width - barW) * 0.5f;
+            float barY = Screen.height - 48f;
+            float goldX = barX - 128f;
+            FillRect(new Rect(goldX - 4, barY - 2, 120, 32), new Color(0f, 0f, 0f, 0.65f));
+            GUI.Label(new Rect(goldX, barY + 4, 114, 22),
+                $"◈  {RunCoins}",
+                MkLabel(16, TextAnchor.MiddleCenter, FontStyle.Bold, new Color(1f, 0.88f, 0.2f)));
+        }
+
+        // 武器 HUD（右下角）
+        private void DrawWeaponHUD()
+        {
+            if (_player == null) return;
+            var handler = _player.GetComponent<PlayerWeaponHandler>();
+            if (handler == null) return;
+
+            float panelW = 360f;
+            float panelX = Screen.width - panelW - 8f;
+            bool hasSkill = handler.ActiveWeapon?.Data?.HasSkill == true;
+            float panelH = hasSkill ? 118f : 92f;
+            float panelY = Screen.height - panelH - 8f;
+
+            FillRect(new Rect(panelX - 6, panelY - 6, panelW + 12, panelH + 12), new Color(0f, 0f, 0f, 0.72f));
+            FillRect(new Rect(panelX - 6, panelY - 6, panelW + 12, 2), new Color(0.5f, 0.5f, 0.6f, 0.4f));
+
+            for (int i = 0; i < 2; i++)
+            {
+                var wi      = handler.Slots[i];
+                bool active = handler.ActiveSlotIndex == i;
+                float slotY = panelY + i * 44f;
+                float slotH = 40f;
+
+                // 激活背景高亮
+                if (active) FillRect(new Rect(panelX, slotY, panelW, slotH), new Color(0.18f, 0.22f, 0.38f, 0.7f));
+
+                // 左侧激活竖条
+                if (active) FillRect(new Rect(panelX, slotY + 4, 3, slotH - 8), new Color(0.45f, 0.75f, 1f));
+
+                Color rc = wi == null ? new Color(0.45f, 0.45f, 0.5f) : WeaponData.GetRarityColor(wi.Data.rarity);
+                if (!active) rc *= 0.65f;
+
+                // 武器图标 30×30
+                var iconR = new Rect(panelX + 7f, slotY + 5f, 30f, 30f);
+                if (wi != null)
+                {
+                    FillRect(iconR, new Color(0.08f, 0.08f, 0.1f));
+                    var spr = WeaponSprites.Get(wi.Data.weaponName);
+                    if (spr != null) GUI.DrawTexture(iconR, spr.texture);
+                    else FillRect(iconR, rc * 0.5f);
+                }
+                else FillRect(iconR, new Color(0.2f, 0.2f, 0.22f));
+
+                float tx = panelX + 41f;
+                float tw = panelW - 45f;
+
+                if (wi == null)
+                {
+                    GUI.Label(new Rect(tx, slotY + 11, tw, 18),
+                        $"{(active ? "▶ " : "   ")}槽位 {i + 1}  [空]",
+                        MkLabel(12, TextAnchor.MiddleLeft, FontStyle.Normal, new Color(0.38f, 0.38f, 0.42f)));
+                }
+                else
+                {
+                    GUI.Label(new Rect(tx, slotY + 2, tw, 18),
+                        $"{(active ? "▶ " : "   ")}{wi.ShortName}  {wi.EffectiveDamage:0}伤  {wi.Data.attackSpeed:0.0}/s",
+                        MkLabel(active ? 13 : 11, TextAnchor.MiddleLeft, active ? FontStyle.Bold : FontStyle.Normal, rc));
+                    string upg = wi.Data.CanEnchant
+                        ? $"锻+{wi.UpgradeLevel}/{wi.Data.maxUpgradeLevel} 附+{wi.EnchantLevel}/{wi.Data.maxEnchantLevel}"
+                        : $"锻+{wi.UpgradeLevel}/{wi.Data.maxUpgradeLevel}";
+                    GUI.Label(new Rect(tx, slotY + 22, tw, 16),
+                        $"HP+{wi.HPBonus:0}  {upg}{WeaponSpecialLabel(wi)}",
+                        MkLabel(10, TextAnchor.MiddleLeft, FontStyle.Normal, rc * 0.82f));
+                }
+            }
+
+            if (hasSkill)
+            {
+                float skillY = panelY + 92f;
+                bool  ready  = handler.SkillReady;
+                float fill   = 1f - handler.SkillCooldownRatio;
+                Color barFill = ready ? new Color(0.25f, 0.8f, 0.28f) : new Color(0.25f, 0.4f, 0.85f);
+                DrawBar(panelX, skillY, panelW, 22f, fill,
+                    new Color(0.12f, 0.12f, 0.18f), barFill, new Color(0f, 0f, 0f, 0f));
+                string skillLbl = ready
+                    ? $"[R] {handler.ActiveWeapon.Data.skill.skillName}  ✦ 就绪!"
+                    : $"[R] {handler.ActiveWeapon.Data.skill.skillName}  冷却 {handler.SkillCooldownRemaining:0.0}s";
+                GUI.Label(new Rect(panelX, skillY, panelW, 22),
+                    skillLbl,
+                    MkLabel(11, TextAnchor.MiddleCenter, FontStyle.Normal, ready ? new Color(0.55f, 1f, 0.55f) : new Color(0.75f, 0.8f, 1f)));
+            }
+        }
+
+        // 英雄技能 HUD（左下，HP条左侧上方）
+        private void DrawHeroSkillHUD()
+        {
+            if (_player == null) return;
+            var sk = _player.GetComponent<HeroActiveSkillHandler>();
+            if (sk == null || sk.SkillType == HeroSkillType.None) return;
+
+            float barW = 200f;
+            float barX = (Screen.width - 480f) * 0.5f - barW - 14f;
+            float barY = Screen.height - 48f;
+
+            FillRect(new Rect(barX - 4, barY - 2, barW + 8, 32), new Color(0f, 0f, 0f, 0.65f));
+
+            bool  ready   = sk.IsReady;
+            float fill    = 1f - sk.CooldownRatio;
+            Color bFill   = ready ? new Color(0.9f, 0.75f, 0.1f) : new Color(0.55f, 0.45f, 0.18f);
+            DrawBar(barX, barY + 14f, barW, 12f, fill,
+                new Color(0.22f, 0.18f, 0.06f), bFill, new Color(0f, 0f, 0f, 0f));
+            GUI.Label(new Rect(barX, barY + 2, barW, 14),
+                ready ? $"[F] {sk.SkillName}  ✦ 就绪!" : $"[F] {sk.SkillName}  {sk.CooldownRemaining:0.0}s",
+                MkLabel(11, TextAnchor.MiddleCenter, FontStyle.Bold,
+                    ready ? new Color(1f, 0.9f, 0.25f) : new Color(0.7f, 0.62f, 0.35f)));
+        }
+
+        // 天赋状态（左侧竖排小标签）
+        private void DrawTalentStatus()
+        {
+            if (_activeTalents.Count == 0) return;
+            float chipW = 200f;
+            float chipH = 28f;
+            float chipX = 8f;
+            float startY = 36f;
+            FillRect(new Rect(chipX - 4, startY - 4, chipW + 8, _activeTalents.Count * (chipH + 4) + 4), new Color(0f, 0f, 0f, 0.55f));
+            for (int i = 0; i < _activeTalents.Count; i++)
+            {
+                var at  = _activeTalents[i];
+                float y = startY + i * (chipH + 4);
+                Color c = at.IsPermanent ? new Color(0.95f, 0.88f, 0.35f) : new Color(1f, 0.68f, 0.28f);
+                FillRect(new Rect(chipX, y, 3, chipH), c);
+                GUI.Label(new Rect(chipX + 6, y, chipW - 6, 16),
+                    $"{at.Data.talentName}",
+                    MkLabel(12, TextAnchor.MiddleLeft, FontStyle.Bold, c));
+                GUI.Label(new Rect(chipX + 6, y + 14, chipW - 6, 13),
+                    at.IsPermanent ? at.Data.description : $"{at.Data.description}  [{at.RoomsLeft}间]",
+                    MkLabel(10, TextAnchor.MiddleLeft, FontStyle.Normal, new Color(0.75f, 0.75f, 0.75f)));
+            }
+        }
+
+        // Boss血量条（顶部居中，宽大醒目）
+        private void DrawBossHPBar()
+        {
+            if (_bossHealth == null) return;
+            float barW  = Mathf.Min(600f, Screen.width * 0.52f);
+            float barH  = 20f;
+            float barX  = (Screen.width - barW) * 0.5f;
+            float barY  = 36f;
+            float ratio = Mathf.Clamp01(_bossHealth.Current / _bossHealth.Max);
+
+            FillRect(new Rect(barX - 8, barY - 26, barW + 16, barH + 34), new Color(0f, 0f, 0f, 0.72f));
+            FillRect(new Rect(barX - 8, barY - 26, barW + 16, 2), new Color(0.8f, 0.2f, 0.2f, 0.7f));
+
+            GUI.Label(new Rect(0, barY - 22, Screen.width, 18),
+                _bossName ?? "BOSS",
+                MkLabel(14, TextAnchor.MiddleCenter, FontStyle.Bold, new Color(1f, 0.35f, 0.35f)));
+
+            DrawBar(barX, barY, barW, barH, ratio,
+                new Color(0.2f, 0.06f, 0.06f),
+                Color.Lerp(new Color(0.75f, 0.12f, 0.12f), new Color(0.95f, 0.35f, 0.1f), ratio),
+                new Color(0.5f, 0.1f, 0.1f, 0.8f));
+
+            // 分段刻度
+            for (int s = 1; s <= 4; s++)
+                FillRect(new Rect(barX + barW * s / 5f - 0.5f, barY, 1, barH), new Color(0f, 0f, 0f, 0.45f));
+
+            var hpS = MkLabel(11, TextAnchor.MiddleCenter, FontStyle.Normal, Color.white);
+            GUI.Label(new Rect(barX, barY, barW, barH),
+                $"{Mathf.CeilToInt(_bossHealth.Current):N0} / {Mathf.CeilToInt(_bossHealth.Max):N0}", hpS);
+        }
+
+        // 天赋替换覆盖层
+        private void DrawTalentReplacementOverlay()
+        {
+            FillRect(new Rect(0, 0, Screen.width, Screen.height), new Color(0f, 0f, 0f, 0.75f));
+            float cx = Screen.width * 0.5f, cy = Screen.height * 0.5f;
+            GUI.Label(new Rect(0, cy - 105, Screen.width, 38),
+                $"天赋槽已满  ·  新天赋：{_pendingTalent.talentName}",
+                MkLabel(24, TextAnchor.MiddleCenter, FontStyle.Bold, new Color(1f, 0.88f, 0.22f)));
+            GUI.Label(new Rect(0, cy - 62, Screen.width, 26),
+                _pendingTalent.description,
+                MkLabel(15, TextAnchor.MiddleCenter, FontStyle.Normal, new Color(0.88f, 0.88f, 0.88f)));
+            GUI.Label(new Rect(0, cy - 30, Screen.width, 22),
+                "选择要替换的天赋，或取消放弃新天赋",
+                MkLabel(14, TextAnchor.MiddleCenter, FontStyle.Normal, new Color(0.7f, 0.7f, 0.7f)));
+
+            float btnW = 300f, btnH = 46f;
+            var btnS = new GUIStyle(GUI.skin.button) { fontSize = 15 };
+            for (int i = 0; i < _activeTalents.Count; i++)
+            {
+                var at = _activeTalents[i];
+                string dur = at.IsPermanent ? "永久" : $"剩{at.RoomsLeft}间";
+                if (GUI.Button(new Rect(cx - btnW * 0.5f, cy + 10 + i * (btnH + 8), btnW, btnH),
+                    $"替换：{at.Data.talentName}  ({dur})", btnS))
+                    ReplaceTalentAt(i);
+            }
+            float cancelY = cy + 10 + _activeTalents.Count * (btnH + 8) + 12;
+            if (GUI.Button(new Rect(cx - btnW * 0.5f, cancelY, btnW, 38), "取消  (放弃新天赋)", btnS))
+                _pendingTalent = null;
+        }
+
+        // 层间过渡画面
+        private void DrawFloorComplete()
+        {
+            FillRect(new Rect(0, 0, Screen.width, Screen.height), new Color(0.04f, 0.06f, 0.04f, 0.88f));
+            FillRect(new Rect(Screen.width * 0.1f, Screen.height * 0.12f, Screen.width * 0.8f, 3), new Color(0.3f, 0.95f, 0.45f, 0.7f));
+
+            GUI.Label(new Rect(0, Screen.height * 0.15f, Screen.width, 70),
+                $"第 {CurrentFloor} 层  ·  「{GetFloorName()}」  通关！",
+                MkLabel(46, TextAnchor.MiddleCenter, FontStyle.Bold, new Color(0.35f, 1f, 0.5f)));
+
+            GUI.Label(new Rect(0, Screen.height * 0.28f, Screen.width, 28),
+                $"获得  +{clearReward}  解锁货币    当前金币: {RunCoins}",
+                MkLabel(18, TextAnchor.MiddleCenter, FontStyle.Normal, Color.white));
+
+            GUI.Label(new Rect(0, Screen.height * 0.35f, Screen.width, 24),
+                $"下一层难度倍率: ×{1f + CurrentFloor * 0.25f:0.00}  (敌人HP与攻击力同步提升)",
+                MkLabel(15, TextAnchor.MiddleCenter, FontStyle.Normal, new Color(1f, 0.78f, 0.45f)));
+
+            if (_playerHealth != null)
+            {
+                float r = _playerHealth.Ratio;
+                Color hc = r > 0.5f ? new Color(0.25f, 0.95f, 0.4f) : r > 0.25f ? new Color(1f, 0.85f, 0.12f) : new Color(1f, 0.3f, 0.3f);
+                GUI.Label(new Rect(0, Screen.height * 0.42f, Screen.width, 26),
+                    $"当前生命: {Mathf.CeilToInt(_playerHealth.Current)} / {Mathf.CeilToInt(_playerHealth.Max)}  ({r * 100:0}%)",
+                    MkLabel(16, TextAnchor.MiddleCenter, FontStyle.Normal, hc));
+
+                // 回血按钮
+                int hCost = 30 + CurrentFloor * 10;
+                GUI.enabled = RunCoins >= hCost && r < 0.999f;
+                if (GUI.Button(new Rect(Screen.width * 0.5f - 175, Screen.height * 0.49f, 350, 40),
+                    $"花费 {hCost} 金币  回复 50% 生命值",
+                    new GUIStyle(GUI.skin.button) { fontSize = 14 }))
+                {
+                    RunCoins -= hCost;
+                    _playerHealth.Heal(_playerHealth.Max * 0.5f);
+                }
+                GUI.enabled = true;
+            }
+
+            var btn = new GUIStyle(GUI.skin.button) { fontSize = 20, fontStyle = FontStyle.Bold };
+            float btnCx = Screen.width * 0.5f;
+            if (GUI.Button(new Rect(btnCx - 145, Screen.height * 0.57f, 290, 52), $"进入第 {CurrentFloor + 1} 层  ▶", btn))
+                AdvanceFloor();
+            if (GUI.Button(new Rect(btnCx - 145, Screen.height * 0.57f + 62, 290, 46), "返回主菜单", btn))
+                EnterMenu();
+        }
+
+        // 结算/死亡画面
+        private void DrawEndScreen(string title, Color color, bool victory)
+        {
+            FillRect(new Rect(0, 0, Screen.width, Screen.height), new Color(0f, 0f, 0f, 0.72f));
+            GUI.Label(new Rect(0, Screen.height * 0.12f, Screen.width, 86),
+                title, MkLabel(62, TextAnchor.MiddleCenter, FontStyle.Bold, color));
+
+            if (victory)
+                GUI.Label(new Rect(0, Screen.height * 0.27f, Screen.width, 30),
+                    $"全部 {maxFloor} 层通关完成！  +{clearReward} 解锁货币  (合计: {_persistent.UnlockCurrency})",
+                    MkLabel(18, TextAnchor.MiddleCenter, FontStyle.Normal, Color.white));
+
+            float sy = Screen.height * (victory ? 0.35f : 0.28f);
+            var ss = MkLabel(15, TextAnchor.MiddleCenter, FontStyle.Normal, new Color(0.82f, 0.82f, 0.82f));
+            GUI.Label(new Rect(0, sy,       Screen.width, 24), $"到达楼层: {CurrentFloor} / {maxFloor}", ss);
+            GUI.Label(new Rect(0, sy + 28,  Screen.width, 24), $"击杀数: {_enemiesKilled}", ss);
+            GUI.Label(new Rect(0, sy + 56,  Screen.width, 24), $"总伤害: {Mathf.RoundToInt(_totalDamageDealt):N0}", ss);
+            GUI.Label(new Rect(0, sy + 84,  Screen.width, 24), $"剩余金币: {RunCoins}", ss);
+
+            float btnY = Screen.height * (victory ? 0.60f : 0.56f);
+            var bs = new GUIStyle(GUI.skin.button) { fontSize = 18 };
+            if (GUI.Button(new Rect(Screen.width * 0.5f - 140, btnY,       280, 44), "再次挑战", bs)) StartRun();
+            if (GUI.Button(new Rect(Screen.width * 0.5f - 140, btnY + 56f, 280, 44), "返回主菜单", bs)) EnterMenu();
+        }
+
+        // 样式工厂（避免大量重复 new GUIStyle）
+        private static GUIStyle MkLabel(int size, TextAnchor align, FontStyle style, Color color)
+        {
+            var s = new GUIStyle(GUI.skin.label)
+            {
+                fontSize  = size,
+                alignment = align,
+                fontStyle = style,
+            };
+            s.normal.textColor = color;
+            return s;
         }
 
         private static string WeaponSpecialLabel(WeaponInstance wi)
@@ -1874,351 +2289,6 @@ namespace Game.Dev
             if (wi.Data.lifeStealRate > 0f)   return $"  吸血{wi.Data.lifeStealRate * 100:0}%";
             if (wi.Data.hpCostPerAttack > 0f) return $"  耗血{wi.Data.hpCostPerAttack:0}/次";
             return "";
-        }
-
-        private void DrawWeaponHUD()
-        {
-            if (_player == null) return;
-            var handler = _player.GetComponent<PlayerWeaponHandler>();
-            if (handler == null) return;
-
-            float panelX = Screen.width - 420f;
-            float panelY = 10f;
-            float panelW = 410f;
-            float panelH = handler.ActiveWeapon?.Data?.HasSkill == true ? 132f : 92f;
-
-            FillRect(new Rect(panelX - 6, panelY - 4, panelW + 12, panelH + 8), new Color(0f, 0f, 0f, 0.55f));
-
-            var titleStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 13, fontStyle = FontStyle.Bold,
-                normal   = { textColor = new Color(0.9f, 0.9f, 0.6f) }
-            };
-            GUI.Label(new Rect(panelX, panelY, panelW, 20), "── 武器栏 (Q切换) ──", titleStyle);
-
-            for (int i = 0; i < 2; i++)
-            {
-                var wi      = handler.Slots[i];
-                bool active = handler.ActiveSlotIndex == i;
-                float baseY = panelY + 20f + i * 36f;
-
-                Color slotColor = wi == null ? new Color(0.5f, 0.5f, 0.5f)
-                                : WeaponData.GetRarityColor(wi.Data.rarity);
-                if (!active) slotColor *= 0.65f;
-
-                string prefix = active ? "▶" : "  ";
-
-                // 武器图标 28×28
-                var iconRect = new Rect(panelX, baseY + 4f, 28f, 28f);
-                if (wi != null)
-                {
-                    var wSprite = WeaponSprites.Get(wi.Data.weaponName);
-                    if (wSprite != null) GUI.DrawTexture(iconRect, wSprite.texture);
-                    else FillRect(iconRect, slotColor * 0.5f);
-                }
-                else
-                {
-                    FillRect(iconRect, new Color(0.3f, 0.3f, 0.3f, 0.5f));
-                }
-
-                float tx = panelX + 32f;
-                float tw = panelW - 32f;
-
-                if (wi == null)
-                {
-                    var emptyStyle = new GUIStyle(GUI.skin.label)
-                        { fontSize = 12, normal = { textColor = slotColor } };
-                    GUI.Label(new Rect(tx, baseY, tw, 20), $"{prefix} [{i + 1}] 空", emptyStyle);
-                }
-                else
-                {
-                    // 第一行：名称 + 类型 + 伤害 + 攻速
-                    var nameStyle = new GUIStyle(GUI.skin.label)
-                    {
-                        fontSize  = active ? 13 : 12,
-                        fontStyle = active ? FontStyle.Bold : FontStyle.Normal,
-                        normal    = { textColor = slotColor }
-                    };
-                    GUI.Label(new Rect(tx, baseY, tw, 20),
-                        $"{prefix} [{i + 1}] {wi.ShortName}  {wi.CategoryLabel}  {wi.EffectiveDamage:0}伤  {wi.Data.attackSpeed:0.0}/s",
-                        nameStyle);
-
-                    // 第二行：HP加成 + 特殊词条 + 升级/附魔进度
-                    string upgradeStr = $"升{wi.UpgradeLevel}/{wi.Data.maxUpgradeLevel}";
-                    if (wi.Data.CanEnchant) upgradeStr += $" 附{wi.EnchantLevel}/{wi.Data.maxEnchantLevel}";
-                    string subLine = $"   HP+{wi.HPBonus:0}{WeaponSpecialLabel(wi)}  [{upgradeStr}]";
-                    var subStyle = new GUIStyle(GUI.skin.label)
-                        { fontSize = 11, normal = { textColor = slotColor * 0.85f } };
-                    GUI.Label(new Rect(tx, baseY + 18f, tw, 16), subLine, subStyle);
-                }
-            }
-
-            var active_wi = handler.ActiveWeapon;
-            if (active_wi?.Data?.HasSkill == true)
-            {
-                float  skillY    = panelY + 92f;
-                string skillName = active_wi.Data.skill.skillName;
-                float  cdRem     = handler.SkillCooldownRemaining;
-                bool   ready     = handler.SkillReady;
-
-                string skillLabel = ready
-                    ? $"技能: {skillName} [就绪!] (R/右键)"
-                    : $"技能: {skillName} CD: {cdRem:0.0}s";
-
-                Color skillColor = ready ? new Color(0.5f, 1f, 0.5f) : new Color(0.7f, 0.7f, 1f);
-                var skillStyle = new GUIStyle(GUI.skin.label)
-                {
-                    fontSize = 12, normal = { textColor = skillColor }
-                };
-                GUI.Label(new Rect(panelX, skillY, panelW, 20), skillLabel, skillStyle);
-
-                float barW = panelW - 4f;
-                float barY = skillY + 20f;
-                FillRect(new Rect(panelX, barY, barW, 8), new Color(0.3f, 0.3f, 0.3f));
-                float fill = 1f - handler.SkillCooldownRatio;
-                FillRect(new Rect(panelX, barY, barW * fill, 8), ready ? new Color(0.3f, 0.9f, 0.3f) : new Color(0.3f, 0.5f, 1f));
-            }
-        }
-
-        private void DrawHeroSkillHUD(GUIStyle baseLabel)
-        {
-            if (_player == null) return;
-            var skillHandler = _player.GetComponent<HeroActiveSkillHandler>();
-            if (skillHandler == null || skillHandler.SkillType == HeroSkillType.None) return;
-
-            float panelX = 10f;
-            float panelY = 82f;
-            float panelW = 220f;
-            float panelH = 38f;
-
-            FillRect(new Rect(panelX - 4, panelY - 2, panelW + 8, panelH + 4), new Color(0f, 0f, 0f, 0.5f));
-
-            bool   ready      = skillHandler.IsReady;
-            float  cdRem      = skillHandler.CooldownRemaining;
-            string skillLabel = ready
-                ? $"[F] {skillHandler.SkillName}  就绪!"
-                : $"[F] {skillHandler.SkillName}  CD: {cdRem:0.0}s";
-
-            Color skillColor = ready ? new Color(1f, 0.85f, 0.1f) : new Color(0.7f, 0.65f, 0.4f);
-            var style = new GUIStyle(baseLabel) { fontSize = 13, normal = { textColor = skillColor } };
-            GUI.Label(new Rect(panelX, panelY, panelW, 20), skillLabel, style);
-
-            float barW = panelW;
-            FillRect(new Rect(panelX, panelY + 20f, barW, 8), new Color(0.3f, 0.3f, 0.3f));
-            float fill = 1f - skillHandler.CooldownRatio;
-            FillRect(new Rect(panelX, panelY + 20f, barW * fill, 8),
-                ready ? new Color(1f, 0.8f, 0.1f) : new Color(0.5f, 0.45f, 0.2f));
-        }
-
-        private void DrawTalentStatus()
-        {
-            if (_activeTalents.Count == 0) return;
-            float panelX = 10f;
-            float panelY = 126f;
-            float panelW = 240f;
-            const float rowH = 34f;
-            float panelH = _activeTalents.Count * rowH + 20f;
-            FillRect(new Rect(panelX - 4, panelY - 4, panelW + 8, panelH + 4), new Color(0f, 0f, 0f, 0.5f));
-
-            var header = new GUIStyle(GUI.skin.label)
-                { fontSize = 11, normal = { textColor = new Color(0.7f, 0.7f, 0.7f) } };
-            GUI.Label(new Rect(panelX, panelY, panelW, 16), "── 天赋 ──", header);
-
-            for (int i = 0; i < _activeTalents.Count; i++)
-            {
-                var at    = _activeTalents[i];
-                float rowY = panelY + 18f + i * rowH;
-                string dur = at.IsPermanent ? "∞" : $"{at.RoomsLeft}房";
-                Color  c   = at.IsPermanent ? new Color(0.9f, 0.9f, 0.6f) : new Color(1f, 0.7f, 0.3f);
-
-                var nameStyle = new GUIStyle(GUI.skin.label)
-                    { fontSize = 12, fontStyle = FontStyle.Bold, normal = { textColor = c } };
-                GUI.Label(new Rect(panelX, rowY, panelW, 18),
-                    $"[{i + 1}] {at.Data.talentName}  ({dur})", nameStyle);
-
-                var descStyle = new GUIStyle(GUI.skin.label)
-                    { fontSize = 11, normal = { textColor = new Color(0.75f, 0.75f, 0.75f) } };
-                GUI.Label(new Rect(panelX + 8f, rowY + 16f, panelW - 8f, 16),
-                    at.Data.description, descStyle);
-            }
-        }
-
-        private void DrawTalentReplacementOverlay()
-        {
-            FillRect(new Rect(0, 0, Screen.width, Screen.height), new Color(0f, 0f, 0f, 0.72f));
-
-            float cx = Screen.width * 0.5f;
-            float cy = Screen.height * 0.5f;
-
-            var titleStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 24, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter,
-                normal   = { textColor = new Color(1f, 0.85f, 0.2f) }
-            };
-            GUI.Label(new Rect(0, cy - 100f, Screen.width, 36),
-                $"天赋已满！新天赋：{_pendingTalent.talentName}", titleStyle);
-
-            var subStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 16, alignment = TextAnchor.MiddleCenter,
-                normal   = { textColor = Color.white }
-            };
-            GUI.Label(new Rect(0, cy - 60f, Screen.width, 26), "选择替换哪一个（或取消放弃新天赋）", subStyle);
-
-            float btnW = 280f;
-            float btnH = 46f;
-            var   btnStyle = new GUIStyle(GUI.skin.button) { fontSize = 15 };
-
-            for (int i = 0; i < _activeTalents.Count; i++)
-            {
-                var at  = _activeTalents[i];
-                string dur = at.IsPermanent ? "永久" : $"剩{at.RoomsLeft}房";
-                float  y   = cy - 10f + i * (btnH + 10f);
-                if (GUI.Button(new Rect(cx - btnW * 0.5f, y, btnW, btnH),
-                    $"替换：{at.Data.talentName} ({dur})", btnStyle))
-                {
-                    ReplaceTalentAt(i);
-                }
-            }
-
-            float cancelY = cy - 10f + _activeTalents.Count * (btnH + 10f) + 10f;
-            if (GUI.Button(new Rect(cx - btnW * 0.5f, cancelY, btnW, 38),
-                "取消（放弃新天赋）", btnStyle))
-            {
-                _pendingTalent = null;
-            }
-        }
-
-        private void DrawBossHPBar()
-        {
-            if (_bossHealth == null) return;
-            float ratio = Mathf.Clamp01(_bossHealth.Current / _bossHealth.Max);
-            float barW  = Screen.width * 0.5f;
-            float barH  = 18f;
-            float barX  = (Screen.width - barW) * 0.5f;
-            float barY  = Screen.height - 46f;
-
-            FillRect(new Rect(barX - 4, barY - 24, barW + 8, barH + 30), new Color(0f, 0f, 0f, 0.65f));
-
-            var nameStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize  = 14, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter,
-                normal    = { textColor = new Color(1f, 0.35f, 0.35f) }
-            };
-            GUI.Label(new Rect(barX, barY - 22f, barW, 20f), _bossName ?? "BOSS", nameStyle);
-
-            FillRect(new Rect(barX, barY, barW, barH), new Color(0.22f, 0.08f, 0.08f));
-            FillRect(new Rect(barX, barY, barW * ratio, barH), new Color(0.85f, 0.15f, 0.15f));
-
-            var hpStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize  = 12, alignment = TextAnchor.MiddleCenter,
-                normal    = { textColor = Color.white }
-            };
-            GUI.Label(new Rect(barX, barY, barW, barH),
-                $"{Mathf.CeilToInt(_bossHealth.Current)} / {Mathf.CeilToInt(_bossHealth.Max)}", hpStyle);
-        }
-
-        private void DrawFloorComplete()
-        {
-            FillRect(new Rect(0, 0, Screen.width, Screen.height), new Color(0f, 0f, 0f, 0.65f));
-
-            var titleStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 48, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter,
-                normal   = { textColor = new Color(0.35f, 1f, 0.5f) }
-            };
-            GUI.Label(new Rect(0, Screen.height * 0.18f, Screen.width, 70), $"第 {CurrentFloor} 层「{GetFloorName()}」清除！", titleStyle);
-
-            var subStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 20, alignment = TextAnchor.MiddleCenter,
-                normal   = { textColor = Color.white }
-            };
-            GUI.Label(new Rect(0, Screen.height * 0.32f, Screen.width, 30),
-                $"已获得 +{clearReward} 解锁货币   当前金币: {RunCoins}", subStyle);
-
-            var nextFloor = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 16, alignment = TextAnchor.MiddleCenter,
-                normal   = { textColor = new Color(1f, 0.8f, 0.5f) }
-            };
-            GUI.Label(new Rect(0, Screen.height * 0.39f, Screen.width, 26),
-                $"下一层难度: ×{1f + CurrentFloor * 0.3f:0.0}  (敌人HP↑ ATK↑)", nextFloor);
-
-            // 当前HP状态
-            if (_playerHealth != null)
-            {
-                float ratio    = _playerHealth.Ratio;
-                Color hpColor  = ratio > 0.5f ? new Color(0.3f, 1f, 0.4f)
-                               : ratio > 0.25f ? new Color(1f, 0.85f, 0.1f)
-                                               : new Color(1f, 0.35f, 0.35f);
-                var hpStyle = new GUIStyle(GUI.skin.label)
-                    { fontSize = 17, alignment = TextAnchor.MiddleCenter, normal = { textColor = hpColor } };
-                GUI.Label(new Rect(0, Screen.height * 0.45f, Screen.width, 28),
-                    $"生命值: {Mathf.CeilToInt(_playerHealth.Current)} / {Mathf.CeilToInt(_playerHealth.Max)}  ({ratio * 100:0}%)", hpStyle);
-            }
-
-            // 花钱回血按钮
-            int   healCost  = 30 + CurrentFloor * 10;
-            bool  canHeal   = RunCoins >= healCost && _playerHealth != null && _playerHealth.Ratio < 0.999f;
-            float healBtnX  = Screen.width / 2f - 175f;
-            float healBtnY  = Screen.height * 0.52f;
-            var   healStyle = new GUIStyle(GUI.skin.button) { fontSize = 15 };
-            GUI.enabled = canHeal;
-            if (GUI.Button(new Rect(healBtnX, healBtnY, 350, 38),
-                $"花费 {healCost} 金币  回复50%最大生命值", healStyle))
-            {
-                RunCoins -= healCost;
-                _playerHealth?.Heal(_playerHealth.Max * 0.5f);
-            }
-            GUI.enabled = true;
-
-            float btnX = Screen.width / 2f - 140f;
-            float btnY = Screen.height * 0.60f;
-            var btn = new GUIStyle(GUI.skin.button) { fontSize = 20, fontStyle = FontStyle.Bold };
-            if (GUI.Button(new Rect(btnX, btnY, 280, 50), $"进入第 {CurrentFloor + 1} 层 ▶", btn))
-                AdvanceFloor();
-            if (GUI.Button(new Rect(btnX, btnY + 60f, 280, 50), "返回主菜单", btn))
-                EnterMenu();
-        }
-
-        private void DrawEndScreen(string title, Color color, bool victory)
-        {
-            FillRect(new Rect(0, 0, Screen.width, Screen.height), new Color(0f, 0f, 0f, 0.6f));
-
-            var bigStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 56, alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold,
-                normal   = { textColor = color }
-            };
-            GUI.Label(new Rect(0, Screen.height * 0.18f, Screen.width, 80), title, bigStyle);
-
-            var subStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 18, alignment = TextAnchor.MiddleCenter,
-                normal   = { textColor = Color.white }
-            };
-            if (victory)
-                GUI.Label(new Rect(0, Screen.height * 0.30f, Screen.width, 30),
-                    $"全部 {maxFloor} 层通关！   +{clearReward} 解锁货币   (合计: {_persistent.UnlockCurrency})", subStyle);
-
-            float statsY = Screen.height * (victory ? 0.38f : 0.30f);
-            var statStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 15, alignment = TextAnchor.MiddleCenter,
-                normal   = { textColor = new Color(0.85f, 0.85f, 0.85f) }
-            };
-            GUI.Label(new Rect(0, statsY,       Screen.width, 24), $"通关层数: {CurrentFloor} / {maxFloor}", statStyle);
-            GUI.Label(new Rect(0, statsY + 26f, Screen.width, 24), $"击杀敌人: {_enemiesKilled}", statStyle);
-            GUI.Label(new Rect(0, statsY + 52f, Screen.width, 24), $"总输出伤害: {Mathf.RoundToInt(_totalDamageDealt):N0}", statStyle);
-            GUI.Label(new Rect(0, statsY + 78f, Screen.width, 24), $"剩余金币: {RunCoins}", statStyle);
-
-            float btnX = Screen.width / 2f - 140f;
-            float btnY = Screen.height * (victory ? 0.62f : 0.58f);
-            var btnStyle = new GUIStyle(GUI.skin.button) { fontSize = 18 };
-            if (GUI.Button(new Rect(btnX, btnY,       280, 42), "再次挑战", btnStyle)) StartRun();
-            if (GUI.Button(new Rect(btnX, btnY + 54f, 280, 42), "返回主菜单", btnStyle)) EnterMenu();
         }
     }
 }

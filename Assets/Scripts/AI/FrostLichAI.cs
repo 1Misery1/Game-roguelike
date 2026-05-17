@@ -1,5 +1,6 @@
 using Game.Combat;
 using Game.Data;
+using Game.Dev;
 using Game.Player;
 using UnityEngine;
 
@@ -115,7 +116,7 @@ namespace Game.AI
             EnemyProjectile.Spawn(
                 transform.position, dir, speed: 9f, attackRange,
                 new DamageInfo { Amount = attackDamage, Type = DamageType.Magical, Source = gameObject },
-                new Color(0.4f, 0.85f, 1f), size: 0.28f, transform.parent);
+                ProjectileType.IceMissile, size: 0.28f, transform.parent);
         }
 
         // 冰霜新星：AOE + 打断玩家
@@ -150,7 +151,7 @@ namespace Game.AI
                 EnemyProjectile.Spawn(
                     transform.position, dir, speed: 8f, volleyRange,
                     new DamageInfo { Amount = volleyDamage, Type = DamageType.Magical, Source = gameObject },
-                    new Color(0.65f, 0.9f, 1f), size: 0.2f, transform.parent);
+                    ProjectileType.IceSpike, size: 0.2f, transform.parent);
             }
         }
 

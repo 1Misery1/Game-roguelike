@@ -47,7 +47,7 @@ namespace Game.Dev
             var tex = new Texture2D(SZ, SZ, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point };
             tex.SetPixels32(px);
             tex.Apply();
-            return Sprite.Create(tex, new Rect(0, 0, SZ, SZ), new Vector2(0.5f, 0.5f), SZ);
+            return Sprite.Create(tex, new Rect(0, 0, SZ, SZ), new Vector2(0.5f, 0.5f), SZ / 2);
         }
 
         // ── 绘图原语 ──────────────────────────────────────────────────
