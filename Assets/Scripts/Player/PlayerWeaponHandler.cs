@@ -1,5 +1,6 @@
 using Game.Combat;
 using Game.Data;
+using Game.Dev;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -162,7 +163,7 @@ namespace Game.Player
                 case WeaponCategory.Dagger:
                 case WeaponCategory.Longsword:
                 case WeaponCategory.Greatsword:
-                    MeleeAttack(damage, weapon.Data.attackRange, type, isCrit);
+                    MeleeAttack(damage, weapon.Data.attackRange, type, isCrit, aimDir);
                     break;
                 case WeaponCategory.Bow:
                     RangedAttack(damage, aimDir, weapon.Data.attackRange, type, isCrit);
@@ -178,7 +179,7 @@ namespace Game.Player
                 _health?.Heal(damage * weapon.Data.lifeStealRate);
         }
 
-        private void MeleeAttack(float damage, float range, DamageType type, bool isCrit)
+        private void MeleeAttack(float damage, float range, DamageType type, bool isCrit, Vector2 aimDir)
         {
             var cols = Physics2D.OverlapCircleAll(transform.position, range);
             foreach (var col in cols)
@@ -189,11 +190,19 @@ namespace Game.Player
                     Amount = damage, Type = type, IsCrit = isCrit, Source = gameObject
                 });
             }
+            // 近战刀光特效：在攻击方向生成扇形弧光
+            if (aimDir == Vector2.zero) aimDir = Vector2.right;
+            float angle = Mathf.Atan2(aimDir.y, aimDir.x) * Mathf.Rad2Deg;
+            var fxPos = transform.position + (Vector3)(aimDir.normalized * range * 0.45f);
+            SkillEffect.Spawn(SkillEffectType.MeleeSlash, fxPos, range * 0.8f, 0.28f, null, angle);
         }
 
         private void RangedAttack(float damage, Vector2 dir, float range, DamageType type, bool isCrit)
         {
             if (dir == Vector2.zero) dir = Vector2.right;
+            // 视觉箭矢
+            VisualProjectile.Spawn(ProjectileType.Arrow, transform.position, dir,
+                14f, range, 0.28f, transform.parent);
             var hits = Physics2D.RaycastAll(transform.position, dir, range);
             foreach (var hit in hits)
             {
@@ -210,7 +219,11 @@ namespace Game.Player
         private void MagicBlast(float damage, Vector2 dir, float range, float radius, DamageType type, bool isCrit)
         {
             if (dir == Vector2.zero) dir = Vector2.right;
-            Vector2 target = (Vector2)transform.position + dir * Mathf.Min(range, 6f);
+            float travelDist = Mathf.Min(range, 6f);
+            // 视觉魔法球
+            VisualProjectile.Spawn(ProjectileType.MagicOrb, transform.position, dir,
+                10f, travelDist, 0.32f, transform.parent);
+            Vector2 target = (Vector2)transform.position + dir * travelDist;
             var cols = Physics2D.OverlapCircleAll(target, radius);
             foreach (var col in cols)
             {

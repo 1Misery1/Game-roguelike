@@ -33,7 +33,7 @@ namespace Game.Dev
             skill: MakeSkill(
                 "毒液喷射",
                 "向前方喷洒毒液（R/右键），对前方范围造成80%伤害并追加40%真实毒素伤害。",
-                WeaponSkillType.VenomSpray, cd: 4f, mul: 0.8f, radius: 1.5f, hits: 1, skillRange: 6f),
+                WeaponSkillType.VenomSpray, cd: 5f, mul: 0.8f, radius: 1.5f, hits: 1, skillRange: 6f),
             hpBonus: 30f, hpBonusPerLevel: 7f);
 
         // 吸血10%
@@ -45,7 +45,7 @@ namespace Game.Dev
                 "幻影连斩",
                 "幻影分身进行3段连斩（R/右键），每段造成总伤害的1/3（总计180%伤害）。",
                 WeaponSkillType.PhantomSlash, cd: 6f, mul: 1.8f, radius: 1.4f, hits: 3, skillRange: 7f),
-            hpBonus: 40f, hpBonusPerLevel: 10f, lifeStealRate: 0.10f);
+            hpBonus: 40f, hpBonusPerLevel: 10f, lifeStealRate: 0.08f);
 
         // ============================================================
         // 长剑系 (Longsword) - 均衡近战，物理伤害
@@ -127,7 +127,7 @@ namespace Game.Dev
                 "毁灭天降",
                 "召唤天空之力（R/右键），对全场所有敌人造成250%毁灭性伤害。",
                 WeaponSkillType.DoomFall, cd: 10f, mul: 2.5f, radius: 12f, hits: 1, skillRange: 15f),
-            hpBonus: 60f, hpBonusPerLevel: 14f, hpCostPerAttack: 12f);
+            hpBonus: 60f, hpBonusPerLevel: 14f, hpCostPerAttack: 8f);
 
         // 月牙弯刀 — 绿色长剑，高攻速快节奏
         public static WeaponInstance CrescentBlade() => Make(
@@ -242,7 +242,7 @@ namespace Game.Dev
             skill: MakeSkill(
                 "混沌爆发",
                 "在鼠标方向目标位置释放混沌能量（R/右键），造成220%魔法伤害，并附加随机元素追伤（火/雷/毒）。",
-                WeaponSkillType.ChaosBurst, cd: 9f, mul: 2.2f, radius: 3.5f, hits: 1, skillRange: 12f),
+                WeaponSkillType.ChaosBurst, cd: 8f, mul: 2.2f, radius: 3.5f, hits: 1, skillRange: 12f),
             hpBonus: 45f, hpBonusPerLevel: 10f, lifeStealRate: 0.06f);
 
         // ============================================================

@@ -1,5 +1,6 @@
 using Game.Combat;
 using Game.Data;
+using Game.Dev;
 using UnityEngine;
 
 namespace Game.AI
@@ -91,7 +92,7 @@ namespace Game.AI
             EnemyProjectile.Spawn(
                 transform.position, dir, speed: 7f, drainRange,
                 new DamageInfo { Amount = drainDamage, Type = DamageType.Magical, Source = gameObject },
-                new Color(0.55f, 0.1f, 0.75f), size: 0.3f, transform.parent,
+                ProjectileType.SoulOrb, size: 0.3f, transform.parent,
                 onHit: _ => health?.Heal(heal));
         }
 

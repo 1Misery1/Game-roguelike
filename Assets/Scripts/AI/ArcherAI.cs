@@ -1,5 +1,6 @@
 using Game.Combat;
 using Game.Data;
+using Game.Dev;
 using UnityEngine;
 
 namespace Game.AI
@@ -56,7 +57,7 @@ namespace Game.AI
             EnemyProjectile.Spawn(
                 transform.position, dir, speed: 8f, attackRange,
                 new DamageInfo { Amount = projectileDamage + atk, Type = DamageType.Physical, Source = gameObject },
-                new Color(0.95f, 0.8f, 0.2f), size: 0.25f, transform.parent);
+                ProjectileType.Arrow, size: 0.25f, transform.parent);
         }
     }
 }

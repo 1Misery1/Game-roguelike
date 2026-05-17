@@ -1,6 +1,7 @@
 using System.Collections;
 using Game.Combat;
 using Game.Data;
+using Game.Dev;
 using UnityEngine;
 
 namespace Game.Player
@@ -55,20 +56,24 @@ namespace Game.Player
         {
             DamageRadius(_stats.Get(StatType.Attack) * 1.5f, 3f, DamageType.Physical, false);
             StartCoroutine(TempModifier(StatType.Attack, ModifierOp.PercentMul, 0.30f, 5f));
+            SkillEffect.Spawn(SkillEffectType.WarCryRing, transform.position, 3f, 0.5f, transform.parent);
         }
 
         // 影步：向瞄准方向冲刺 + 对路径上敌人造成伤害
         private void UseShadowStep(Vector2 aimDir)
         {
             if (aimDir == Vector2.zero) aimDir = Vector2.right;
+            SkillEffect.Spawn(SkillEffectType.ShadowBlur, transform.position, 1.5f, 0.4f, transform.parent);
             DamageRadius(_stats.Get(StatType.Attack) * 0.8f, 1.2f, DamageType.Physical, false);
             transform.position += (Vector3)(aimDir * 4f);
+            SkillEffect.Spawn(SkillEffectType.ShadowBlur, transform.position, 1.2f, 0.3f, transform.parent);
         }
 
         // 奥术迸发：大范围魔法AOE
         private void UseArcaneSurge()
         {
             DamageRadius(_stats.Get(StatType.Attack) * 2f, 4f, DamageType.Magical, true);
+            SkillEffect.Spawn(SkillEffectType.ArcaneBurst, transform.position, 4f, 0.6f, transform.parent);
         }
 
         // 神圣之光：回复40%最大HP
@@ -76,6 +81,7 @@ namespace Game.Player
         {
             if (_health != null)
                 _health.Heal(_stats.Get(StatType.MaxHP) * 0.4f);
+            SkillEffect.Spawn(SkillEffectType.HolyAura, transform.position, 2f, 0.8f, transform.parent);
         }
 
         // 精准射击：穿透直线上所有敌人，250%伤害
@@ -85,6 +91,9 @@ namespace Game.Player
             float dmg = _stats.Get(StatType.Attack) * 2.5f;
             bool isCrit = Random.value < _stats.Get(StatType.CritRate);
             if (isCrit) dmg *= _stats.Get(StatType.CritDamage);
+
+            VisualProjectile.Spawn(ProjectileType.PiercingArrow, transform.position, aimDir,
+                20f, 20f, 0.4f, transform.parent);
 
             var hits = Physics2D.RaycastAll(transform.position, aimDir, 20f);
             foreach (var hit in hits)

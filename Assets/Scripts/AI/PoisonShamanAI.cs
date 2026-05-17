@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Game.Combat;
 using Game.Data;
+using Game.Dev;
 using UnityEngine;
 
 namespace Game.AI
@@ -90,7 +91,7 @@ namespace Game.AI
             EnemyProjectile.Spawn(
                 transform.position, dir, speed: 7f, boltRange,
                 new DamageInfo { Amount = boltDamage, Type = DamageType.Physical, Source = gameObject },
-                new Color(0.2f, 0.85f, 0.25f), size: 0.25f, transform.parent,
+                ProjectileType.PoisonBolt, size: 0.25f, transform.parent,
                 onHit: d => { if (this != null) StartCoroutine(ApplyPoisonDoT(d)); });
         }
 
