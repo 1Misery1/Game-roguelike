@@ -115,8 +115,8 @@ TextureImporter:
       serializedVersion: 2
       x: 0
       y: 0
-      width: 240
-      height: 64
+      width: 64
+      height: 40
     alignment: 0
     pivot: {x: 0.5, y: 0.5}
     border: {x: 0, y: 0, z: 0, w: 0}
@@ -124,7 +124,7 @@ TextureImporter:
     physicsShape: []
     tessellationDetail: -1
     bones: []
-    spriteID: 4aabd0c98c0b4e7c8e90924001d4af89
+    spriteID: 89d2c7cc78124a758418ac61b3872f13
     internalID: 1
     vertices: []
     indices: 
@@ -134,10 +134,10 @@ TextureImporter:
     name: Necromancer_01
     rect:
       serializedVersion: 2
-      x: 240
+      x: 64
       y: 0
-      width: 240
-      height: 64
+      width: 64
+      height: 40
     alignment: 0
     pivot: {x: 0.5, y: 0.5}
     border: {x: 0, y: 0, z: 0, w: 0}
@@ -145,10 +145,31 @@ TextureImporter:
     physicsShape: []
     tessellationDetail: -1
     bones: []
-    spriteID: f7b441f9e3fc4a4ba88bb57436770e7c
+    spriteID: 8ecc6a1bb0244a93946b2397656b3997
     internalID: 2
     vertices: []
     indices: 
+    edges: []
+    weights: []
+  - serializedVersion: 2
+    name: Necromancer_02
+    rect:
+      serializedVersion: 2
+      x: 128
+      y: 0
+      width: 64
+      height: 40
+    alignment: 0
+    pivot: {x: 0.5, y: 0.5}
+    border: {x: 0, y: 0, z: 0, w: 0}
+    outline: []
+    physicsShape: []
+    tessellationDetail: -1
+    bones: []
+    spriteID: e522ae405e0648b7bb9e72c68e28ce62
+    internalID: 3
+    vertices: []
+    indices:
     edges: []
     weights: []
     outline: []
@@ -157,12 +178,12 @@ TextureImporter:
     spriteID: 5e97eb03825dee720800000000000000
     internalID: 0
     vertices: []
-    indices: 
+    indices:
     edges: []
     weights: []
     secondaryTextures: []
     nameFileIdTable: {}
-  mipmapLimitGroupName: 
+  mipmapLimitGroupName:
   pSDRemoveMatte: 0
   userData: 
   assetBundleName: 

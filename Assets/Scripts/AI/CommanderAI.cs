@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using Game.Combat;
 using Game.Data;
@@ -27,10 +28,11 @@ namespace Game.AI
 
         private Rigidbody2D    _rb;
         private CharacterStats _stats;
+        private EnemyNavigator _nav;
         private float _lastAttackTime;
         private float _lastAuraTime = -100f;
+        private bool  _isWindingUp;
 
-        // 记录当前光环buff了哪些敌人，到期后移除
         private readonly List<CharacterStats> _buffedMinions = new List<CharacterStats>();
         private float _auraExpiresAt;
 
@@ -38,6 +40,7 @@ namespace Game.AI
         {
             _rb    = GetComponent<Rigidbody2D>();
             _stats = GetComponent<CharacterStats>();
+            _nav   = GetComponent<EnemyNavigator>() ?? gameObject.AddComponent<EnemyNavigator>();
         }
 
         private void Update()
@@ -54,25 +57,42 @@ namespace Game.AI
 
             // 近战攻击（大范围挥击）
             float dist = Vector2.Distance(transform.position, target.position);
-            if (dist <= attackRange && Time.time >= _lastAttackTime + attackInterval)
-                DoSwing();
+            if (dist <= attackRange && !_isWindingUp && Time.time >= _lastAttackTime + attackInterval)
+            {
+                _lastAttackTime = Time.time;
+                StartCoroutine(WindupSwing());
+            }
         }
 
         private void FixedUpdate()
         {
-            if (target == null) return;
-            float dist  = Vector2.Distance(transform.position, target.position);
+            if (target == null || _isWindingUp) return;
+            float dist = Vector2.Distance(transform.position, target.position);
             if (dist > attackRange * 0.8f)
             {
-                Vector2 dir   = ((Vector2)target.position - _rb.position).normalized;
+                Vector2 dir   = _nav.GetMoveDirection(target.position);
                 float   speed = _stats.Get(StatType.MoveSpeed);
                 _rb.MovePosition(_rb.position + dir * speed * Time.fixedDeltaTime);
             }
         }
 
-        private void DoSwing()
+        // 0.5 s wind-up before the wide AoE swing lands
+        private System.Collections.IEnumerator WindupSwing()
         {
-            _lastAttackTime = Time.time;
+            _isWindingUp = true;
+            Vector3 origScale = transform.localScale;
+            float elapsed = 0f;
+            const float windupTime = 0.5f;
+            while (elapsed < windupTime)
+            {
+                if (!gameObject.activeInHierarchy) yield break;
+                elapsed += Time.deltaTime;
+                float t = elapsed / windupTime;
+                transform.localScale = origScale * (1f + 0.45f * Mathf.Sin(t * Mathf.PI));
+                yield return null;
+            }
+            transform.localScale = origScale;
+
             float dmg  = attackDamage + _stats.Get(StatType.Attack);
             var   cols = Physics2D.OverlapCircleAll(transform.position, attackRange);
             foreach (var col in cols)
@@ -85,6 +105,7 @@ namespace Game.AI
                     Source = gameObject
                 });
             }
+            _isWindingUp = false;
         }
 
         private void CastAura()

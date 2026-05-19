@@ -1,28 +1,34 @@
+using System.Collections;
 using Game.Combat;
 using Game.Data;
 using UnityEngine;
 
 namespace Game.AI
 {
-    // 腐败盾士：近战追击，周期性举盾（HP≤50%时也会触发），举盾时来自玩家方向的伤害减少80%
+    // Shield Guard — slow, heavy melee with 0.55 s wind-up and periodic shield.
     [RequireComponent(typeof(Rigidbody2D), typeof(CharacterStats))]
     public class ShieldGuardAI : MonoBehaviour
     {
         public Transform target;
         public float attackRange       = 1.1f;
-        public float attackInterval    = 1.5f;
+        public float attackInterval    = 2.0f;   // slow heavy swing
         public float contactDamage     = 14f;
-        public float shieldInterval    = 8f;    // 举盾周期
-        public float shieldDuration    = 3f;    // 举盾持续时间
-        public float shieldReduction   = 0.8f;  // 正面伤害减少比例
+        public float shieldInterval    = 8f;
+        public float shieldDuration    = 3f;
+        public float shieldReduction   = 0.8f;
+
+        [Header("Attack Telegraph")]
+        public float windupTime = 0.55f;         // clearly telegraphed heavy attack
 
         private Rigidbody2D    _rb;
         private CharacterStats _stats;
         private Health         _health;
-        private float _lastAttackTime;
-        private float _lastShieldTime  = -100f;
-        private float _shieldUntil;
-        private bool  _halfHpTriggered;
+        private EnemyNavigator _nav;
+        private float          _lastAttackTime;
+        private float          _lastShieldTime  = -100f;
+        private float          _shieldUntil;
+        private bool           _halfHpTriggered;
+        private bool           _isWindingUp;
 
         public bool IsShielding => Time.time < _shieldUntil;
 
@@ -31,8 +37,8 @@ namespace Game.AI
             _rb     = GetComponent<Rigidbody2D>();
             _stats  = GetComponent<CharacterStats>();
             _health = GetComponent<Health>();
+            _nav    = GetComponent<EnemyNavigator>() ?? gameObject.AddComponent<EnemyNavigator>();
 
-            // 拦截伤害：举盾时减少来自玩家正面的伤害
             _health.OnBeforeTakeDamage = InterceptDamage;
         }
 
@@ -40,61 +46,81 @@ namespace Game.AI
         {
             if (target == null) return;
 
-            // 血量降至50%触发举盾
             if (!_halfHpTriggered && _health != null && _health.Current <= _health.Max * 0.5f)
             {
                 _halfHpTriggered = true;
                 RaiseShield();
             }
 
-            // 周期性举盾
             if (!IsShielding && Time.time >= _lastShieldTime + shieldInterval)
                 RaiseShield();
 
-            // 近战攻击
             float dist = Vector2.Distance(transform.position, target.position);
-            if (dist <= attackRange && Time.time >= _lastAttackTime + attackInterval)
-                DoAttack();
+            if (dist <= attackRange && !_isWindingUp &&
+                Time.time >= _lastAttackTime + attackInterval)
+            {
+                _lastAttackTime = Time.time;
+                StartCoroutine(WindupAttack());
+            }
         }
 
         private void FixedUpdate()
         {
-            if (target == null || IsShielding) return; // 举盾时停止移动，转向玩家
-            float dist  = Vector2.Distance(transform.position, target.position);
+            if (target == null || IsShielding || _isWindingUp) return;
+
+            float dist = Vector2.Distance(transform.position, target.position);
             if (dist > attackRange)
             {
-                Vector2 dir   = ((Vector2)target.position - _rb.position).normalized;
+                Vector2 dir   = _nav.GetMoveDirection(target.position);
                 float   speed = _stats.Get(StatType.MoveSpeed);
                 _rb.MovePosition(_rb.position + dir * speed * Time.fixedDeltaTime);
             }
         }
 
-        private void RaiseShield()
+        private IEnumerator WindupAttack()
         {
-            _shieldUntil   = Time.time + shieldDuration;
-            _lastShieldTime = Time.time;
+            _isWindingUp = true;
+            Vector3 origScale = transform.localScale;
+
+            float elapsed = 0f;
+            while (elapsed < windupTime)
+            {
+                if (!gameObject.activeInHierarchy) yield break;
+                elapsed += Time.deltaTime;
+                // Slow build-up pulse — heavy and threatening
+                float t = elapsed / windupTime;
+                transform.localScale = origScale * (1f + 0.4f * Mathf.Pow(t, 0.5f) * Mathf.Sin(t * Mathf.PI));
+                yield return null;
+            }
+            transform.localScale = origScale;
+
+            if (target != null &&
+                Vector2.Distance(transform.position, target.position) <= attackRange + 0.5f)
+            {
+                target.GetComponent<IDamageable>()?.TakeDamage(new DamageInfo
+                {
+                    Amount = contactDamage + _stats.Get(StatType.Attack),
+                    Type   = DamageType.Physical,
+                    Source = gameObject
+                });
+            }
+
+            _isWindingUp = false;
         }
 
-        private void DoAttack()
+        private void RaiseShield()
         {
-            _lastAttackTime = Time.time;
-            target.GetComponent<IDamageable>()?.TakeDamage(new DamageInfo
-            {
-                Amount = contactDamage + _stats.Get(StatType.Attack),
-                Type   = DamageType.Physical,
-                Source = gameObject
-            });
+            _shieldUntil    = Time.time + shieldDuration;
+            _lastShieldTime = Time.time;
         }
 
         private DamageInfo InterceptDamage(DamageInfo info)
         {
             if (!IsShielding || target == null || info.Source == null) return info;
 
-            // 盾牌朝向玩家（盾士面朝玩家方向）
-            Vector2 toTarget  = ((Vector2)target.position - (Vector2)transform.position).normalized;
-            Vector2 fromSrc   = ((Vector2)info.Source.transform.position - (Vector2)transform.position).normalized;
+            Vector2 toTarget = ((Vector2)target.position - (Vector2)transform.position).normalized;
+            Vector2 fromSrc  = ((Vector2)info.Source.transform.position - (Vector2)transform.position).normalized;
 
-            // dot > 0.5 表示伤害来自盾牌正面，减伤生效
             if (Vector2.Dot(toTarget, fromSrc) > 0.5f)
                 info.Amount *= (1f - shieldReduction);
 

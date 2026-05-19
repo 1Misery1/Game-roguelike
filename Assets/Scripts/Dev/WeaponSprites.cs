@@ -17,6 +17,37 @@ namespace Game.Dev
             return s;
         }
 
+        static string RealSpritePath(string name) => name switch
+        {
+            "铁匕首"   => "Weapons/Daggers/IronDagger",
+            "精铁匕首" => "Weapons/Daggers/SteelDagger",
+            "毒牙"     => "Weapons/Daggers/VenomFang",
+            "幻影之刃" => "Weapons/Daggers/PhantomBlade",
+            "铁剑"     => "Weapons/Longswords/IronSword",
+            "骑士剑"   => "Weapons/Longswords/KnightSword",
+            "圣光剑"   => "Weapons/Longswords/HolySword",
+            "龙渊剑"   => "Weapons/Longswords/DragonSword",
+            "月牙弯刀" => "Weapons/Longswords/CrescentBlade",
+            "寒铁长枪" => "Weapons/Longswords/FrostLance",
+            "铁矛大剑" => "Weapons/Greatswords/IronGreatsword",
+            "战士大剑" => "Weapons/Greatswords/WarriorGreatsword",
+            "破甲重剑" => "Weapons/Greatswords/ArmorBreaker",
+            "铸铁锤"   => "Weapons/Greatswords/IronMallet",
+            "末日巨剑" => "Weapons/Greatswords/DoomBlade",
+            "木弓"     => "Weapons/Bows/WoodenBow",
+            "猎人弓"   => "Weapons/Bows/HunterBow",
+            "穿云弓"   => "Weapons/Bows/CloudPiercer",
+            "骨弓"     => "Weapons/Bows/BoneBow",
+            "精灵短弓" => "Weapons/Bows/ElfBow",
+            "雷鸣战弓" => "Weapons/Bows/ThunderBow",
+            "天风弓"   => "Weapons/Bows/CelestialBow",
+            "木法杖"   => "Weapons/Staves/WoodStaff",
+            "魔法法杖" => "Weapons/Staves/MagicStaff",
+            "寒冰法杖" => "Weapons/Staves/FrostStaff",
+            "混沌魔杖" => "Weapons/Staves/ChaosWand",
+            _          => null,
+        };
+
         private static Sprite Build(string name)
         {
             const int SZ = 32;

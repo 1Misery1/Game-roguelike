@@ -31,12 +31,42 @@ namespace Game.Player
                 CooldownRemaining -= Time.deltaTime;
         }
 
+        // Duration of the cast channel window before the skill fires
+        const float CastTime = 0.38f;
+
         public bool TryUse(Vector2 aimDir)
         {
             if (!IsReady) return false;
             CooldownRemaining = Cooldown;
-            Execute(aimDir);
+            StartCoroutine(CastRoutine(aimDir));
             return true;
+        }
+
+        private IEnumerator CastRoutine(Vector2 aimDir)
+        {
+            var reporter = PlayerStateReporter.Instance;
+            if (reporter != null) reporter.IsCasting = true;
+
+            // Visual: pulse scale to signal cast wind-up to the player
+            Vector3 origScale = transform.localScale;
+            float elapsed = 0f;
+            while (elapsed < CastTime)
+            {
+                elapsed += Time.deltaTime;
+                float pulse = 1f + 0.18f * Mathf.Sin(elapsed / CastTime * Mathf.PI * 5f);
+                transform.localScale = origScale * pulse;
+                yield return null;
+            }
+            transform.localScale = origScale;
+
+            if (reporter != null) reporter.IsCasting = false;
+            Execute(aimDir);
+        }
+
+        private void OnDisable()
+        {
+            var reporter = PlayerStateReporter.Instance;
+            if (reporter != null) reporter.IsCasting = false;
         }
 
         private void Execute(Vector2 aimDir)
@@ -110,7 +140,7 @@ namespace Game.Player
         {
             bool isCrit = forceCrit || Random.value < _stats.Get(StatType.CritRate);
             if (isCrit) dmg *= _stats.Get(StatType.CritDamage);
-            foreach (var col in Physics2D.OverlapCircleAll(transform.position, radius))
+            foreach (var col in Physics2D.OverlapCircleAll(transform.position, radius, ~(1 << 9)))
             {
                 if (col.gameObject == gameObject) continue;
                 col.GetComponent<IDamageable>()?.TakeDamage(new DamageInfo

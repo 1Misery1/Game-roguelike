@@ -115,8 +115,8 @@ TextureImporter:
       serializedVersion: 2
       x: 0
       y: 0
-      width: 112
-      height: 88
+      width: 56
+      height: 72
     alignment: 0
     pivot: {x: 0.5, y: 0.5}
     border: {x: 0, y: 0, z: 0, w: 0}
@@ -124,7 +124,7 @@ TextureImporter:
     physicsShape: []
     tessellationDetail: -1
     bones: []
-    spriteID: 360f8221243c4995b5a4b1b4a5d6db5b
+    spriteID: 33800ffa8cd64722acc5b0e90f77bb2b
     internalID: 1
     vertices: []
     indices: 
@@ -134,10 +134,10 @@ TextureImporter:
     name: Ranger_01
     rect:
       serializedVersion: 2
-      x: 112
+      x: 56
       y: 0
-      width: 112
-      height: 88
+      width: 56
+      height: 72
     alignment: 0
     pivot: {x: 0.5, y: 0.5}
     border: {x: 0, y: 0, z: 0, w: 0}
@@ -145,8 +145,29 @@ TextureImporter:
     physicsShape: []
     tessellationDetail: -1
     bones: []
-    spriteID: 43a3deb3cf0b48c584941ca4dfae8210
+    spriteID: 3a5257f64c9d49eea33ece4f5a157824
     internalID: 2
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+  - serializedVersion: 2
+    name: Ranger_02
+    rect:
+      serializedVersion: 2
+      x: 112
+      y: 0
+      width: 56
+      height: 72
+    alignment: 0
+    pivot: {x: 0.5, y: 0.5}
+    border: {x: 0, y: 0, z: 0, w: 0}
+    outline: []
+    physicsShape: []
+    tessellationDetail: -1
+    bones: []
+    spriteID: a49905024aa044358ada2b6fa1268dfc
+    internalID: 3
     vertices: []
     indices: 
     edges: []

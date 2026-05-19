@@ -45,15 +45,18 @@ namespace Game.Player
             SkillEffect.Spawn(SkillEffectType.VenomCloud, center, skill.skillRadius, 0.5f, origin.parent);
         }
 
-        // 幻影之刃·幻影连斩：快速三连击
+        // 幻影之刃·幻影连斩：快速三连击，三个错角弧扫体现连斩
         private static void DoPhantomSlash(float totalDmg, Transform origin, WeaponSkillData skill)
         {
-            int hits = skill.skillHitCount > 0 ? skill.skillHitCount : 1;
+            int hits = skill.skillHitCount > 0 ? skill.skillHitCount : 3;
             float perHit = totalDmg / hits;
+            float r = Mathf.Max(skill.skillRadius, 1.5f);
             for (int i = 0; i < hits; i++)
+            {
                 HitCircle(origin.position, skill.skillRadius, perHit, DamageType.Physical, origin.gameObject);
-            SkillEffect.Spawn(SkillEffectType.PhantomSlash, origin.position,
-                Mathf.Max(skill.skillRadius, 1.5f), 0.4f, origin.parent);
+                float baseAngle = 0f + i * 45f;   // 每段错开45°，制造扇形多段感
+                SkillEffect.Spawn(SkillEffectType.PhantomSlash, origin.position, r, 0.28f + i * 0.06f, origin.parent, baseAngle);
+            }
         }
 
         // 圣光剑·圣光斩：前方一击+治愈
@@ -73,7 +76,8 @@ namespace Game.Player
         {
             Vector2 center = (Vector2)origin.position + dir * (skill.skillRange * 0.5f);
             HitCircle(center, skill.skillRadius, dmg, DamageType.Physical, origin.gameObject);
-            SkillEffect.Spawn(SkillEffectType.DragonWave, center, skill.skillRadius, 0.5f, origin.parent);
+            float angle = dir != Vector2.zero ? Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg : 0f;
+            SkillEffect.Spawn(SkillEffectType.DragonWave, center, skill.skillRadius, 0.5f, origin.parent, angle);
         }
 
         // 破甲重剑·大地震荡：自身周围AOE
@@ -194,9 +198,11 @@ namespace Game.Player
             }
         }
 
+        private static readonly int NonWallMask = ~(1 << 9);
+
         private static void HitCircle(Vector2 center, float radius, float damage, DamageType type, GameObject source)
         {
-            var cols = Physics2D.OverlapCircleAll(center, radius);
+            var cols = Physics2D.OverlapCircleAll(center, radius, NonWallMask);
             foreach (var col in cols)
             {
                 if (col.gameObject == source) continue;

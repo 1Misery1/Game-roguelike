@@ -18,7 +18,9 @@ namespace Game.Player
         public float BonusDamageMultiplier { get; set; } = 1f;
 
         private CharacterStats _stats;
-        private Health _health;
+        private Health         _health;
+        private WeaponHolder   _holder;
+        private PlayerAnimator _anim;
         private float _lastAttackTime;
         private float _skillCooldownRemaining;
 
@@ -43,8 +45,10 @@ namespace Game.Player
 
         private void Awake()
         {
-            _stats = GetComponent<CharacterStats>();
+            _stats  = GetComponent<CharacterStats>();
             _health = GetComponent<Health>();
+            _holder = gameObject.AddComponent<WeaponHolder>();
+            _anim   = gameObject.AddComponent<PlayerAnimator>();
         }
 
         private void Update()
@@ -62,6 +66,7 @@ namespace Game.Player
             // 切换到另一槽位（跳过空槽）
             int next = 1 - ActiveSlotIndex;
             if (Slots[next] != null) ActiveSlotIndex = next;
+            _holder?.SetWeapon(ActiveWeapon?.Data);
         }
 
         public void EquipWeapon(WeaponInstance weapon, int slot)
@@ -70,6 +75,7 @@ namespace Game.Player
             _stats?.RemoveModifiersFrom(_weaponHPSources[slot]);
             Slots[slot] = weapon;
             ApplyWeaponHPBonus(slot);
+            if (slot == ActiveSlotIndex) _holder?.SetWeapon(weapon?.Data);
         }
 
         private void ApplyWeaponHPBonus(int slot)
@@ -112,6 +118,8 @@ namespace Game.Player
             float bonusMul = BonusDamageMultiplier;
             BonusDamageMultiplier = 1f;
             ExecuteNormalAttack(weapon, aimDir, bonusMul);
+            _holder?.PlayAttack(weapon.Data.category, aimDir);
+            _anim?.PlayAttack(weapon.Data.category, aimDir);
             OnNormalAttackFired?.Invoke();
             return true;
         }
@@ -125,6 +133,8 @@ namespace Game.Player
 
             _skillCooldownRemaining = RawSkillCooldown;
             WeaponSkillExecutor.Execute(weapon, _stats, transform, aimDir);
+            _holder?.PlaySkill(weapon.Data.category, aimDir);
+            _anim?.PlaySkill(weapon.Data.category, aimDir);
             OnSkillFired?.Invoke();
             return true;
         }
@@ -132,7 +142,7 @@ namespace Game.Player
         private void PunchAttack()
         {
             float dmg = _stats.Get(StatType.Attack) + 8f;
-            var cols = Physics2D.OverlapCircleAll(transform.position, 1.2f);
+            var cols = Physics2D.OverlapCircleAll(transform.position, 1.2f, NonWallMask);
             foreach (var col in cols)
             {
                 if (col.gameObject == gameObject) continue;
@@ -179,9 +189,11 @@ namespace Game.Player
                 _health?.Heal(damage * weapon.Data.lifeStealRate);
         }
 
+        private static readonly int NonWallMask = ~(1 << 9);
+
         private void MeleeAttack(float damage, float range, DamageType type, bool isCrit, Vector2 aimDir)
         {
-            var cols = Physics2D.OverlapCircleAll(transform.position, range);
+            var cols = Physics2D.OverlapCircleAll(transform.position, range, NonWallMask);
             foreach (var col in cols)
             {
                 if (col.gameObject == gameObject) continue;
@@ -207,11 +219,12 @@ namespace Game.Player
             foreach (var hit in hits)
             {
                 if (hit.collider.gameObject == gameObject) continue;
+                if (hit.collider.gameObject.layer == 9) break; // 箭矢被墙阻挡
                 var d = hit.collider.GetComponent<IDamageable>();
                 if (d != null)
                 {
                     d.TakeDamage(new DamageInfo { Amount = damage, Type = type, IsCrit = isCrit, Source = gameObject });
-                    break; // 普通箭矢命中第一个目标后停止
+                    break;
                 }
             }
         }
@@ -224,7 +237,7 @@ namespace Game.Player
             VisualProjectile.Spawn(ProjectileType.MagicOrb, transform.position, dir,
                 10f, travelDist, 0.32f, transform.parent);
             Vector2 target = (Vector2)transform.position + dir * travelDist;
-            var cols = Physics2D.OverlapCircleAll(target, radius);
+            var cols = Physics2D.OverlapCircleAll(target, radius, NonWallMask);
             foreach (var col in cols)
             {
                 if (col.gameObject == gameObject) continue;

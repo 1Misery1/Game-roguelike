@@ -178,8 +178,41 @@ def update_meta(meta_path: Path, char_name: str, n: int, cw: int, ch: int):
             f"    edges: []\n"
             f"    weights: []"
         )
-    sprites_yaml = "  sprites:\n" + "\n".join(entries)
-    text = re.sub(r'  sprites: \[\]', sprites_yaml, text)
+    # 末尾补回 spriteSheet 级别的固定字段（正则替换时会一并消除）
+    sprites_yaml = (
+        "  sprites:\n" + "\n".join(entries) + "\n"
+        "    outline: []\n"
+        "    physicsShape: []\n"
+        "    bones: []\n"
+        "    spriteID: 5e97eb03825dee720800000000000000\n"
+        "    internalID: 0\n"
+        "    vertices: []\n"
+        "    indices: \n"
+        "    edges: []\n"
+        "    weights: []\n"
+        "    secondaryTextures: []\n"
+        "    nameFileIdTable: {}"
+    )
+
+    # 同时处理两种情况：
+    #   1. sprites: []           （首次写入，含尾随字段）
+    #   2. sprites:\n  - ...     （已有条目，需覆盖更新）
+    if re.search(r'  sprites: \[\]', text):
+        # 原始空列表格式之后跟着 outline: / secondaryTextures: 等字段，一起替换掉
+        text = re.sub(
+            r'  sprites: \[\]\n(?:    [^\n]*\n)*',
+            sprites_yaml + "\n",
+            text,
+            flags=re.MULTILINE,
+        )
+    else:
+        # 现有条目格式：用 DOTALL 匹配整个精灵列表（含尾随字段）
+        text = re.sub(
+            r'  sprites:\n(?:(?:  -[^\n]*|    [^\n]*)\n)*',
+            sprites_yaml + "\n",
+            text,
+            flags=re.MULTILINE,
+        )
     meta_path.write_text(text, encoding="utf-8")
 
 

@@ -53,6 +53,9 @@ namespace Game.AI
             transform.position += (Vector3)(_dir * _speed * Time.deltaTime);
             if (((Vector2)transform.position - _startPos).sqrMagnitude >= _maxRangeSq)
                 Destroy(gameObject);
+            // 检测墙壁碰撞（Layer 9）
+            if (Physics2D.OverlapCircle(transform.position, 0.28f, 1 << 9) != null)
+                Destroy(gameObject);
         }
 
         private void OnTriggerEnter2D(Collider2D other)

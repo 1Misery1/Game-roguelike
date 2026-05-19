@@ -115,8 +115,8 @@ TextureImporter:
       serializedVersion: 2
       x: 0
       y: 0
-      width: 200
-      height: 128
+      width: 120
+      height: 96
     alignment: 0
     pivot: {x: 0.5, y: 0.5}
     border: {x: 0, y: 0, z: 0, w: 0}
@@ -124,7 +124,7 @@ TextureImporter:
     physicsShape: []
     tessellationDetail: -1
     bones: []
-    spriteID: 3dc6d094d5294d938257912632e8b169
+    spriteID: 888c694e38894c449ddb16a0b6763212
     internalID: 1
     vertices: []
     indices: 
@@ -134,10 +134,10 @@ TextureImporter:
     name: HellGiant_01
     rect:
       serializedVersion: 2
-      x: 200
+      x: 120
       y: 0
-      width: 200
-      height: 128
+      width: 120
+      height: 96
     alignment: 0
     pivot: {x: 0.5, y: 0.5}
     border: {x: 0, y: 0, z: 0, w: 0}
@@ -145,7 +145,7 @@ TextureImporter:
     physicsShape: []
     tessellationDetail: -1
     bones: []
-    spriteID: 1e2197f6b1b647d2843d82a8b3254610
+    spriteID: 8e531263875144d181919786a03f6ecc
     internalID: 2
     vertices: []
     indices: 
@@ -155,10 +155,10 @@ TextureImporter:
     name: HellGiant_02
     rect:
       serializedVersion: 2
-      x: 400
+      x: 240
       y: 0
-      width: 200
-      height: 128
+      width: 120
+      height: 96
     alignment: 0
     pivot: {x: 0.5, y: 0.5}
     border: {x: 0, y: 0, z: 0, w: 0}
@@ -166,8 +166,50 @@ TextureImporter:
     physicsShape: []
     tessellationDetail: -1
     bones: []
-    spriteID: 9c9ff3989a17465a9bb64fe2cc7e76f9
+    spriteID: 77ff5be2673d4f3ba542b7140e0d95a5
     internalID: 3
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+  - serializedVersion: 2
+    name: HellGiant_03
+    rect:
+      serializedVersion: 2
+      x: 360
+      y: 0
+      width: 120
+      height: 96
+    alignment: 0
+    pivot: {x: 0.5, y: 0.5}
+    border: {x: 0, y: 0, z: 0, w: 0}
+    outline: []
+    physicsShape: []
+    tessellationDetail: -1
+    bones: []
+    spriteID: 36cad6e75f2d4b799abe92ffdd561ebb
+    internalID: 4
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+  - serializedVersion: 2
+    name: HellGiant_04
+    rect:
+      serializedVersion: 2
+      x: 480
+      y: 0
+      width: 120
+      height: 96
+    alignment: 0
+    pivot: {x: 0.5, y: 0.5}
+    border: {x: 0, y: 0, z: 0, w: 0}
+    outline: []
+    physicsShape: []
+    tessellationDetail: -1
+    bones: []
+    spriteID: 98ba5e9bf3224eff913bdbfef996c216
+    internalID: 5
     vertices: []
     indices: 
     edges: []
