@@ -1,22 +1,54 @@
-# 2D Anime Roguelike Action Game
+# 2D Anime Roguelike — Dungeon Action Game
 
-A 2D top-down roguelike action game built with **Unity 2022.3 LTS** (URP 2D) and **Blender** for art production.
+A 2D top-down roguelike action game built with **Unity 2022.3 LTS**.  
+Select a hero, descend into a procedurally generated dungeon, collect weapons, choose talents, and defeat bosses — each run is unique.
 
-## Core Loop
+---
 
-Select Hero → Enter Dungeon → Combat / Collect Weapons / Choose Talents & Buffs → Fight Boss → Clear / Die → Unlock New Heroes → Restart Run
+## Game Idea
 
-Full design: see [`GDD.docx`](GDD.docx).
+The player picks one of several anime-styled heroes and enters a multi-floor dungeon.  
+Each room is cleared by defeating waves of enemies. Between rooms the player collects weapons, visits a shop, and picks talents/buffs to build a run-specific power fantasy.  
+Death resets the run. Only hero unlocks carry over (roguelike fairness).
 
-## Tech Stack
+**Core Loop:**  
+Select Hero → Enter Dungeon → Combat Rooms → Collect Weapons / Talents → Boss Fight → Win or Die → Unlock Heroes → Restart
 
-| Layer | Tool |
-|---|---|
-| Engine | Unity 2022.3.44f1 (URP 2D) |
-| Input | Unity Input System |
-| Camera | Cinemachine |
-| Art | Blender 4.x (3D → rendered sprite sequences) |
-| Target | PC + Mobile |
+---
+
+## Unity Version
+
+**Unity 2022.3.44f1** (Universal Render Pipeline 2D)
+
+Required packages (auto-installed via `Packages/manifest.json`):
+- URP 2D
+- Unity Input System
+- Cinemachine
+
+---
+
+## Controls
+
+| Action | Keyboard | Mouse |
+|---|---|---|
+| Move | WASD / Arrow Keys | — |
+| Aim | — | Mouse position |
+| Normal Attack | Space | Left Click |
+| Weapon Skill | R | Right Click |
+| Hero Active Skill | F | — |
+| Switch Weapon | Q | — |
+
+---
+
+## Setup
+
+1. Install **Unity Hub** and **Unity 2022.3.44f1**
+2. Clone this repository
+3. In Unity Hub: **Open** → select this folder
+4. Unity installs packages from `Packages/manifest.json` on first open
+5. Open the main scene under `Assets/Scenes/`
+
+---
 
 ## Project Structure
 
@@ -25,33 +57,90 @@ Assets/Scripts/
 ├─ Data/        ScriptableObjects: Hero, Weapon, Talent, Buff, Skills, Enums
 ├─ Core/        GameManager, RunState, PersistentState
 ├─ Combat/      StatModifier, CharacterStats, Health, Cooldown, IDamageable
-├─ Player/      PlayerController (Input System driven)
+├─ Player/      PlayerController, PlayerWeaponHandler, HeroSkillHandler
+├─ AI/          15 enemy types + NavGrid pathfinding
 ├─ Dungeon/     DungeonGenerator, RoomController (6 room types)
 └─ Systems/     ModifierApplier (applies talent/buff/passive to stats)
 ```
 
-## Architecture Notes
+---
 
-- **Data-driven:** All heroes, weapons, talents, buffs are `ScriptableObject` assets. Designers can tune everything in the Inspector with no code changes.
-- **Modifier stack:** `CharacterStats` holds a list of `StatModifier` entries from talents, buffs, weapon upgrades, and hero passives. Recalculation is lazy (on first `Get` after a change). This lets any system inject stat changes without coupling to others.
-- **Run vs Persistent split:** `RunState` is cleared on death (per GDD: HP=0 → lose all weapons/talents/buffs). `PersistentState` stores only unlocked heroes + unlock currency — no out-run stat boosts, to preserve roguelike fairness.
-- **Cooldowns separated per skill:** Hero active skill and weapon skill each carry their own `Cooldown` struct.
-- **Dungeon generator:** Weighted random room pool + forced boss room per floor.
+## Scope — Feature Sorting (MoSCoW)
 
-## Setup
+### Must-Have *(required for the game to function — build these first)*
+- [x] Player movement and 8-directional aim
+- [x] Normal attack + weapon skill system (melee / ranged / magic)
+- [x] Enemy AI with pathfinding (NavGrid)
+- [x] Wave-based room combat and room clearing
+- [x] Health / damage / death system
+- [x] Boss room and boss fight on each floor
+- [x] Basic run state reset on death
 
-1. Install **Unity Hub** and **Unity 2022.3.44f1**
-2. Clone this repo
-3. In Unity Hub: **Open** → select this folder
-4. Unity will install packages from `Packages/manifest.json` on first open (URP 2D, Input System, Cinemachine)
-5. Open any scene under `Assets/Scenes/` (to be added)
+### Should-Have *(important for quality, not required for first playable test)*
+- [x] Multiple weapon types (26 weapons: Dagger, Longsword, Greatsword, Bow, Staff)
+- [x] Talent / buff pick system between rooms
+- [x] Shop room with upgrade / forge options
+- [x] Multiple hero archetypes with unique active skills
+- [x] Pixel-art sprites for heroes, enemies, weapons (32×32)
+- [ ] Sound effects and background music
+- [ ] Proper scene transitions (main menu → floor → game over)
 
-## Development Roadmap
+### Could-Have *(nice extras if the core is stable and tested)*
+- [ ] Animated sprite sequences for heroes and enemies
+- [ ] Achievement / unlock progression system
+- [ ] Run statistics screen at end of run
+- [ ] Additional enemy variants per floor
+- [ ] Mobile touch controls
 
-See the implementation plan discussed in design docs. Short version:
+### Cut First *(remove if project scope becomes too large)*
+- [ ] Multiplayer / co-op mode
+- [ ] Procedurally generated tile maps (currently using hand-designed rooms)
+- [ ] Full voice acting
+- [ ] Online leaderboard
 
-1. W1–W3: Gray-box prototype (movement, attack, one room, one enemy)
-2. W3–W6: Combat + weapons + talents + buffs
-3. W6–W9: Random dungeon + 6 room types + heroes
-4. W9–W12: Blender art pipeline + UI/audio
-5. W13+: Balance, polish, build
+---
+
+## GitHub Process Plan
+
+| Milestone | Target | Status |
+|---|---|---|
+| W1–W3: Grey-box prototype — movement, one room, one enemy | Done | ✅ |
+| W3–W6: Combat system — weapons, skills, talents, shop | Done | ✅ |
+| W6–W9: Multi-floor dungeon + 6 room types + hero variety | Done | ✅ |
+| W9–W12: Pixel-art sprites — heroes (8), enemies (15), weapons (26) | Done | ✅ |
+| W12–W13: Difficulty curve, wave balance, Hades-style progression | Done | ✅ |
+| W13–W14: Sound design, music, scene transitions | In Progress | 🔄 |
+| W14–W15: Playtesting, bug fixes, final build | Next | ⬜ |
+
+Branch strategy: feature branches merged to `main` via PR after each milestone.
+
+---
+
+## Response to Feedback
+
+**Feedback received:** Difficulty ramping felt flat — early floors were too easy and there was no sense of escalating danger.
+
+**What I changed:**
+- Redesigned wave generation to follow a Hades-style curve: early waves use basic enemies, mid-floors introduce elites, later floors mix boss minions into normal rooms
+- Added a numeric difficulty multiplier that scales enemy HP and damage per floor
+- Rebalanced all enemy stat values and weapon damage numbers from scratch
+- Added a visible floor indicator so players understand their progression depth
+
+---
+
+## What I Will Build Next
+
+1. **Sound system** — integrate background music per floor and one-shot SFX for attacks, hits, and deaths using Unity's AudioManager pattern
+2. **Scene transitions** — main menu → hero select → dungeon → game-over/win screen with proper async loading
+3. **Playtesting pass** — fix edge cases in weapon skill interactions, ensure all 15 enemies have correct AI behaviour on every floor
+
+---
+
+## Credits
+
+| Role | Name |
+|---|---|
+| Game Design, Programming, Art | 1Misery1 |
+| Engine | Unity Technologies — Unity 2022.3 LTS |
+| Pixel Art Tooling | Unity SpriteRenderer + custom procedural sprite generation |
+| Inspiration | Hades (Supergiant Games), Binding of Isaac |
