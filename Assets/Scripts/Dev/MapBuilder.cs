@@ -1,0 +1,902 @@
+using Game.AI;
+using UnityEngine;
+
+namespace Game.Dev
+{
+    // 程序化地图系统：3层×3种布局 = 9张地图
+    // 每张地图 32×20 格，每格 = 1×1 世界单位，中心在 (0,0)
+    //
+    // 瓦片字符：
+    //   '#' = 实墙       'p' = 石柱       '.' = 地板
+    //   'd' = 出口位置   't' = 地形陷阱   'x' = 装饰道具
+    public static class MapBuilder
+    {
+        public struct MapInfo
+        {
+            public float   HalfW;
+            public float   HalfH;
+            public Vector3 PlayerSpawn;
+            public Vector3 DoorPos;
+        }
+
+        public const int TileW = 32;
+        public const int TileH = 20;
+
+        // ── 9 张地图布局 ─────────────────────────────────────────────────────
+        static readonly string[][] _maps =
+        {
+            // ═══ Floor 1：炼狱石牢（火柱陷阱 't'，骸骨装饰 'x'）═══════════
+            new[] // F1-A "守卫大厅"
+            {
+                "################################",
+                "#..............................#",
+                "#.p..........................p.#",
+                "#.........................x....#",
+                "#.....#####........#####.......#",
+                "#............t.................#",
+                "#.p..........................p.#",
+                "#..............................#",
+                "#..............................d",
+                "#..............p...............d",
+                "#..............................#",
+                "#.p..........................p.#",
+                "#..x...........................#",
+                "#.....#####........#####.......#",
+                "#............t.................#",
+                "#.p..........................p.#",
+                "#..............................#",
+                "#..............................#",
+                "#..............................#",
+                "################################",
+            },
+            new[] // F1-B "柱廊迷阵"
+            {
+                "################################",
+                "#..............................#",
+                "#..p....p....p....p....p....p..#",
+                "#..............t...............#",
+                "#........................x.....#",
+                "#......######.....######.......#",
+                "#..............................#",
+                "#..p....p....p....p....p....p..#",
+                "#..............................d",
+                "#..............................d",
+                "#..p....p....p....p....p....p..#",
+                "#..............................#",
+                "#......######.....######.......#",
+                "#..............t...............#",
+                "#..............................#",
+                "#..p....p....p....p....p....p..#",
+                "#..............................#",
+                "#..............................#",
+                "#..............................#",
+                "################################",
+            },
+            new[] // F1-C "废墟神庙"
+            {
+                "################################",
+                "#..............................#",
+                "#.p......p.................p...#",
+                "#..........####...####.........#",
+                "#..........####...####.........#",
+                "#.p......p.................p...#",
+                "#....t.........................#",
+                "#........##..........##........#",
+                "#........##..........##........d",
+                "#...........p.....p............d",
+                "#........##..........##........#",
+                "#........................x.....#",
+                "#.p......p.................p...#",
+                "#..........####...####.........#",
+                "#..........####...####.........#",
+                "#.p......p.................p...#",
+                "#.........................t....#",
+                "#..............................#",
+                "#..............................#",
+                "################################",
+            },
+
+            // ═══ Floor 2：霜境冰窟（冰刺陷阱 't'，冰晶装饰 'x'）═══════════
+            new[] // F2-A "冰宫回廊"
+            {
+                "################################",
+                "##............................##",
+                "##.p........................p##",
+                "#.......####......####.........#",
+                "#....................t.........#",
+                "#.p.....p..............p....p..#",
+                "#..............................#",
+                "#.......####......####.........#",
+                "#..............................d",
+                "#..............p...............d",
+                "#.......####......####.........#",
+                "#..............................#",
+                "#.p.....pt.............p....p..#",
+                "#..............................#",
+                "#.......####......####.........#",
+                "##.p.x......................p##",
+                "##............................##",
+                "#..............................#",
+                "#..............................#",
+                "################################",
+            },
+            new[] // F2-B "冰晶柱阵"
+            {
+                "################################",
+                "#..............................#",
+                "#.p..p..p..p..p..p..p..p......#",
+                "#..............................#",
+                "#..............................#",
+                "#.p..p..p..p..p..p..p..p......#",
+                "#..............t...............#",
+                "#...........######.............#",
+                "#...........######.............d",
+                "#...........######.............d",
+                "#...........######.............#",
+                "#..............................#",
+                "#.p..p..p..p..p..p..p..p......#",
+                "#..............t...............#",
+                "#..............................#",
+                "#.p..p..p..p..p..p..p..p......#",
+                "#....x.........................#",
+                "#..............................#",
+                "#..............................#",
+                "################################",
+            },
+            new[] // F2-C "霜域石窟"
+            {
+                "################################",
+                "###...........................###",
+                "##.p.......................p..##",
+                "#.......###......###...........#",
+                "#..............................#",
+                "#.p.....p.....t...........p....#",
+                "##.............................#",
+                "#..........##.....##...........#",
+                "#..........##.....##...........d",
+                "#..............p...............d",
+                "#..........##.....##...........#",
+                "#..............................##",
+                "#.p.....p.................p....#",
+                "#.......###......###...........#",
+                "#...........t..................#",
+                "##.p.......................p..##",
+                "###...........................###",
+                "#...x..........................#",
+                "#..............................#",
+                "################################",
+            },
+
+            // ═══ Floor 3：混沌深渊（虚空裂隙陷阱 't'，虚空符文装饰 'x'）═══
+            new[] // F3-A "虚空裂隙"
+            {
+                "################################",
+                "####..........................##",
+                "#.....p....................p...#",
+                "#....................x.........#",
+                "#.....######......######.......#",
+                "#.....p....................p...#",
+                "#..........t...................#",
+                "#.....######......######.......#",
+                "#..............................d",
+                "#..............p...............d",
+                "#.....######......######.......#",
+                "#..............................#",
+                "#.....p....................p...#",
+                "#.....######......######.......#",
+                "#..............................#",
+                "#.....p..t.................p...#",
+                "####..........................##",
+                "#..............................#",
+                "#..............................#",
+                "################################",
+            },
+            new[] // F3-B "混沌祭台"
+            {
+                "################################",
+                "#..............................#",
+                "#.p..p..p..p..p..p..p..p......#",
+                "#.........t..........t.........#",
+                "#......####.......####.........#",
+                "#..............t...............#",
+                "#.p......####...####.......p...#",
+                "#..........##...##.............#",
+                "#..........##...##.............d",
+                "#..........p.....p.............d",
+                "#..........##...##.............#",
+                "#.p......####...####.......p...#",
+                "#..............................#",
+                "#......####.......####.........#",
+                "#..............................#",
+                "#.p..p..p..p..p..p..p..p......#",
+                "#....x.........................#",
+                "#..............................#",
+                "#..............................#",
+                "################################",
+            },
+            new[] // F3-C "深渊长廊"
+            {
+                "################################",
+                "#......##..........##..........#",
+                "#......##..........##..........#",
+                "#.p..........................p.#",
+                "#...................t..........#",
+                "#......##..........##..........#",
+                "#.p..........................p.#",
+                "#......##..........##..........#",
+                "#..............................d",
+                "#..............p...............d",
+                "#......##..........##..........#",
+                "#.p..........................p.#",
+                "#......##..........##..........#",
+                "#.........t....................#",
+                "#.p..........................p.#",
+                "#......##..........##..........#",
+                "#......##..........##..........#",
+                "#........................x.....#",
+                "#..............................#",
+                "################################",
+            },
+        };
+
+        // ── 精灵缓存 ─────────────────────────────────────────────────────────
+        static Sprite[] _wallSprites    = new Sprite[3];
+        static Sprite[] _pillarSprites  = new Sprite[3];
+        static Sprite[] _torchSprites   = new Sprite[3];
+        static Sprite[] _trapSprites    = new Sprite[3];
+
+        // ── 构建地图 ─────────────────────────────────────────────────────────
+        public static MapInfo Build(int floor, int variant, Transform parent)
+        {
+            int fi  = Mathf.Clamp(floor - 1, 0, 2);
+            int idx = fi * 3 + (variant % 3);
+            var rows = _maps[idx];
+
+            NavGrid.Build(rows);
+            SetupPhysicsLayers();
+
+            FloorBackground.Create(floor, parent, TileW + 4f, TileH + 4f);
+
+            float ox = -TileW * 0.5f;
+            float oy =  TileH * 0.5f;
+
+            var wallSpr   = GetWall(fi);
+            var pillarSpr = GetPillar(fi);
+            var torchSpr  = GetTorch(fi);
+            var trapSpr   = GetTrap(fi);
+
+            var playerSpawn = new Vector3(ox + 2.5f, 0f, 0f);
+            var doorPos     = new Vector3(-ox - 0.5f, 0f, 0f);
+
+            for (int r = 0; r < TileH; r++)
+            {
+                string row = r < rows.Length ? rows[r] : new string('#', TileW);
+                if (row.Length < TileW) row = row.PadRight(TileW, '#');
+
+                for (int c = 0; c < TileW; c++)
+                {
+                    char tile = row[c];
+                    float wx = ox + c + 0.5f;
+                    float wy = oy - r - 0.5f;
+                    var pos = new Vector3(wx, wy, 0f);
+
+                    switch (tile)
+                    {
+                        case '#':
+                            SpawnFloor(pos, fi, r, c, parent, isUnderWall: true);
+                            SpawnWall(pos, wallSpr, parent);
+                            if (ShouldAddTorch(rows, r, c) && (c + r * 3) % 8 == 0)
+                                SpawnTorch(pos, torchSpr, parent);
+                            break;
+                        case '.':
+                            SpawnFloor(pos, fi, r, c, parent);
+                            break;
+                        case 'p':
+                            SpawnFloor(pos, fi, r, c, parent);
+                            SpawnPillar(pos, pillarSpr, parent);
+                            break;
+                        case 'd':
+                            SpawnFloor(pos, fi, r, c, parent);
+                            doorPos = pos;
+                            break;
+                        case 't':
+                            SpawnFloor(pos, fi, r, c, parent);
+                            SpawnTrap(pos, fi, trapSpr, parent);
+                            break;
+                        case 'x':
+                            SpawnFloor(pos, fi, r, c, parent);
+                            SpawnDecoration(pos, fi, parent);
+                            break;
+                    }
+                }
+            }
+
+            return new MapInfo
+            {
+                HalfW       = TileW * 0.5f,
+                HalfH       = TileH * 0.5f,
+                PlayerSpawn = playerSpawn,
+                DoorPos     = doorPos,
+            };
+        }
+
+        // ── 地板瓦片（Kenney 素材，有主题配色）──────────────────────────────
+        static void SpawnFloor(Vector3 pos, int fi, int r, int c, Transform parent, bool isUnderWall = false)
+        {
+            if (isUnderWall) return; // 墙体下无需地板
+
+            int variation = ((c * 7 + r * 13) & 0x7FFFFFFF) % 5; // 0-4
+            int tileIndex = 48 + variation; // Kenney 确认的石地板组
+
+            Sprite spr = TilesetLoader.IsAvailable
+                ? TilesetLoader.Get(tileIndex)
+                : MakeFallbackFloor(fi);
+
+            if (spr == null) return;
+
+            var go = new GameObject("F");
+            go.transform.SetParent(parent, true);
+            go.transform.position = pos;
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite       = spr;
+            sr.sortingOrder = 0;
+            sr.color        = FloorTint(fi);
+        }
+
+        // ── 陷阱（含已有MonoBehaviour：FlamePillar / IceSpikeTrap / VoidRift）
+        static void SpawnTrap(Vector3 pos, int fi, Sprite baseSpr, Transform parent)
+        {
+            var go = new GameObject("Trap");
+            go.transform.SetParent(parent, true);
+            go.transform.position = pos;
+            go.transform.localScale = new Vector3(0.85f, 0.85f, 1f);
+
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite       = baseSpr;
+            sr.sortingOrder = 2;
+
+            switch (fi)
+            {
+                case 0: go.AddComponent<FlamePillar>();    break;
+                case 1: go.AddComponent<IceSpikeTrap>();   break;
+                case 2: go.AddComponent<VoidRift>();       break;
+            }
+        }
+
+        // ── 装饰道具（Kenney 素材，有主题着色）──────────────────────────────
+        static void SpawnDecoration(Vector3 pos, int fi, Transform parent)
+        {
+            // Props rows 5-7 from TMX Objects layer analysis
+            int[] decorIndices = { 61, 73, 75 }; // GIDs 62/74/76 confirmed in Objects layer
+            int idx = decorIndices[((int)(pos.x * 13 + pos.y * 7) & 0x7FFFFFFF) % decorIndices.Length];
+
+            Sprite spr = TilesetLoader.IsAvailable
+                ? TilesetLoader.Get(idx)
+                : MakeFallbackDecor(fi);
+
+            if (spr == null) return;
+
+            var go = new GameObject("D");
+            go.transform.SetParent(parent, true);
+            go.transform.position = pos + new Vector3(0f, 0.1f, 0f);
+            go.transform.localScale = new Vector3(0.8f, 0.8f, 1f);
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite       = spr;
+            sr.sortingOrder = 3;
+            sr.color        = DecoTint(fi);
+        }
+
+        // ── 墙体 ─────────────────────────────────────────────────────────────
+        static void SpawnWall(Vector3 pos, Sprite spr, Transform parent)
+        {
+            var go = new GameObject("W");
+            go.layer = 9;
+            go.transform.SetParent(parent, true);
+            go.transform.position = pos;
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite       = spr;
+            sr.sortingOrder = 1;
+            go.AddComponent<BoxCollider2D>();
+        }
+
+        static void SpawnPillar(Vector3 pos, Sprite spr, Transform parent)
+        {
+            var go = new GameObject("P");
+            go.layer = 9;
+            go.transform.SetParent(parent, true);
+            go.transform.position = pos;
+            go.transform.localScale = new Vector3(0.72f, 0.88f, 1f);
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite       = spr;
+            sr.sortingOrder = 2;
+            var col = go.AddComponent<BoxCollider2D>();
+            col.size = new Vector2(0.85f, 0.85f);
+        }
+
+        static void SpawnTorch(Vector3 wallPos, Sprite spr, Transform parent)
+        {
+            var go = new GameObject("T");
+            go.transform.SetParent(parent, true);
+            go.transform.position = wallPos + new Vector3(0f, -0.55f, 0f);
+            go.transform.localScale = new Vector3(0.4f, 0.6f, 1f);
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite       = spr;
+            sr.sortingOrder = 3;
+        }
+
+        static bool ShouldAddTorch(string[] rows, int r, int c)
+        {
+            if (r + 1 >= TileH) return false;
+            string nextRow = r + 1 < rows.Length ? rows[r + 1] : new string('#', TileW);
+            if (nextRow.Length <= c) return false;
+            char below = nextRow[c];
+            return below == '.' || below == 'p' || below == 'd' || below == 't' || below == 'x';
+        }
+
+        // ── 物理层 ───────────────────────────────────────────────────────────
+        static bool _physicsSetup;
+        static void SetupPhysicsLayers()
+        {
+            if (_physicsSetup) return;
+            _physicsSetup = true;
+            Physics2D.IgnoreLayerCollision(8, 8, true);
+            Physics2D.IgnoreLayerCollision(0, 8, true);
+            Physics2D.IgnoreLayerCollision(8, 9, false);
+            Physics2D.IgnoreLayerCollision(0, 9, false);
+        }
+
+        // ── 配色方案 ─────────────────────────────────────────────────────────
+        static Color FloorTint(int fi) => fi switch
+        {
+            0 => new Color(0.52f, 0.32f, 0.20f),  // 炼狱：暗红石
+            1 => new Color(0.40f, 0.58f, 0.78f),  // 霜境：冰蓝石
+            _ => new Color(0.28f, 0.18f, 0.42f),  // 混沌：深紫石
+        };
+
+        static Color DecoTint(int fi) => fi switch
+        {
+            0 => new Color(0.80f, 0.50f, 0.28f),  // 炼狱：焦棕
+            1 => new Color(0.68f, 0.88f, 1.00f),  // 霜境：冰白
+            _ => new Color(0.72f, 0.42f, 1.00f),  // 混沌：紫光
+        };
+
+        // ── 精灵缓存获取 ──────────────────────────────────────────────────────
+        static Sprite GetWall(int fi)
+        {
+            if (_wallSprites[fi] == null) _wallSprites[fi] = MakeWall(fi);
+            return _wallSprites[fi];
+        }
+        static Sprite GetPillar(int fi)
+        {
+            if (_pillarSprites[fi] == null) _pillarSprites[fi] = MakePillar(fi);
+            return _pillarSprites[fi];
+        }
+        static Sprite GetTorch(int fi)
+        {
+            if (_torchSprites[fi] == null) _torchSprites[fi] = MakeTorch(fi);
+            return _torchSprites[fi];
+        }
+        static Sprite GetTrap(int fi)
+        {
+            if (_trapSprites[fi] == null) _trapSprites[fi] = MakeTrapMark(fi);
+            return _trapSprites[fi];
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        //  像素精灵绘制（32×32，每格 = 1 世界单位）
+        // ══════════════════════════════════════════════════════════════════════
+        const int SZ  = 32;
+        const int PPU = 32;
+
+        // ── 炼狱墙：暗红错缝砖墙 + 岩浆裂缝 + 深阴影 ───────────────────────
+        static Sprite MakeWall(int fi)
+        {
+            var px = new Color32[SZ * SZ];
+            switch (fi)
+            {
+                case 0: DrawInfernoWall(px); break;
+                case 1: DrawFrostWall(px);   break;
+                default: DrawVoidWall(px);   break;
+            }
+            return Bake(px);
+        }
+
+        static void DrawInfernoWall(Color32[] px)
+        {
+            var mortar = C(14, 7,  3);
+            var brick1 = C(55, 26, 10);
+            var brick2 = C(44, 20,  8);
+            var hiEdge = C(82, 42, 18);
+            var shadow = C( 8,  3,  1);
+            var ember  = C(210, 72, 10);
+
+            for (int y = 0; y < SZ; y++)
+            for (int x = 0; x < SZ; x++)
+            {
+                int brickRow = y / 8;
+                int shift    = (brickRow % 2 == 0) ? 0 : 8;
+                int brickX   = (x + shift) % SZ;
+
+                Color32 c;
+                if (y % 8 == 0 || y % 8 == 1 || brickX % 16 == 0 || brickX % 16 == 1)
+                    c = (y % 8 <= 1) ? mortar : shadow;
+                else
+                    c = (brickRow % 2 == 0) ? brick1 : brick2;
+
+                int by = y % 8;
+                if (by == 2) c = Blend(c, hiEdge, 0.35f);
+                if (by == 3) c = Blend(c, hiEdge, 0.18f);
+                if (by >= 6) c = Blend(c, shadow, 0.4f + (by - 6) * 0.2f);
+
+                // 岩浆裂缝
+                float n = Mathf.Abs(Mathf.Sin(x * 1.3f + y * 2.7f + brickRow * 1.9f));
+                float n2 = Mathf.Abs(Mathf.Sin(x * 3.1f - y * 1.5f));
+                if (n > 0.90f && n2 > 0.4f && y % 8 > 1) c = Blend(c, ember, (n - 0.90f) * 10f);
+
+                if (x == 0 || y == SZ - 1) c = Blend(c, hiEdge, 0.45f);
+                if (x == SZ - 1) c = Blend(c, shadow, 0.6f);
+                px[y * SZ + x] = c;
+            }
+        }
+
+        static void DrawFrostWall(Color32[] px)
+        {
+            var mortar = C( 5, 10, 22);
+            var stone  = C(16, 30, 56);
+            var ice    = C(48, 98, 168);
+            var hiEdge = C(98,158, 220);
+            var shadow = C( 3,  6, 14);
+            var vein   = C(80,150, 210);
+
+            for (int y = 0; y < SZ; y++)
+            for (int x = 0; x < SZ; x++)
+            {
+                int brickRow = y / 8;
+                int shift    = (brickRow % 2 == 0) ? 0 : 8;
+                int brickX   = (x + shift) % SZ;
+
+                Color32 c;
+                if (y % 8 == 0 || y % 8 == 1 || brickX % 16 == 0 || brickX % 16 == 1)
+                    c = mortar;
+                else
+                    c = (brickRow % 2 == 0) ? stone : Blend(stone, shadow, 0.3f);
+
+                int by = y % 8;
+                if (by == 2) c = Blend(c, hiEdge, 0.4f);
+                if (by >= 6) c = Blend(c, shadow, 0.3f + (by - 6) * 0.15f);
+
+                // 冰晶纹理
+                float iv = Mathf.Abs(Mathf.Sin(x * 0.9f + y * 1.6f) * Mathf.Cos(x * 1.9f - y * 0.7f));
+                if (iv > 0.84f && y % 8 > 1) c = Blend(c, vein, (iv - 0.84f) * 6f);
+
+                if ((x == 0 || y == SZ - 1) && y % 8 > 1) c = Blend(c, hiEdge, 0.55f);
+                if (x == SZ - 1) c = Blend(c, shadow, 0.5f);
+                px[y * SZ + x] = c;
+            }
+        }
+
+        static void DrawVoidWall(Color32[] px)
+        {
+            var mortar = C( 6,  3, 10);
+            var void_  = C(10,  5, 18);
+            var stone  = C(20, 10, 32);
+            var vein   = C(75, 10,125);
+            var glow   = C(155, 28,215);
+            var shadow = C( 3,  1,  6);
+
+            for (int y = 0; y < SZ; y++)
+            for (int x = 0; x < SZ; x++)
+            {
+                int brickRow = y / 8;
+                int shift    = (brickRow % 2 == 0) ? 0 : 8;
+                int brickX   = (x + shift) % SZ;
+
+                Color32 c;
+                if (y % 8 == 0 || y % 8 == 1 || brickX % 16 == 0 || brickX % 16 == 1)
+                    c = mortar;
+                else
+                    c = (brickRow % 3 == 0) ? stone : void_;
+
+                int by = y % 8;
+                if (by >= 6) c = Blend(c, shadow, 0.4f + (by - 6) * 0.2f);
+
+                // 虚空符文裂缝
+                float rune  = Mathf.Abs(Mathf.Sin(x * 1.6f - y * 2.4f));
+                float rune2 = Mathf.Abs(Mathf.Cos(x * 2.8f + y * 1.1f));
+                if (rune > 0.87f && rune2 > 0.5f && y % 8 > 1)
+                    c = Blend(c, rune > 0.94f ? glow : vein, (rune - 0.87f) * 13f);
+
+                if (x == SZ - 1) c = Blend(c, shadow, 0.65f);
+                px[y * SZ + x] = c;
+            }
+        }
+
+        // ── 石柱（32×32，圆柱感，主题装饰）─────────────────────────────────
+        static Sprite MakePillar(int fi)
+        {
+            var px = new Color32[SZ * SZ];
+            switch (fi)
+            {
+                case 0: DrawInfernoPillar(px); break;
+                case 1: DrawFrostPillar(px);   break;
+                default: DrawVoidPillar(px);   break;
+            }
+            return Bake(px);
+        }
+
+        static void DrawInfernoPillar(Color32[] px)
+        {
+            int cx = SZ / 2, cy = SZ / 2;
+            var outer  = C(22, 11,  5);
+            var mid    = C(46, 22,  9);
+            var inner  = C(62, 32, 14);
+            var hiTop  = C(88, 46, 20);
+            var ember  = C(220, 85, 10);
+            var chain  = C(90, 70, 50);
+
+            for (int y = 0; y < SZ; y++)
+            for (int x = 0; x < SZ; x++)
+            {
+                int dx = x - cx, dy = y - cy;
+                float d = Mathf.Sqrt(dx * dx + dy * dy);
+                float r = 13.5f;
+                if (d > r) { px[y * SZ + x] = C(0,0,0,0); continue; }
+
+                float t = d / r;
+                Color32 c = Blend(inner, mid, t);
+                c = Blend(c, outer, Mathf.Pow(t, 1.8f));
+
+                if (dy < -3 && d < r - 1.5f) c = Blend(c, hiTop, 0.4f * (1f - t));
+                if (dy > 3) c = Blend(c, ember, 0.22f * (1f - t) * ((float)(dy + cy) / SZ));
+
+                // 柱面纵向凹槽
+                float groove = Mathf.Abs(Mathf.Sin(x * Mathf.PI * 4f / SZ));
+                if (groove < 0.12f && d < r - 2f) c = Blend(c, outer, 0.45f);
+
+                // 中部铁链纹路
+                if (Mathf.Abs(y - cy) < 3 && d < r - 2f) c = Blend(c, chain, 0.55f);
+
+                px[y * SZ + x] = c;
+            }
+        }
+
+        static void DrawFrostPillar(Color32[] px)
+        {
+            int cx = SZ / 2, cy = SZ / 2;
+            var outer  = C( 8, 20, 46);
+            var mid    = C(22, 52, 98);
+            var inner  = C(46, 98,158);
+            var tip    = C(175,218,255);
+            var crack  = C(78,148,218);
+            var icicle = C(140,210,255);
+
+            for (int y = 0; y < SZ; y++)
+            for (int x = 0; x < SZ; x++)
+            {
+                int dx = x - cx, dy = y - cy;
+                float d = Mathf.Sqrt(dx * dx + dy * dy);
+                float r = 13f;
+                if (d > r) { px[y * SZ + x] = C(0,0,0,0); continue; }
+
+                float t = d / r;
+                Color32 c = Blend(inner, mid, t);
+                c = Blend(c, outer, Mathf.Pow(t, 1.6f));
+
+                if (dy < -2 && d < r - 1f) c = Blend(c, tip, 0.55f * (1f - t));
+
+                float cf = Mathf.Abs(Mathf.Sin(x * 1.2f + y * 0.9f));
+                if (cf > 0.84f && d < r - 1.5f) c = Blend(c, crack, (cf - 0.84f) * 6f);
+
+                // 顶部冰锥
+                if (dy < -8 && d < 6f) c = Blend(c, icicle, 0.7f * (1f - t));
+                if (dy < -10 && d < 4f) c = Blend(c, tip, 0.9f);
+
+                px[y * SZ + x] = c;
+            }
+        }
+
+        static void DrawVoidPillar(Color32[] px)
+        {
+            int cx = SZ / 2, cy = SZ / 2;
+            var outer  = C( 8,  4, 16);
+            var mid    = C(25,  9, 46);
+            var inner  = C(42, 17, 70);
+            var rune   = C(115, 18,185);
+            var glow   = C(188, 55,255);
+            var eye    = C(255,180, 80);
+
+            for (int y = 0; y < SZ; y++)
+            for (int x = 0; x < SZ; x++)
+            {
+                int dx = x - cx, dy = y - cy;
+                float dm = Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy));
+                float r = 12.5f;
+                if (dm > r) { px[y * SZ + x] = C(0,0,0,0); continue; }
+
+                float t = dm / r;
+                Color32 c = Blend(inner, mid, t);
+                c = Blend(c, outer, Mathf.Pow(t, 1.4f));
+
+                // 符文纹路
+                float rn = Mathf.Abs(Mathf.Sin(y * 0.8f + x * 0.15f));
+                if (rn > 0.87f && dm < r - 1.5f) c = Blend(c, rn > 0.95f ? glow : rune, (rn - 0.87f) * 12f);
+
+                // 中心虚空眼
+                float de = Mathf.Sqrt(dx * dx + dy * dy);
+                if (de < 5f)
+                {
+                    float et = de / 5f;
+                    c = Blend(eye, c, et);
+                    if (de < 2.5f) c = Blend(C(0,0,0,255), c, de / 2.5f);
+                }
+
+                px[y * SZ + x] = c;
+            }
+        }
+
+        // ── 火把 ─────────────────────────────────────────────────────────────
+        static Sprite MakeTorch(int fi)
+        {
+            var px = new Color32[SZ * SZ];
+            switch (fi)
+            {
+                case 0: DrawFlame(px, C(255,130,15), C(255,215,50)); break;
+                case 1: DrawFlame(px, C(55,125,215), C(175,215,255)); break;
+                default: DrawFlame(px, C(135,15,195), C(195,75,255)); break;
+            }
+            return Bake(px);
+        }
+
+        static void DrawFlame(Color32[] px, Color32 baseCol, Color32 tipCol)
+        {
+            int cx = SZ / 2;
+            Fill(px, SZ, cx - 3, SZ - 9, 6, 8, C(55, 45, 36));
+            Fill(px, SZ, cx - 2, SZ - 10, 4, 2, C(88, 72, 52));
+
+            for (int y = 3; y < SZ - 9; y++)
+            {
+                float fy = (SZ - 9 - y) / (float)(SZ - 12);
+                int hw = Mathf.Max(1, Mathf.RoundToInt(5f * (1f - fy * fy)));
+                for (int x = cx - hw; x <= cx + hw; x++)
+                {
+                    if (x < 0 || x >= SZ) continue;
+                    float t = fy;
+                    Color32 fc = Blend(baseCol, tipCol, t);
+                    byte alpha = (byte)(230 - (byte)(80 * fy));
+                    fc.a = alpha;
+                    int bidx = y * SZ + x;
+                    if (px[bidx].a < alpha) px[bidx] = fc;
+                }
+            }
+        }
+
+        // ── 陷阱标记精灵（供 FlamePillar/IceSpikeTrap/VoidRift 使用）────────
+        static Sprite MakeTrapMark(int fi)
+        {
+            var px = new Color32[SZ * SZ];
+            switch (fi)
+            {
+                case 0: DrawLavaMark(px);   break;
+                case 1: DrawIceMark(px);    break;
+                default: DrawVoidMark(px);  break;
+            }
+            return Bake(px);
+        }
+
+        static void DrawLavaMark(Color32[] px)
+        {
+            int cx = SZ / 2, cy = SZ / 2;
+            for (int y = 0; y < SZ; y++)
+            for (int x = 0; x < SZ; x++)
+            {
+                float d = Mathf.Sqrt((x-cx)*(x-cx) + (y-cy)*(y-cy));
+                if (d > 12f) { px[y*SZ+x] = C(0,0,0,0); continue; }
+                float t = d / 12f;
+                Color32 c = Blend(C(255,90,10), C(80,20,5), t);
+                if (d < 5f) c = Blend(C(255,200,60), c, (5f-d)/5f);
+                c.a = (byte)(200 * (1f - t * 0.5f));
+                px[y*SZ+x] = c;
+            }
+        }
+
+        static void DrawIceMark(Color32[] px)
+        {
+            int cx = SZ / 2, cy = SZ / 2;
+            for (int y = 0; y < SZ; y++)
+            for (int x = 0; x < SZ; x++)
+            {
+                int dx = x-cx, dy = y-cy;
+                float star = Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy))
+                           + Mathf.Abs(Mathf.Abs(dx) - Mathf.Abs(dy)) * 0.5f;
+                if (star > 12f) { px[y*SZ+x] = C(0,0,0,0); continue; }
+                float t = star / 12f;
+                Color32 c = Blend(C(220,240,255), C(40,80,150), t);
+                c.a = (byte)(180 * (1f - t * 0.5f));
+                px[y*SZ+x] = c;
+            }
+        }
+
+        static void DrawVoidMark(Color32[] px)
+        {
+            int cx = SZ / 2, cy = SZ / 2;
+            for (int y = 0; y < SZ; y++)
+            for (int x = 0; x < SZ; x++)
+            {
+                float dx = x-cx, dy = y-cy;
+                float d = Mathf.Sqrt(dx*dx + dy*dy);
+                if (d > 12f) { px[y*SZ+x] = C(0,0,0,0); continue; }
+                float angle = Mathf.Atan2(dy, dx);
+                float swirl = Mathf.Abs(Mathf.Sin(angle * 4f + d * 0.5f));
+                float t = d / 12f;
+                Color32 c = Blend(C(180,30,255), C(15,5,30), t);
+                c = Blend(c, C(80,0,140), swirl * 0.4f);
+                c.a = (byte)(190 * (1f - t * 0.4f));
+                px[y*SZ+x] = c;
+            }
+        }
+
+        // ── 备用精灵（TilesetLoader 不可用时）────────────────────────────────
+        static Sprite MakeFallbackFloor(int fi)
+        {
+            var px = new Color32[SZ * SZ];
+            Color32 a, b;
+            switch (fi)
+            {
+                case 0: a = C(45,22,10); b = C(38,18,8);  break;
+                case 1: a = C(14,28,52); b = C(10,22,42); break;
+                default:a = C(16, 8,28); b = C(12, 6,22); break;
+            }
+            for (int y = 0; y < SZ; y++)
+            for (int x = 0; x < SZ; x++)
+            {
+                bool grid = (x == 0 || x == SZ-1 || y == 0 || y == SZ-1);
+                px[y*SZ+x] = grid ? Blend(a, C(0,0,0), 0.5f) : ((x+y)%2==0 ? a : b);
+            }
+            return Bake(px);
+        }
+
+        static Sprite MakeFallbackDecor(int fi)
+        {
+            var px = new Color32[SZ * SZ];
+            Color32 c = fi switch { 0 => C(120,80,40), 1 => C(160,200,255), _ => C(140,60,200) };
+            for (int y = SZ/4; y < SZ*3/4; y++)
+            for (int x = SZ/4; x < SZ*3/4; x++)
+                px[y*SZ+x] = c;
+            return Bake(px);
+        }
+
+        // ── 工具 ─────────────────────────────────────────────────────────────
+        static Color32 C(int r, int g, int b, int a = 255)
+            => new Color32((byte)r, (byte)g, (byte)b, (byte)a);
+
+        static Color32 Blend(Color32 a, Color32 b, float t)
+        {
+            t = Mathf.Clamp01(t);
+            return new Color32(
+                (byte)(a.r + (b.r - a.r) * t),
+                (byte)(a.g + (b.g - a.g) * t),
+                (byte)(a.b + (b.b - a.b) * t),
+                (byte)(a.a + (b.a - a.a) * t));
+        }
+
+        static void Fill(Color32[] px, int sz, int x0, int y0, int w, int h, Color32 c)
+        {
+            for (int y = y0; y < y0 + h; y++)
+            for (int x = x0; x < x0 + w; x++)
+                if (x >= 0 && x < sz && y >= 0 && y < sz)
+                    px[y * sz + x] = c;
+        }
+
+        static Sprite Bake(Color32[] px)
+        {
+            var tex = new Texture2D(SZ, SZ, TextureFormat.RGBA32, false)
+            {
+                filterMode = FilterMode.Point,
+                wrapMode   = TextureWrapMode.Clamp,
+            };
+            tex.SetPixels32(px);
+            tex.Apply();
+            return Sprite.Create(tex, new Rect(0, 0, SZ, SZ), new Vector2(0.5f, 0.5f), PPU);
+        }
+    }
+}
