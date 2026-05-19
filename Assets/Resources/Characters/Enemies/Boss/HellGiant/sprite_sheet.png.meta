@@ -1,4 +1,4 @@
-﻿fileFormatVersion: 2
+fileFormatVersion: 2
 guid: d507122549ee3ff469d632d15a3a278a
 TextureImporter:
   internalIDToNameTable: []
@@ -40,10 +40,10 @@ TextureImporter:
     wrapU: 0
     wrapV: 0
     wrapW: 0
-  nPOTScale: 1
+  nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 1
+  spriteMode: 2
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -108,11 +108,74 @@ TextureImporter:
     forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
-    sprites: []
+    sprites:
+  - serializedVersion: 2
+    name: HellGiant_00
+    rect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 200
+      height: 128
+    alignment: 0
+    pivot: {x: 0.5, y: 0.5}
+    border: {x: 0, y: 0, z: 0, w: 0}
+    outline: []
+    physicsShape: []
+    tessellationDetail: -1
+    bones: []
+    spriteID: 3dc6d094d5294d938257912632e8b169
+    internalID: 1
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+  - serializedVersion: 2
+    name: HellGiant_01
+    rect:
+      serializedVersion: 2
+      x: 200
+      y: 0
+      width: 200
+      height: 128
+    alignment: 0
+    pivot: {x: 0.5, y: 0.5}
+    border: {x: 0, y: 0, z: 0, w: 0}
+    outline: []
+    physicsShape: []
+    tessellationDetail: -1
+    bones: []
+    spriteID: 1e2197f6b1b647d2843d82a8b3254610
+    internalID: 2
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+  - serializedVersion: 2
+    name: HellGiant_02
+    rect:
+      serializedVersion: 2
+      x: 400
+      y: 0
+      width: 200
+      height: 128
+    alignment: 0
+    pivot: {x: 0.5, y: 0.5}
+    border: {x: 0, y: 0, z: 0, w: 0}
+    outline: []
+    physicsShape: []
+    tessellationDetail: -1
+    bones: []
+    spriteID: 9c9ff3989a17465a9bb64fe2cc7e76f9
+    internalID: 3
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
     outline: []
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 5e97eb03825dee720800000000000000
     internalID: 0
     vertices: []
     indices: 
