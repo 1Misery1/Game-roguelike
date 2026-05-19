@@ -1,4 +1,4 @@
-﻿fileFormatVersion: 2
+fileFormatVersion: 2
 guid: 898b75bb05b59aa49aaf4aadc647887c
 TextureImporter:
   internalIDToNameTable: []
@@ -40,10 +40,10 @@ TextureImporter:
     wrapU: 0
     wrapV: 0
     wrapW: 0
-  nPOTScale: 1
+  nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 1
+  spriteMode: 2
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -108,11 +108,116 @@ TextureImporter:
     forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
-    sprites: []
+    sprites:
+  - serializedVersion: 2
+    name: Paladin_00
+    rect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 88
+      height: 96
+    alignment: 0
+    pivot: {x: 0.5, y: 0.5}
+    border: {x: 0, y: 0, z: 0, w: 0}
+    outline: []
+    physicsShape: []
+    tessellationDetail: -1
+    bones: []
+    spriteID: e6e3573dcae446e6ab300f5bfcf7e06b
+    internalID: 1
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+  - serializedVersion: 2
+    name: Paladin_01
+    rect:
+      serializedVersion: 2
+      x: 88
+      y: 0
+      width: 88
+      height: 96
+    alignment: 0
+    pivot: {x: 0.5, y: 0.5}
+    border: {x: 0, y: 0, z: 0, w: 0}
+    outline: []
+    physicsShape: []
+    tessellationDetail: -1
+    bones: []
+    spriteID: 4d3e951f0a1a470888e168780a8a8a76
+    internalID: 2
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+  - serializedVersion: 2
+    name: Paladin_02
+    rect:
+      serializedVersion: 2
+      x: 176
+      y: 0
+      width: 88
+      height: 96
+    alignment: 0
+    pivot: {x: 0.5, y: 0.5}
+    border: {x: 0, y: 0, z: 0, w: 0}
+    outline: []
+    physicsShape: []
+    tessellationDetail: -1
+    bones: []
+    spriteID: 21baf444538542688e9fc994aea55f56
+    internalID: 3
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+  - serializedVersion: 2
+    name: Paladin_03
+    rect:
+      serializedVersion: 2
+      x: 264
+      y: 0
+      width: 88
+      height: 96
+    alignment: 0
+    pivot: {x: 0.5, y: 0.5}
+    border: {x: 0, y: 0, z: 0, w: 0}
+    outline: []
+    physicsShape: []
+    tessellationDetail: -1
+    bones: []
+    spriteID: 16af7607b91549b6b957fc34c980e403
+    internalID: 4
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+  - serializedVersion: 2
+    name: Paladin_04
+    rect:
+      serializedVersion: 2
+      x: 352
+      y: 0
+      width: 88
+      height: 96
+    alignment: 0
+    pivot: {x: 0.5, y: 0.5}
+    border: {x: 0, y: 0, z: 0, w: 0}
+    outline: []
+    physicsShape: []
+    tessellationDetail: -1
+    bones: []
+    spriteID: a6227d3790eb4dde8f6a1f922b2566f7
+    internalID: 5
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
     outline: []
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 5e97eb03825dee720800000000000000
     internalID: 0
     vertices: []
     indices: 

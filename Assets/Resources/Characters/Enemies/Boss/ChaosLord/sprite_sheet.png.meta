@@ -1,4 +1,4 @@
-﻿fileFormatVersion: 2
+fileFormatVersion: 2
 guid: 44455c6d94b3b544cb3969b93c781809
 TextureImporter:
   internalIDToNameTable: []
@@ -40,10 +40,10 @@ TextureImporter:
     wrapU: 0
     wrapV: 0
     wrapW: 0
-  nPOTScale: 1
+  nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 1
+  spriteMode: 2
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -108,11 +108,74 @@ TextureImporter:
     forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
-    sprites: []
+    sprites:
+  - serializedVersion: 2
+    name: ChaosLord_00
+    rect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 280
+      height: 96
+    alignment: 0
+    pivot: {x: 0.5, y: 0.5}
+    border: {x: 0, y: 0, z: 0, w: 0}
+    outline: []
+    physicsShape: []
+    tessellationDetail: -1
+    bones: []
+    spriteID: 216975a28f7b4a669139d6373df511b8
+    internalID: 1
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+  - serializedVersion: 2
+    name: ChaosLord_01
+    rect:
+      serializedVersion: 2
+      x: 280
+      y: 0
+      width: 280
+      height: 96
+    alignment: 0
+    pivot: {x: 0.5, y: 0.5}
+    border: {x: 0, y: 0, z: 0, w: 0}
+    outline: []
+    physicsShape: []
+    tessellationDetail: -1
+    bones: []
+    spriteID: 1519402b934b49969544493489ff4566
+    internalID: 2
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+  - serializedVersion: 2
+    name: ChaosLord_02
+    rect:
+      serializedVersion: 2
+      x: 560
+      y: 0
+      width: 280
+      height: 96
+    alignment: 0
+    pivot: {x: 0.5, y: 0.5}
+    border: {x: 0, y: 0, z: 0, w: 0}
+    outline: []
+    physicsShape: []
+    tessellationDetail: -1
+    bones: []
+    spriteID: c0cc996993b94a04b54d2c183f692724
+    internalID: 3
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
     outline: []
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 5e97eb03825dee720800000000000000
     internalID: 0
     vertices: []
     indices: 
