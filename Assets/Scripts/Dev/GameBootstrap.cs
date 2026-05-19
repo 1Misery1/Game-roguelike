@@ -14,8 +14,9 @@ namespace Game.Dev
     /// Supports multi-floor runs with enemy scaling and weapon drops.
     public class GameBootstrap : MonoBehaviour
     {
-        [SerializeField] private float arenaHalfWidth  = 8f;
-        [SerializeField] private float arenaHalfHeight = 4.5f;
+        // 静态边界（由 MapBuilder 写入，供敌人AI读取）
+        public static float ArenaHalfW { get; private set; } = 16f;
+        public static float ArenaHalfH { get; private set; } = 10f;
         [SerializeField] private int   clearReward     = 50;
         [SerializeField] private int   nonBossRoomCount = 4;
         [SerializeField] private int   maxFloor        = 3;
@@ -40,6 +41,8 @@ namespace Game.Dev
         private PersistentState _persistent;
         private HeroData[] _heroes;
         private int _selectedHeroIndex = 0;
+        private MapBuilder.MapInfo _mapInfo;
+        private int _mapVariant;
 
         private GameObject _arenaRoot;
         private GameObject _player;
@@ -199,7 +202,7 @@ namespace Game.Dev
             CurrentFloor++;
             _floorRooms = GenerateFloor();
             if (_currentRoomRoot != null) { Destroy(_currentRoomRoot); _currentRoomRoot = null; }
-            if (_player != null) _player.transform.position = new Vector3(-arenaHalfWidth + 0.8f, 0f, 0f);
+            if (_player != null) _player.transform.position = _mapInfo.PlayerSpawn;
             SetFloorBackground();
             UpdateArenaColors();
             LoadRoom(0);
@@ -267,7 +270,7 @@ namespace Game.Dev
             _currentRoomIndex = index;
             // 玩家重置到左侧起点
             if (_player != null)
-                _player.transform.position = new Vector3(-arenaHalfWidth + 0.8f, 0f, 0f);
+                _player.transform.position = _mapInfo.PlayerSpawn;
 
             if (index >= _floorRooms.Count)
             {
@@ -330,6 +333,10 @@ namespace Game.Dev
         // 通用：挂载视觉回调 + 特殊死亡效果 + 金币/死亡事件
         private void RegisterEnemy(GameObject enemy, int baseCoins, System.Action onDied)
         {
+            // 设置物理层，让敌人被实心墙阻挡
+            enemy.layer = 8;
+            var col = enemy.GetComponent<CircleCollider2D>();
+            if (col != null) col.isTrigger = false;
             ScaleEnemyStats(enemy, FloorScale);
             AttachVisualCallbacks(enemy);
             AttachSpecialDeathEffect(enemy);
@@ -1102,20 +1109,13 @@ namespace Game.Dev
         // 更新竞技场墙壁颜色并重建背景（楼层切换时调用）
         private void UpdateArenaColors()
         {
-            if (_arenaRoot == null) return;
-            var c = GetFloorWallColor();
-            foreach (Transform child in _arenaRoot.transform)
-            {
-                if (child.name == "FloorBackground") continue; // 背景单独处理
-                var sr = child.GetComponent<SpriteRenderer>();
-                if (sr != null) sr.color = c;
-            }
-            // 重建背景纹理（新楼层主题）
-            var oldBg = _arenaRoot.transform.Find("FloorBackground");
-            if (oldBg != null) Destroy(oldBg.gameObject);
-            float bgW = arenaHalfWidth * 2f + 6f;
-            float bgH = arenaHalfHeight * 2f + 6f;
-            FloorBackground.Create(CurrentFloor, _arenaRoot.transform, bgW, bgH);
+            // 新楼层：销毁旧地图，随机选一张新地图重建
+            if (_arenaRoot != null) { Destroy(_arenaRoot); _arenaRoot = null; }
+            _arenaRoot  = new GameObject("Arena");
+            _mapVariant = Random.Range(0, 3);
+            _mapInfo    = MapBuilder.Build(CurrentFloor, _mapVariant, _arenaRoot.transform);
+            ArenaHalfW  = _mapInfo.HalfW;
+            ArenaHalfH  = _mapInfo.HalfH;
         }
 
         private string GetFloorName()
@@ -1299,18 +1299,15 @@ namespace Game.Dev
         // 从场景四壁边缘随机取一个刷怪点（Hades 风格入场）
         private Vector3 RandomEdgeSpawnPos(bool avoidLeftWall = true)
         {
-            // avoidLeftWall=true 时排除左侧（玩家起点），避免第一波立刻包围
+            float hw = _mapInfo.HalfW - 2.5f;
+            float hh = _mapInfo.HalfH - 2.2f;
             int sides = avoidLeftWall ? 3 : 4;
             switch (Random.Range(0, sides))
             {
-                case 0: // 右壁
-                    return new Vector3(arenaHalfWidth - 1.6f, Random.Range(-3f, 3f), 0f);
-                case 1: // 上壁
-                    return new Vector3(Random.Range(-5f, 5f), arenaHalfHeight - 1.6f, 0f);
-                case 2: // 下壁
-                    return new Vector3(Random.Range(-5f, 5f), -arenaHalfHeight + 1.6f, 0f);
-                default: // 左壁（仅第二波）
-                    return new Vector3(-arenaHalfWidth + 2f, Random.Range(-3f, 3f), 0f);
+                case 0: return new Vector3( _mapInfo.HalfW - 2.5f, Random.Range(-hh, hh), 0f);  // 右
+                case 1: return new Vector3(Random.Range(-hw * 0.6f, hw * 0.6f),  _mapInfo.HalfH - 2.2f, 0f);  // 上
+                case 2: return new Vector3(Random.Range(-hw * 0.6f, hw * 0.6f), -_mapInfo.HalfH + 2.2f, 0f);  // 下
+                default: return new Vector3(-_mapInfo.HalfW + 2.5f, Random.Range(-hh, hh), 0f); // 左
             }
         }
 
@@ -1434,7 +1431,7 @@ namespace Game.Dev
 
             var doorGO = new GameObject("Door");
             doorGO.transform.SetParent(_currentRoomRoot.transform, true);
-            doorGO.transform.position   = new Vector3(arenaHalfWidth - 0.4f, 0f, 0f);
+            doorGO.transform.position   = _mapInfo.DoorPos;
             doorGO.transform.localScale = new Vector3(0.35f, 1.8f, 1f); // 竖向出口
 
             var sr = doorGO.AddComponent<SpriteRenderer>();
@@ -1457,7 +1454,7 @@ namespace Game.Dev
         private void SpawnPlayer(HeroData hero)
         {
             _player = new GameObject("Player_" + hero.heroName);
-            _player.transform.position   = new Vector3(-arenaHalfWidth + 0.8f, 0f, 0f);
+            _player.transform.position   = _mapInfo.PlayerSpawn;
             _player.transform.localScale = new Vector3(0.8f, 0.8f, 1f);
 
             var sr = _player.AddComponent<SpriteRenderer>();
@@ -1510,6 +1507,7 @@ namespace Game.Dev
 
             var weaponHandler = _player.AddComponent<PlayerWeaponHandler>();
             _player.AddComponent<PlayerController>();
+            _player.AddComponent<PlayerStateReporter>();
 
             var (slot0, slot1) = WeaponLibrary.GetStarterWeapons(hero.heroName);
             weaponHandler.EquipWeapon(slot0, 0);
@@ -1691,38 +1689,34 @@ namespace Game.Dev
             var camGO = new GameObject("Main Camera");
             camGO.tag = "MainCamera";
             var cam = camGO.AddComponent<Camera>();
-            cam.orthographic    = true;
+            cam.orthographic     = true;
             cam.orthographicSize = 5.5f;
-            cam.backgroundColor = new Color(0.12f, 0.12f, 0.18f);
+            cam.backgroundColor  = new Color(0.12f, 0.12f, 0.18f);
             cam.transform.position = new Vector3(0f, 0f, -10f);
             camGO.AddComponent<AudioListener>();
         }
 
-        private void BuildArena()
+        // 摄像机跟随玩家，并夹紧到地图边界
+        private void LateUpdate()
         {
-            _arenaRoot = new GameObject("Arena");
-            // 先生成背景（排在最底层）
-            float bgW = arenaHalfWidth * 2f + 6f;
-            float bgH = arenaHalfHeight * 2f + 6f;
-            FloorBackground.Create(CurrentFloor, _arenaRoot.transform, bgW, bgH);
-            var wallColor = GetFloorWallColor();
-            MakeWall(new Vector2(0f,  arenaHalfHeight + 0.25f), new Vector2(arenaHalfWidth * 2f + 0.5f, 0.5f), wallColor);
-            MakeWall(new Vector2(0f, -arenaHalfHeight - 0.25f), new Vector2(arenaHalfWidth * 2f + 0.5f, 0.5f), wallColor);
-            MakeWall(new Vector2( arenaHalfWidth + 0.25f, 0f),  new Vector2(0.5f, arenaHalfHeight * 2f + 0.5f), wallColor);
-            MakeWall(new Vector2(-arenaHalfWidth - 0.25f, 0f),  new Vector2(0.5f, arenaHalfHeight * 2f + 0.5f), wallColor);
+            if (_state != State.Playing || _player == null || Camera.main == null) return;
+            var cam   = Camera.main;
+            float hh  = cam.orthographicSize;
+            float hw  = hh * cam.aspect;
+            float px  = _player.transform.position.x;
+            float py  = _player.transform.position.y;
+            float cx  = Mathf.Clamp(px, -ArenaHalfW + hw, ArenaHalfW - hw);
+            float cy  = Mathf.Clamp(py, -ArenaHalfH + hh, ArenaHalfH - hh);
+            cam.transform.position = new Vector3(cx, cy, cam.transform.position.z);
         }
 
-        private void MakeWall(Vector2 pos, Vector2 size, Color color)
+        private void BuildArena()
         {
-            var go = new GameObject("Wall");
-            go.transform.SetParent(_arenaRoot.transform, true);
-            go.transform.position   = pos;
-            go.transform.localScale = new Vector3(size.x, size.y, 1f);
-            var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite       = MakeUnitSquareSprite();
-            sr.color        = color;
-            sr.sortingOrder = 0;
-            go.AddComponent<BoxCollider2D>();
+            _arenaRoot  = new GameObject("Arena");
+            _mapVariant = Random.Range(0, 3);
+            _mapInfo    = MapBuilder.Build(CurrentFloor, _mapVariant, _arenaRoot.transform);
+            ArenaHalfW  = _mapInfo.HalfW;
+            ArenaHalfH  = _mapInfo.HalfH;
         }
 
         // --------------------------------------------------------------------
@@ -1872,8 +1866,9 @@ namespace Game.Dev
                 GUI.Label(new Rect(rect.x + 8, iy, cardW - 16, 24),
                     h.heroName, MkLabel(18, TextAnchor.MiddleCenter, FontStyle.Bold, unlocked ? Color.white : new Color(0.6f, 0.5f, 0.5f)));
                 // 简介
-                GUI.Label(new Rect(rect.x + 8, iy + 26, cardW - 16, 34),
-                    h.description, MkLabel(11, TextAnchor.UpperLeft, FontStyle.Normal, new Color(0.78f, 0.78f, 0.78f)) { wordWrap = true });
+                var descS = MkLabel(11, TextAnchor.UpperLeft, FontStyle.Normal, new Color(0.78f, 0.78f, 0.78f));
+                descS.wordWrap = true;
+                GUI.Label(new Rect(rect.x + 8, iy + 26, cardW - 16, 34), h.description, descS);
                 // 属性行
                 GUI.Label(new Rect(rect.x + 8, iy + 62, cardW - 16, 18),
                     $"♥{h.baseMaxHP:0}  ⚔{h.baseAttack:0}  🛡{h.baseDefense:0}  ⚡{h.baseMoveSpeed:0.0}",

@@ -18,6 +18,27 @@ namespace Game.Dev
             return s;
         }
 
+        // Resources/Characters/ 下各敌人对应的子路径
+        static string RealSpritePath(EnemyType type) => type switch
+        {
+            EnemyType.Skeleton       => "Enemies/Small/Skeleton",
+            EnemyType.Soldier        => "Enemies/Small/Soldier",
+            EnemyType.Archer         => "Enemies/Small/Archer",
+            EnemyType.Bat            => "Enemies/Small/Bat",
+            EnemyType.ShieldGuard    => "Enemies/Small/ShieldGuard",
+            EnemyType.PoisonSpider   => "Enemies/Small/PoisonSpider",
+            EnemyType.ShadowAssassin => "Enemies/Small/ShadowAssassin",
+            EnemyType.ExplosiveDemon => "Enemies/Small/ExplosiveDemon",
+            EnemyType.Commander      => "Enemies/Elite/Commander",
+            EnemyType.Witch          => "Enemies/Elite/Witch",
+            EnemyType.PoisonShaman   => "Enemies/Elite/PoisonShaman",
+            EnemyType.Necromancer    => "Enemies/Elite/Necromancer",
+            EnemyType.HellGiant      => "Enemies/Boss/HellGiant",
+            EnemyType.FrostLich      => "Enemies/Boss/FrostLich",
+            EnemyType.ChaosLord      => "Enemies/Boss/ChaosLord",
+            _                        => null,
+        };
+
         private static Sprite Build(EnemyType type)
         {
             const int SZ = 32;

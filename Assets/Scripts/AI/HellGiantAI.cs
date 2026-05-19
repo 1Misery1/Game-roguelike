@@ -62,11 +62,14 @@ namespace Game.AI
         private bool  _phase2Triggered;
         private bool  _slamBusy;
 
+        private EnemyNavigator _nav;
+
         private void Awake()
         {
             _rb     = GetComponent<Rigidbody2D>();
             _stats  = GetComponent<CharacterStats>();
             _health = GetComponent<Health>();
+            _nav    = GetComponent<EnemyNavigator>() ?? gameObject.AddComponent<EnemyNavigator>();
         }
 
         private void Update()
@@ -95,7 +98,7 @@ namespace Game.AI
             float dist  = Vector2.Distance(transform.position, target.position);
             if (dist > attackRange)
             {
-                Vector2 dir   = ((Vector2)target.position - _rb.position).normalized;
+                Vector2 dir   = _nav.GetMoveDirection(target.position);
                 float   speed = _stats.Get(StatType.MoveSpeed);
                 _rb.MovePosition(_rb.position + dir * speed * Time.fixedDeltaTime);
             }
