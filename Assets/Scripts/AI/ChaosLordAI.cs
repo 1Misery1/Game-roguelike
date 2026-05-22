@@ -120,7 +120,7 @@ namespace Game.AI
                 if (col.gameObject == gameObject) continue;
                 col.GetComponent<IDamageable>()?.TakeDamage(new DamageInfo
                 {
-                    Amount = attackDamage + _stats.Get(StatType.Attack),
+                    Amount = attackDamage,
                     Type   = DamageType.Physical, Source = gameObject
                 });
                 ApplyKnockback(col, attackKnockback);

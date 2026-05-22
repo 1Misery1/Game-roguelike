@@ -64,9 +64,10 @@ namespace Game.AI
                 if (col.GetComponent<EnemyTag>() != null) continue;
                 col.GetComponent<IDamageable>()?.TakeDamage(new DamageInfo
                 {
-                    Amount = coreDmg,
-                    Type   = DamageType.True,
-                    Source = null
+                    Amount        = coreDmg,
+                    Type          = DamageType.True,
+                    Source        = null,
+                    BypassIFrames = true,
                 });
             }
         }
@@ -93,7 +94,7 @@ namespace Game.AI
                         {
                             Amount = pulseDamage,
                             Type   = DamageType.Magical,
-                            Source = null
+                            Source = null,
                         });
                     }
                 }

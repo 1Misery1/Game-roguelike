@@ -22,7 +22,7 @@ namespace Game.AI
                 for (int c = 0; c < W; c++)
                 {
                     char ch = row[c];
-                    _w[c, r] = ch == '.' || ch == 'd';
+                    _w[c, r] = ch == '.' || ch == 'd' || ch == 't' || ch == 'l' || ch == 'x';
                 }
             }
         }

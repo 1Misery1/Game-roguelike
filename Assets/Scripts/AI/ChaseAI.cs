@@ -29,7 +29,7 @@ namespace Game.AI
         // Reduce interval sharply when player is in a cast window
         float EffectiveInterval =>
             PlayerStateReporter.Instance != null && PlayerStateReporter.Instance.IsCasting
-                ? attackInterval * 0.25f
+                ? attackInterval * 0.5f
                 : attackInterval;
 
         private void Awake()

@@ -37,10 +37,11 @@ namespace Game.AI
                     if (d == null) continue;
                     d.TakeDamage(new DamageInfo
                     {
-                        Amount = tickDmg,
-                        Type = DamageType.True,
-                        IsCrit = false,
-                        Source = owner
+                        Amount        = tickDmg,
+                        Type          = DamageType.True,
+                        IsCrit        = false,
+                        Source        = owner,
+                        BypassIFrames = true,
                     });
                 }
             }

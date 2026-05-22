@@ -93,7 +93,7 @@ namespace Game.AI
             }
             transform.localScale = origScale;
 
-            float dmg  = attackDamage + _stats.Get(StatType.Attack);
+            float dmg  = attackDamage;
             var   cols = Physics2D.OverlapCircleAll(transform.position, attackRange);
             foreach (var col in cols)
             {
