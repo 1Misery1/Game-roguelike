@@ -72,7 +72,7 @@ TextureImporter:
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 1
+    textureCompression: 0
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -108,75 +108,12 @@ TextureImporter:
     forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
-    sprites:
-  - serializedVersion: 2
-    name: ShadowAssassin_00
-    rect:
-      serializedVersion: 2
-      x: 0
-      y: 0
-      width: 64
-      height: 56
-    alignment: 0
-    pivot: {x: 0.5, y: 0.5}
-    border: {x: 0, y: 0, z: 0, w: 0}
+    sprites: []
     outline: []
     physicsShape: []
-    tessellationDetail: -1
-    bones: []
-    spriteID: cb3a3e7b65564cfab0ead21f6736779e
-    internalID: 1
-    vertices: []
-    indices: 
-    edges: []
-    weights: []
-  - serializedVersion: 2
-    name: ShadowAssassin_01
-    rect:
-      serializedVersion: 2
-      x: 64
-      y: 0
-      width: 64
-      height: 56
-    alignment: 0
-    pivot: {x: 0.5, y: 0.5}
-    border: {x: 0, y: 0, z: 0, w: 0}
-    outline: []
-    physicsShape: []
-    tessellationDetail: -1
     bones: []
     spriteID: 697b02d822b0484ea353bec9132e5398
     internalID: 2
-    vertices: []
-    indices: 
-    edges: []
-    weights: []
-  - serializedVersion: 2
-    name: ShadowAssassin_02
-    rect:
-      serializedVersion: 2
-      x: 128
-      y: 0
-      width: 64
-      height: 56
-    alignment: 0
-    pivot: {x: 0.5, y: 0.5}
-    border: {x: 0, y: 0, z: 0, w: 0}
-    outline: []
-    physicsShape: []
-    tessellationDetail: -1
-    bones: []
-    spriteID: c11ba11eeba34bac87692d62a5494dd1
-    internalID: 3
-    vertices: []
-    indices: 
-    edges: []
-    weights: []
-    outline: []
-    physicsShape: []
-    bones: []
-    spriteID: 5e97eb03825dee720800000000000000
-    internalID: 0
     vertices: []
     indices: 
     edges: []

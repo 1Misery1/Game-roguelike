@@ -72,7 +72,7 @@ TextureImporter:
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 1
+    textureCompression: 0
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -108,54 +108,12 @@ TextureImporter:
     forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
-    sprites:
-  - serializedVersion: 2
-    name: PoisonShaman_00
-    rect:
-      serializedVersion: 2
-      x: 0
-      y: 0
-      width: 192
-      height: 88
-    alignment: 0
-    pivot: {x: 0.5, y: 0.5}
-    border: {x: 0, y: 0, z: 0, w: 0}
+    sprites: []
     outline: []
     physicsShape: []
-    tessellationDetail: -1
-    bones: []
-    spriteID: 673e838f5d93460fa7eb641506c3acd2
-    internalID: 1
-    vertices: []
-    indices: 
-    edges: []
-    weights: []
-  - serializedVersion: 2
-    name: PoisonShaman_01
-    rect:
-      serializedVersion: 2
-      x: 192
-      y: 0
-      width: 192
-      height: 88
-    alignment: 0
-    pivot: {x: 0.5, y: 0.5}
-    border: {x: 0, y: 0, z: 0, w: 0}
-    outline: []
-    physicsShape: []
-    tessellationDetail: -1
     bones: []
     spriteID: cb1cd8e26f7b4a569d377a8bc2180eeb
     internalID: 2
-    vertices: []
-    indices: 
-    edges: []
-    weights: []
-    outline: []
-    physicsShape: []
-    bones: []
-    spriteID: 5e97eb03825dee720800000000000000
-    internalID: 0
     vertices: []
     indices: 
     edges: []
