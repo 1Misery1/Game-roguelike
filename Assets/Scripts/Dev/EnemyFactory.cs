@@ -5,16 +5,16 @@ using UnityEngine;
 
 namespace Game.Dev
 {
-    // 敌人工厂：创建各类敌人GameObject并配置好所有组件
-    // 调用者负责：订阅OnDied事件（计数/掉落金币/Destroy）
+    // Enemy factory: creates enemy GameObjects and configures all components.
+    // Caller is responsible for subscribing to OnDied events (count / coin drop / Destroy).
     public static class EnemyFactory
     {
-        // ── 小怪 ──────────────────────────────────────────────────
+        // ── Normal enemies ──────────────────────────────────────
 
-        // 骷髅怪：HP25, ATK8, DEF0, SPD4.5 | 基础追击，3金币
+        // Skeleton: HP25, ATK8, DEF0, SPD4.5 | basic chase, 3 coins
         public static GameObject SpawnSkeleton(Vector3 pos, Transform player, Transform parent)
         {
-            var go = MakeBase("骷髅怪", pos, 0.7f, new Color(0.85f, 0.85f, 0.75f),
+            var go = MakeBase("Skeleton", pos, 0.7f, new Color(0.85f, 0.85f, 0.75f),
                 hp: 25f, atk: 8f, def: 0f, spd: 4.5f, parent: parent, EnemyType.Skeleton);
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.Skeleton;
             var ai  = go.AddComponent<ChaseAI>();
@@ -25,10 +25,10 @@ namespace Game.Dev
             return go;
         }
 
-        // 腐败小兵：HP38, ATK12, DEF2, SPD4.0 | 近战，4金币
+        // Soldier: HP38, ATK12, DEF2, SPD4.0 | melee, 4 coins
         public static GameObject SpawnSoldier(Vector3 pos, Transform player, Transform parent)
         {
-            var go = MakeBase("腐败小兵", pos, 0.75f, new Color(0.5f, 0.75f, 0.4f),
+            var go = MakeBase("Soldier", pos, 0.75f, new Color(0.5f, 0.75f, 0.4f),
                 hp: 38f, atk: 12f, def: 2f, spd: 4.0f, parent: parent, EnemyType.Soldier);
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.Soldier;
             var ai  = go.AddComponent<ChaseAI>();
@@ -39,10 +39,10 @@ namespace Game.Dev
             return go;
         }
 
-        // 腐败弓箭手：HP20, ATK0, DEF0, SPD3.0 | 远程，4金币
+        // Archer: HP20, ATK0, DEF0, SPD3.0 | ranged, 4 coins
         public static GameObject SpawnArcher(Vector3 pos, Transform player, Transform parent)
         {
-            var go = MakeBase("腐败弓箭手", pos, 0.65f, new Color(0.6f, 0.85f, 0.35f),
+            var go = MakeBase("Archer", pos, 0.65f, new Color(0.6f, 0.85f, 0.35f),
                 hp: 20f, atk: 0f, def: 0f, spd: 3.0f, parent: parent, EnemyType.Archer);
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.Archer;
             var ai  = go.AddComponent<ArcherAI>();
@@ -54,10 +54,10 @@ namespace Game.Dev
             return go;
         }
 
-        // 飞天蝙蝠：HP18, DEF0, SPD7.0 | 环绕冲刺，3金币
+        // Bat: HP18, DEF0, SPD7.0 | orbit dash, 3 coins
         public static GameObject SpawnBat(Vector3 pos, Transform player, Transform parent)
         {
-            var go = MakeBase("飞天蝙蝠", pos, 0.55f, new Color(0.35f, 0.2f, 0.5f),
+            var go = MakeBase("Bat", pos, 0.55f, new Color(0.35f, 0.2f, 0.5f),
                 hp: 18f, atk: 0f, def: 0f, spd: 7.0f, parent: parent, EnemyType.Bat);
             go.GetComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Kinematic;
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.Bat;
@@ -72,10 +72,10 @@ namespace Game.Dev
             return go;
         }
 
-        // 腐败盾士：HP52, ATK12, DEF5, SPD3.5 | 盾牌减伤，6金币
+        // Shield Guard: HP52, ATK12, DEF5, SPD3.5 | shield damage reduction, 6 coins
         public static GameObject SpawnShieldGuard(Vector3 pos, Transform player, Transform parent)
         {
-            var go = MakeBase("腐败盾士", pos, 0.8f, new Color(0.3f, 0.5f, 0.8f),
+            var go = MakeBase("Shield Guard", pos, 0.8f, new Color(0.3f, 0.5f, 0.8f),
                 hp: 52f, atk: 12f, def: 5f, spd: 3.5f, parent: parent, EnemyType.ShieldGuard);
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.ShieldGuard;
             var ai  = go.AddComponent<ShieldGuardAI>();
@@ -89,10 +89,10 @@ namespace Game.Dev
             return go;
         }
 
-        // 毒蜘蛛：HP25, ATK10, DEF0, SPD5.5 | 接触毒素DoT，死后留毒池，3金币
+        // Poison Spider: HP25, ATK10, DEF0, SPD5.5 | contact poison DoT, leaves poison pool on death, 3 coins
         public static GameObject SpawnPoisonSpider(Vector3 pos, Transform player, Transform parent)
         {
-            var go = MakeBase("毒蜘蛛", pos, 0.5f, new Color(0.2f, 0.55f, 0.1f),
+            var go = MakeBase("Poison Spider", pos, 0.5f, new Color(0.2f, 0.55f, 0.1f),
                 hp: 25f, atk: 10f, def: 0f, spd: 5.5f, parent: parent, EnemyType.PoisonSpider);
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.PoisonSpider;
             var ai  = go.AddComponent<PoisonSpiderAI>();
@@ -106,10 +106,10 @@ namespace Game.Dev
             return go;
         }
 
-        // 暗影刺客：HP38, ATK22, DEF0, SPD5.0 | 潜行+瞬移爆发，5金币
+        // Shadow Assassin: HP38, ATK22, DEF0, SPD5.0 | stealth + blink burst, 5 coins
         public static GameObject SpawnShadowAssassin(Vector3 pos, Transform player, Transform parent)
         {
-            var go = MakeBase("暗影刺客", pos, 0.6f, new Color(0.2f, 0.1f, 0.3f),
+            var go = MakeBase("Shadow Assassin", pos, 0.6f, new Color(0.2f, 0.1f, 0.3f),
                 hp: 38f, atk: 22f, def: 0f, spd: 5.0f, parent: parent, EnemyType.ShadowAssassin);
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.ShadowAssassin;
             var ai  = go.AddComponent<ShadowAssassinAI>();
@@ -122,10 +122,10 @@ namespace Game.Dev
             return go;
         }
 
-        // 爆炎恶魔：HP28, ATK0, DEF0, SPD3.8 | 近身/死亡AOE爆炸，4金币
+        // Explosive Demon: HP28, ATK0, DEF0, SPD3.8 | proximity/death AoE explosion, 4 coins
         public static GameObject SpawnExplosiveDemon(Vector3 pos, Transform player, Transform parent)
         {
-            var go = MakeBase("爆炎恶魔", pos, 0.65f, new Color(0.9f, 0.4f, 0.1f),
+            var go = MakeBase("Explosive Demon", pos, 0.65f, new Color(0.9f, 0.4f, 0.1f),
                 hp: 28f, atk: 0f, def: 0f, spd: 3.8f, parent: parent, EnemyType.ExplosiveDemon);
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.ExplosiveDemon;
             var ai  = go.AddComponent<ExplosiveDemonAI>();
@@ -138,12 +138,12 @@ namespace Game.Dev
             return go;
         }
 
-        // ── 精英 ──────────────────────────────────────────────────
+        // ── Elite ──────────────────────────────────────────────────
 
-        // 腐败士官：HP110, ATK16, DEF4, SPD3.5 | 双手剑AOE+光环，15金币
+        // Commander: HP110, ATK16, DEF4, SPD3.5 | greatsword AoE + aura, 15 coins
         public static GameObject SpawnCommander(Vector3 pos, Transform player, Transform parent)
         {
-            var go = MakeBase("腐败士官", pos, 0.9f, new Color(0.9f, 0.6f, 0.2f),
+            var go = MakeBase("Commander", pos, 0.9f, new Color(0.9f, 0.6f, 0.2f),
                 hp: 110f, atk: 16f, def: 4f, spd: 3.5f, parent: parent, EnemyType.Commander);
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.Commander;
             var ai  = go.AddComponent<CommanderAI>();
@@ -159,11 +159,11 @@ namespace Game.Dev
             return go;
         }
 
-        // 女巫：HP80, ATK14, DEF0, SPD3.0 | 法杖攻击+召唤蝙蝠，15金币
+        // Witch: HP80, ATK14, DEF0, SPD3.0 | staff attack + bat summon, 15 coins
         public static GameObject SpawnWitch(Vector3 pos, Transform player, Transform parent,
             System.Func<Vector3, GameObject> spawnBatCallback)
         {
-            var go = MakeBase("女巫", pos, 0.75f, new Color(0.75f, 0.3f, 0.9f),
+            var go = MakeBase("Witch", pos, 0.75f, new Color(0.75f, 0.3f, 0.9f),
                 hp: 80f, atk: 14f, def: 0f, spd: 3.0f, parent: parent, EnemyType.Witch);
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.Witch;
             var ai  = go.AddComponent<WitchAI>();
@@ -180,11 +180,11 @@ namespace Game.Dev
 
         // ── Boss ──────────────────────────────────────────────────
 
-        // 地狱巨人：HP320, ATK28, DEF8, SPD2.5 | 岩浆+重踏，二阶段强化
+        // Hell Giant: HP320, ATK28, DEF8, SPD2.5 | lava + stomp, two-phase buff
         public static GameObject SpawnHellGiant(Vector3 pos, Transform player, Transform parent,
             System.Func<Vector3, float, float, float, GameObject> spawnLavaCallback)
         {
-            var go = MakeBase("地狱巨人", pos, 1.2f, new Color(0.7f, 0.12f, 0.08f),
+            var go = MakeBase("Hell Giant", pos, 1.2f, new Color(0.7f, 0.12f, 0.08f),
                 hp: 320f, atk: 28f, def: 8f, spd: 2.5f, parent: parent, EnemyType.HellGiant);
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.HellGiant;
             go.GetComponent<SpriteRenderer>().sortingOrder = 6;
@@ -210,10 +210,10 @@ namespace Game.Dev
             return go;
         }
 
-        // 毒蛇祭司：HP105, ATK16, DEF0, SPD3.0 | 毒素光线+强化毒蜘蛛+毒液水坑，15金币
+        // Poison Shaman: HP105, ATK16, DEF0, SPD3.0 | poison bolt + buff spiders + poison puddle, 15 coins
         public static GameObject SpawnPoisonShaman(Vector3 pos, Transform player, Transform parent)
         {
-            var go = MakeBase("毒蛇祭司", pos, 0.85f, new Color(0.3f, 0.7f, 0.2f),
+            var go = MakeBase("Poison Shaman", pos, 0.85f, new Color(0.3f, 0.7f, 0.2f),
                 hp: 105f, atk: 16f, def: 0f, spd: 3.0f, parent: parent, EnemyType.PoisonShaman);
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.PoisonShaman;
             var ai  = go.AddComponent<PoisonShamanAI>();
@@ -233,10 +233,10 @@ namespace Game.Dev
             return go;
         }
 
-        // 死灵术士：HP115, ATK12, DEF2, SPD2.8 | 灵魂汲取回血+召唤骷髅，15金币
+        // Necromancer: HP115, ATK12, DEF2, SPD2.8 | soul drain + raise skeletons, 15 coins
         public static GameObject SpawnNecromancer(Vector3 pos, Transform player, Transform parent)
         {
-            var go = MakeBase("死灵术士", pos, 0.8f, new Color(0.3f, 0.1f, 0.5f),
+            var go = MakeBase("Necromancer", pos, 0.8f, new Color(0.3f, 0.1f, 0.5f),
                 hp: 115f, atk: 12f, def: 2f, spd: 2.8f, parent: parent, EnemyType.Necromancer);
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.Necromancer;
             var ai  = go.AddComponent<NecromancerAI>();
@@ -253,10 +253,10 @@ namespace Game.Dev
             return go;
         }
 
-        // 霜魂巫妖：HP480, ATK20, DEF5, SPD1.8 | 远程冰霜+冰锥齐射+冰霜新星，二阶段冷却缩短
+        // Frost Lich: HP480, ATK20, DEF5, SPD1.8 | ranged frost + ice volley + frost nova, phase 2 cooldown reduction
         public static GameObject SpawnFrostLich(Vector3 pos, Transform player, Transform parent)
         {
-            var go = MakeBase("霜魂巫妖", pos, 1.1f, new Color(0.45f, 0.75f, 1f),
+            var go = MakeBase("Frost Lich", pos, 1.1f, new Color(0.45f, 0.75f, 1f),
                 hp: 480f, atk: 20f, def: 5f, spd: 1.8f, parent: parent, EnemyType.FrostLich);
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.FrostLich;
             go.GetComponent<SpriteRenderer>().sortingOrder = 6;
@@ -281,10 +281,10 @@ namespace Game.Dev
             return go;
         }
 
-        // 混沌领主：HP700, ATK35, DEF12, SPD3.0 | 近战横扫+混沌爆发+召唤军团，二阶段加速
+        // Chaos Lord: HP700, ATK35, DEF12, SPD3.0 | melee sweep + chaos burst + summon legion, phase 2 speed boost
         public static GameObject SpawnChaosLord(Vector3 pos, Transform player, Transform parent)
         {
-            var go = MakeBase("混沌领主", pos, 1.4f, new Color(0.5f, 0.1f, 0.7f),
+            var go = MakeBase("Chaos Lord", pos, 1.4f, new Color(0.5f, 0.1f, 0.7f),
                 hp: 700f, atk: 35f, def: 12f, spd: 3.0f, parent: parent, EnemyType.ChaosLord);
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.ChaosLord;
             go.GetComponent<SpriteRenderer>().sortingOrder = 6;
@@ -309,19 +309,19 @@ namespace Game.Dev
             return go;
         }
 
-        // ── 岩浆池 ────────────────────────────────────────────────
+        // ── Lava pool ─────────────────────────────────────────────
 
         public static GameObject SpawnLavaPool(Vector3 pos, float dps, float lifetime, float radius,
             Transform parent, GameObject owner)
         {
-            var go = new GameObject("岩浆池");
+            var go = new GameObject("LavaPool");
             go.transform.SetParent(parent, true);
             go.transform.position   = pos;
             go.transform.localScale = new Vector3(radius * 2f, radius * 2f, 1f);
 
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite       = GetSquareSprite();
-            sr.color        = new Color(1f, 0.35f, 0.05f, 0.75f);
+            sr.sprite       = GetPoolSprite();
+            sr.color        = new Color(1f, 0.5f, 0.12f, 0.9f);
             sr.sortingOrder = 3;
 
             var col = go.AddComponent<CircleCollider2D>();
@@ -335,16 +335,47 @@ namespace Game.Dev
             return go;
         }
 
-        // 毒液水坑：绿色，复用 LavaPool 组件，真实伤害
+        // Poison puddle: green, reuses LavaPool component, true damage
         public static GameObject SpawnPoisonPool(Vector3 pos, float dps, float lifetime, float radius,
             Transform parent, GameObject owner)
         {
             var go = SpawnLavaPool(pos, dps, lifetime, radius, parent, owner);
-            if (go != null) go.GetComponent<SpriteRenderer>().color = new Color(0.15f, 0.75f, 0.1f, 0.7f);
+            if (go != null) go.GetComponent<SpriteRenderer>().color = new Color(0.3f, 0.85f, 0.18f, 0.85f);
             return go;
         }
 
-        // ── 内部工具 ──────────────────────────────────────────────
+        // 圆形地面池贴图（径向渐变 + 噪点），可被 SpriteRenderer.color 着色为熔岩/毒液
+        private static Sprite _poolSprite;
+        private static Sprite GetPoolSprite()
+        {
+            if (_poolSprite != null) return _poolSprite;
+            const int sz = 64;
+            const float cx = (sz - 1) * 0.5f, cy = (sz - 1) * 0.5f, rad = sz * 0.5f;
+            var tex = new Texture2D(sz, sz, TextureFormat.RGBA32, false)
+                { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
+            var px = new Color32[sz * sz];
+            for (int y = 0; y < sz; y++)
+            for (int x = 0; x < sz; x++)
+            {
+                float d = Mathf.Sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy)) / rad;
+                if (d >= 1f) { px[y * sz + x] = new Color32(0, 0, 0, 0); continue; }
+
+                // 噪点（多频正弦叠加）让池体不均匀，模拟翻涌的熔岩纹理
+                float n = Mathf.Sin(x * 0.9f + y * 0.5f) * Mathf.Sin(x * 0.35f - y * 0.7f);
+                float value = Mathf.Clamp01(0.62f + n * 0.22f + (1f - d) * 0.30f);
+                // 边缘柔化淡出，中心更不透明
+                float alpha = Mathf.Clamp01((1f - d) * 1.6f) * 0.95f;
+
+                byte v = (byte)(value * 255f);
+                px[y * sz + x] = new Color32(v, v, v, (byte)(alpha * 255f));
+            }
+            tex.SetPixels32(px);
+            tex.Apply();
+            _poolSprite = Sprite.Create(tex, new Rect(0, 0, sz, sz), new Vector2(0.5f, 0.5f), sz);
+            return _poolSprite;
+        }
+
+        // ── Internal utilities ────────────────────────────────────
 
         private static GameObject MakeBase(string name, Vector3 pos, float size, Color color,
             float hp, float atk, float def, float spd, Transform parent,
@@ -361,6 +392,12 @@ namespace Game.Dev
             sr.color        = customSprite != null ? Color.white : color;
             sr.sortingOrder = 5;
 
+            if ((int)spriteType >= 0 && customSprite != null)
+            {
+                var facing = go.AddComponent<EnemyFacing>();
+                facing.SetSprites(customSprite, EnemySprites.GetBack(spriteType));
+            }
+
             var rb = go.AddComponent<Rigidbody2D>();
             rb.bodyType       = RigidbodyType2D.Kinematic;
             rb.freezeRotation = true;
@@ -372,7 +409,7 @@ namespace Game.Dev
             stats.SetBase(StatType.MaxHP,       hp);
             stats.SetBase(StatType.Attack,      atk);
             stats.SetBase(StatType.Defense,     def);
-            stats.SetBase(StatType.MoveSpeed,   spd);
+            stats.SetBase(StatType.MoveSpeed,   spd * 0.8f);
             stats.SetBase(StatType.AttackSpeed, 1f);
 
             go.AddComponent<Health>();

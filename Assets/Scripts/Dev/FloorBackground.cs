@@ -2,9 +2,9 @@ using UnityEngine;
 
 namespace Game.Dev
 {
-    // 按楼层生成程序化背景纹理（256×144，高于原160×90）
-    // Floor1=炼狱灼热  Floor2=霜境幽域  Floor3=混沌深渊
-    // 背景位于 sortingOrder=-10，只在墙体和地图边缘可见
+    // Generates procedural background texture by floor (256×144, larger than original 160×90)
+    // Floor1=Inferno  Floor2=Frost Realm  Floor3=Chaos Abyss
+    // Background at sortingOrder=-10, visible only behind walls and map borders
     public static class FloorBackground
     {
         const int W   = 256;
@@ -49,8 +49,8 @@ namespace Game.Dev
             return tex;
         }
 
-        // ── 第1层：炼狱 ─────────────────────────────────────────────────────
-        // 暗红岩石底色 + 橙色多层岩浆裂缝 + 热斑 + 地热渐变
+        // ── Floor 1: Inferno ─────────────────────────────────────────────────
+        // Dark-red rock base + orange multi-layer lava cracks + hotspots + geothermal gradient
         static void FillInferno(Color[] px)
         {
             var dark = new Color(0.08f, 0.02f, 0.01f);
@@ -66,7 +66,7 @@ namespace Game.Dev
 
                 Color c = Color.Lerp(dark, rock, v * 0.5f + 0.08f);
 
-                // 三层交叉岩浆裂缝（更高频）
+                // Three-layer crossing lava cracks (higher frequency)
                 float n1 = Mathf.Abs(Mathf.Sin(u * 18.5f + v * 5.2f));
                 float n2 = Mathf.Abs(Mathf.Sin(u * 7.3f  - v * 14.1f + 1.6f));
                 float n3 = Mathf.Abs(Mathf.Sin((u + v) * 11.8f + 0.8f));
@@ -78,7 +78,7 @@ namespace Game.Dev
                 if (crack > 0.5f)
                     c = Color.Lerp(c, lava, (crack - 0.5f) * 2.8f);
 
-                // 4个热斑（散发橙光的聚集点）
+                // 4 hotspots (orange-glow clusters)
                 float h1 = Hotspot(u, v, 0.15f, 0.25f, 0.20f);
                 float h2 = Hotspot(u, v, 0.62f, 0.60f, 0.17f);
                 float h3 = Hotspot(u, v, 0.82f, 0.20f, 0.14f);
@@ -87,10 +87,10 @@ namespace Game.Dev
                 float hotMax = Mathf.Max(Mathf.Max(Mathf.Max(h1, h2), Mathf.Max(h3, h4)), h5);
                 c = Color.Lerp(c, lava, hotMax * 0.45f);
 
-                // 底部地热（低部更亮）
+                // Bottom geothermal (brighter at base)
                 c = Color.Lerp(c, glow, (1f - v) * 0.18f);
 
-                // 地板格缝（暗格纹，呼应瓦片大小）
+                // Floor tile seams (dark grid, matching tile size)
                 float gx = Mathf.Abs(Mathf.Sin(u * W * Mathf.PI / 1f));
                 float gy = Mathf.Abs(Mathf.Sin(v * H * Mathf.PI / 1f));
                 if (gx < 0.05f || gy < 0.05f) c = Color.Lerp(c, dark, 0.25f);
@@ -99,8 +99,8 @@ namespace Game.Dev
             }
         }
 
-        // ── 第2层：霜境 ─────────────────────────────────────────────────────
-        // 深蓝底色 + 六边形冰晶格纹 + 高光雪花 + 冰柱纹路
+        // ── Floor 2: Frost Realm ─────────────────────────────────────────────
+        // Deep-blue base + hexagonal ice crystal grid + sparkle highlights + ice pillar streaks
         static void FillFrost(Color[] px)
         {
             var deep    = new Color(0.02f, 0.03f, 0.10f);
@@ -116,7 +116,7 @@ namespace Game.Dev
 
                 Color c = Color.Lerp(deep, midBlue, 1f - v * 0.65f);
 
-                // 三方向正弦模拟六边形格
+                // Three-direction sine waves simulate hexagonal grid
                 float a1 = Mathf.Cos(u * 22f + v * 12.7f);
                 float a2 = Mathf.Cos(u * 11f - v * 19.1f);
                 float a3 = Mathf.Cos((u - v) * 15.4f);
@@ -124,19 +124,19 @@ namespace Game.Dev
                 hex = Mathf.Pow(hex, 3.2f);
                 c = Color.Lerp(c, iceBlue, hex * 0.68f);
 
-                // 高光 sparkle（冰雪反射）
+                // Sparkle highlights (ice and snow reflection)
                 float s = Mathf.Pow(Mathf.Max(0f, Mathf.Sin(u * 41f) * Mathf.Cos(v * 35f)), 5f);
                 c = Color.Lerp(c, white, s * 0.88f);
 
-                // 竖向冰柱暗条
+                // Vertical ice pillar dark streaks
                 float pillar = Mathf.Pow(Mathf.Abs(Mathf.Sin(u * 28f)), 7f);
                 c = Color.Lerp(c, deep, pillar * 0.32f);
 
-                // 水平结冰层纹
+                // Horizontal ice layer strata
                 float layer = Mathf.Pow(Mathf.Abs(Mathf.Sin(v * 18f + u * 4f)), 6f);
                 c = Color.Lerp(c, iceBlue, layer * 0.22f);
 
-                // 地板格缝
+                // Floor tile seams
                 float gx = Mathf.Abs(Mathf.Sin(u * W * Mathf.PI / 1f));
                 float gy = Mathf.Abs(Mathf.Sin(v * H * Mathf.PI / 1f));
                 if (gx < 0.04f || gy < 0.04f) c = Color.Lerp(c, deep, 0.28f);
@@ -145,8 +145,8 @@ namespace Game.Dev
             }
         }
 
-        // ── 第3层：混沌深渊 ─────────────────────────────────────────────────
-        // 极暗紫底 + 极坐标漩涡 + 高频混沌裂缝光线 + 中央虚空
+        // ── Floor 3: Chaos Abyss ─────────────────────────────────────────────
+        // Ultra-dark purple base + polar swirl + high-freq chaos crack rays + central void
         static void FillChaos(Color[] px)
         {
             var void_   = new Color(0.02f, 0.01f, 0.05f);
@@ -164,7 +164,7 @@ namespace Game.Dev
                 float angle = Mathf.Atan2(cy, cx);
                 float dist  = Mathf.Sqrt(cx * cx + cy * cy);
 
-                // 四层漩涡叠加（更丰富）
+                // Four-layer swirl overlay (richer composition)
                 float sw1 = Mathf.Sin(angle * 5f + dist * 22f + 1.0f);
                 float sw2 = Mathf.Cos(angle * 7f - dist * 15f + 2.5f);
                 float sw3 = Mathf.Sin(angle * 3f + dist * 30f);
@@ -175,16 +175,16 @@ namespace Game.Dev
                 if (swirl > 0.60f)
                     c = Color.Lerp(c, magenta, (swirl - 0.60f) * 2.2f);
 
-                // 中央虚空深渊
+                // Central void abyss
                 float voidDepth = 1f - Mathf.Clamp01(dist * 3.2f);
                 c = Color.Lerp(c, void_, voidDepth * 0.42f);
 
-                // 混沌裂缝放射光线（高频）
+                // Chaos crack radial rays (high frequency)
                 float crack1 = Mathf.Pow(Mathf.Abs(Mathf.Sin(angle * 10f + dist * 35f)), 9f);
                 float crack2 = Mathf.Pow(Mathf.Abs(Mathf.Sin(angle * 6f  - dist * 20f + 1.5f)), 8f);
                 c = Color.Lerp(c, magenta, (crack1 + crack2 * 0.5f) * 0.5f);
 
-                // 地板格缝（暗紫色调）
+                // Floor tile seams (dark-purple tint)
                 float gx = Mathf.Abs(Mathf.Sin(u * W * Mathf.PI / 1f));
                 float gy = Mathf.Abs(Mathf.Sin(v * H * Mathf.PI / 1f));
                 if (gx < 0.04f || gy < 0.04f) c = Color.Lerp(c, void_, 0.35f);

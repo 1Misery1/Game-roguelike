@@ -8,7 +8,8 @@ namespace Game.Dev
     // y=0 在贴图底部 = 世界空间底部，缓存后复用
     public static class EnemySprites
     {
-        private static readonly Dictionary<EnemyType, Sprite> _cache = new Dictionary<EnemyType, Sprite>();
+        private static readonly Dictionary<EnemyType, Sprite> _cache     = new Dictionary<EnemyType, Sprite>();
+        private static readonly Dictionary<EnemyType, Sprite> _cacheBack = new Dictionary<EnemyType, Sprite>();
 
         public static Sprite Get(EnemyType type)
         {
@@ -16,6 +17,57 @@ namespace Game.Dev
             s = Build(type);
             _cache[type] = s;
             return s;
+        }
+
+        public static Sprite GetBack(EnemyType type)
+        {
+            if (_cacheBack.TryGetValue(type, out var s)) return s;
+            s = BuildBack(type);
+            _cacheBack[type] = s;
+            return s;
+        }
+
+        private static Sprite BuildBack(EnemyType type)
+        {
+            const int SZ = 32;
+            var px = new Color32[SZ * SZ];
+            DrawBack(type, px, SZ);
+            var tex = new Texture2D(SZ, SZ, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point };
+            tex.SetPixels32(px);
+            tex.Apply();
+            return Sprite.Create(tex, new Rect(0, 0, SZ, SZ), new Vector2(0.5f, 0.5f), SZ / 2);
+        }
+
+        // 绘制各敌人的背面精灵（头部无面部细节，显示背部）
+        private static void DrawBack(EnemyType type, Color32[] px, int sz)
+        {
+            switch (type)
+            {
+                case EnemyType.Skeleton:       DrawSkeletonBack(px, sz);       break;
+                case EnemyType.Soldier:        DrawSoldierBack(px, sz);        break;
+                case EnemyType.Archer:         DrawArcherBack(px, sz);         break;
+                case EnemyType.Bat:            DrawBatBack(px, sz);            break;
+                case EnemyType.ShieldGuard:    DrawShieldGuardBack(px, sz);    break;
+                case EnemyType.PoisonSpider:   DrawPoisonSpiderBack(px, sz);   break;
+                case EnemyType.ShadowAssassin: DrawShadowAssassinBack(px, sz); break;
+                case EnemyType.ExplosiveDemon: DrawExplosiveDemonBack(px, sz); break;
+                case EnemyType.Commander:      DrawCommanderBack(px, sz);      break;
+                case EnemyType.Witch:          DrawWitchBack(px, sz);          break;
+                case EnemyType.PoisonShaman:   DrawPoisonShamanBack(px, sz);   break;
+                case EnemyType.Necromancer:    DrawNecromancerBack(px, sz);    break;
+                case EnemyType.HellGiant:      DrawHellGiantBack(px, sz);      break;
+                case EnemyType.FrostLich:      DrawFrostLichBack(px, sz);      break;
+                case EnemyType.ChaosLord:      DrawChaosLordBack(px, sz);      break;
+                default:
+                    // Fallback: copy front sprite
+                    switch (type)
+                    {
+                        case EnemyType.Skeleton:       DrawSkeleton(px, sz);       break;
+                        case EnemyType.Soldier:        DrawSoldier(px, sz);        break;
+                        default: break;
+                    }
+                    break;
+            }
         }
 
         // Resources/Characters/ 下各敌人对应的子路径
@@ -41,6 +93,18 @@ namespace Game.Dev
 
         private static Sprite Build(EnemyType type)
         {
+            var path = RealSpritePath(type);
+            if (path != null)
+            {
+                var loadedTex = Resources.Load<Texture2D>(path);
+                if (loadedTex != null)
+                {
+                    loadedTex.filterMode = FilterMode.Point;
+                    return Sprite.Create(loadedTex, new Rect(0, 0, loadedTex.width, loadedTex.height),
+                                         new Vector2(0.5f, 0.5f), loadedTex.width / 2f);
+                }
+            }
+
             const int SZ = 32;
             var px = new Color32[SZ * SZ];
             switch (type)
@@ -766,6 +830,410 @@ namespace Game.Dev
             // 虚空滴落
             P(px, sz, 11,  0, Mg); P(px, sz, 21,  0, Rd);
             P(px, sz, 13,  1, Vd); P(px, sz, 19,  1, Vd);
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        // 背面精灵（敌人朝上方移动/背对玩家时显示）
+        // ══════════════════════════════════════════════════════════════
+
+        // 通用：在给定区域绘制"背面脑壳"（无眼睛/面部）
+        static void BackHead(Color32[] px, int sz, int cx, int cy, int rx, int ry, Color32 outline, Color32 fill)
+        {
+            Oval(px, sz, cx, cy, rx + 1, ry + 1, outline);
+            Oval(px, sz, cx, cy, rx, ry, fill);
+        }
+
+        static void DrawSkeletonBack(Color32[] px, int sz)
+        {
+            var O  = C( 30,  28,  22); var Bn = C(215, 210, 185); var Dk = C(155, 148, 118);
+            // 脚骨
+            Rect(px, sz, 13, 1, 14, 4, O); P(px, sz, 13, 2, Bn); P(px, sz, 14, 2, Bn);
+            Rect(px, sz, 18, 1, 19, 4, O); P(px, sz, 18, 2, Bn); P(px, sz, 19, 2, Bn);
+            // 腿骨
+            Rect(px, sz, 13, 4, 14, 12, O); Rect(px, sz, 18, 4, 19, 12, O);
+            P(px, sz, 13, 7, Bn); P(px, sz, 14, 7, Bn); P(px, sz, 18, 7, Bn); P(px, sz, 19, 7, Bn);
+            // 骨盆
+            Rect(px, sz, 12, 12, 20, 14, O); Rect(px, sz, 13, 12, 19, 13, Dk);
+            // 肋骨（背面简化）
+            Rect(px, sz, 12, 14, 20, 22, O);
+            for (int y = 15; y <= 21; y += 2) { P(px, sz, 13, y, Bn); P(px, sz, 19, y, Bn); }
+            Rect(px, sz, 14, 15, 18, 21, Dk);
+            // 手臂骨
+            Rect(px, sz, 10, 16, 12, 22, O); P(px, sz, 11, 18, Bn);
+            Rect(px, sz, 20, 16, 22, 22, O); P(px, sz, 21, 18, Bn);
+            // 脖骨
+            Rect(px, sz, 15, 22, 17, 24, O); P(px, sz, 16, 23, Dk);
+            // 后颅（无眼洞）
+            BackHead(px, sz, 16, 27, 5, 4, O, Bn);
+            P(px, sz, 16, 26, Dk); P(px, sz, 14, 27, Dk); P(px, sz, 18, 27, Dk);
+        }
+
+        static void DrawSoldierBack(Color32[] px, int sz)
+        {
+            var O  = C( 38,  50,  28); var Ar = C( 85, 108,  60); var Hl = C(125, 148, 92);
+            var Sk = C(180, 148, 108);
+            // 靴
+            Rect(px, sz, 12, 1, 15, 4, O); Rect(px, sz, 17, 1, 20, 4, O);
+            Rect(px, sz, 13, 1, 14, 3, C(60,70,40)); Rect(px, sz, 18, 1, 19, 3, C(60,70,40));
+            // 腿甲
+            Rect(px, sz, 12, 4, 15, 11, O); Rect(px, sz, 13, 5, 14, 10, Ar);
+            Rect(px, sz, 17, 4, 20, 11, O); Rect(px, sz, 18, 5, 19, 10, Ar);
+            // 腰带
+            Rect(px, sz, 11, 11, 21, 13, O); Rect(px, sz, 12, 12, 20, 12, C(80,65,25));
+            // 背甲
+            Rect(px, sz, 10, 13, 22, 22, O);
+            Rect(px, sz, 11, 14, 21, 21, Ar);
+            Line(px, sz, 16, 14, 16, 21, O);
+            Line(px, sz, 12, 20, 12, 15, Hl); Line(px, sz, 20, 20, 20, 15, O);
+            // 手臂
+            Rect(px, sz, 9, 15, 11, 22, O); P(px, sz, 10, 17, Ar);
+            Rect(px, sz, 21, 15, 23, 22, O); P(px, sz, 22, 17, Ar);
+            // 肩
+            Circle(px, sz, 10, 22, 2, O); Circle(px, sz, 22, 22, 2, O);
+            // 衣领背
+            Rect(px, sz, 14, 22, 18, 24, O); Rect(px, sz, 15, 22, 17, 23, Ar);
+            // 头盔后脑
+            Rect(px, sz, 11, 24, 21, 31, O);
+            Rect(px, sz, 12, 24, 20, 30, Ar);
+            Rect(px, sz, 13, 29, 19, 31, Hl);
+        }
+
+        static void DrawArcherBack(Color32[] px, int sz)
+        {
+            var O  = C( 35,  62,  20); var Lv = C( 72, 125,  45); var Ho = C( 30,  55,  15);
+            var Qv = C( 90,  58,  22); var Ar = C(175, 178, 182);
+            // 靴、腿
+            Rect(px, sz, 12, 1, 15, 4, O); Rect(px, sz, 17, 1, 20, 4, O);
+            Rect(px, sz, 12, 4, 15, 11, O); Rect(px, sz, 13, 5, 14, 10, Lv);
+            Rect(px, sz, 17, 4, 20, 11, O); Rect(px, sz, 18, 5, 19, 10, Lv);
+            Rect(px, sz, 11, 11, 21, 13, O);
+            // 背上箭袋
+            Rect(px, sz, 20, 9, 23, 20, O); Rect(px, sz, 21, 10, 22, 19, Qv);
+            P(px, sz, 21, 19, Ar); P(px, sz, 22, 19, Ar); P(px, sz, 21, 20, Ar);
+            // 背甲
+            Rect(px, sz, 11, 13, 21, 22, O); Rect(px, sz, 12, 14, 20, 21, Lv);
+            Line(px, sz, 16, 14, 16, 21, O);
+            // 手臂
+            Rect(px, sz, 9, 14, 11, 22, O); Rect(px, sz, 21, 14, 23, 22, O);
+            // 衣领背
+            Rect(px, sz, 14, 22, 18, 24, O);
+            // 兜帽后脑
+            Rect(px, sz, 11, 23, 21, 31, O);
+            Rect(px, sz, 12, 23, 20, 30, Ho);
+        }
+
+        static void DrawBatBack(Color32[] px, int sz)
+        {
+            var O  = C( 22,  12,  35); var Bd = C( 70,  38, 105); var Wg = C( 52,  28,  78);
+            var Er = C(185,  80, 100);
+            // 蝙蝠翼（从后看与正面相同，对称）
+            Oval(px, sz,  6, 18, 8, 5, O); Oval(px, sz,  6, 18, 7, 4, Wg);
+            Oval(px, sz, 26, 18, 8, 5, O); Oval(px, sz, 26, 18, 7, 4, Wg);
+            // 翅膀纹理
+            Line(px, sz,  6, 14,  6, 22, O); Line(px, sz, 26, 14, 26, 22, O);
+            // 身体
+            Oval(px, sz, 16, 18, 5, 6, O); Oval(px, sz, 16, 18, 4, 5, Bd);
+            // 后背耳朵（尖耳从后可见）
+            Rect(px, sz, 13, 24, 15, 27, O); Rect(px, sz, 14, 24, 14, 26, Er);
+            Rect(px, sz, 17, 24, 19, 27, O); Rect(px, sz, 18, 24, 18, 26, Er);
+            // 后脑
+            BackHead(px, sz, 16, 22, 4, 3, O, Bd);
+        }
+
+        static void DrawShieldGuardBack(Color32[] px, int sz)
+        {
+            var O  = C( 25,  38,  65); var Bl = C( 55,  90, 165); var Hl = C(110, 155, 215);
+            var Sh = C( 45,  72, 140); var M  = C(155, 160, 172);
+            // 靴、腿
+            Rect(px, sz, 11, 1, 15, 4, O); Rect(px, sz, 17, 1, 21, 4, O);
+            Rect(px, sz, 11, 4, 15, 11, O); Rect(px, sz, 12, 5, 14, 10, Bl);
+            Rect(px, sz, 17, 4, 21, 11, O); Rect(px, sz, 18, 5, 20, 10, Bl);
+            Rect(px, sz, 10, 11, 22, 13, O);
+            // 背甲（宽厚）
+            Rect(px, sz,  9, 13, 23, 22, O);
+            Rect(px, sz, 10, 14, 22, 21, Bl);
+            Line(px, sz, 16, 14, 16, 21, Sh);
+            Line(px, sz, 11, 20, 11, 15, Hl);
+            // 手臂
+            Rect(px, sz, 8, 15, 10, 22, O); Rect(px, sz, 22, 15, 24, 22, O);
+            Circle(px, sz,  9, 22, 3, O); Circle(px, sz,  9, 22, 2, Sh);
+            Circle(px, sz, 23, 22, 3, O); Circle(px, sz, 23, 22, 2, Sh);
+            // 衣领背
+            Rect(px, sz, 14, 22, 18, 24, O); Rect(px, sz, 15, 22, 17, 23, Sh);
+            // 头盔后脑
+            Rect(px, sz, 11, 24, 21, 31, O);
+            Rect(px, sz, 12, 24, 20, 30, Bl);
+            Rect(px, sz, 14, 30, 18, 31, M);
+        }
+
+        static void DrawPoisonSpiderBack(Color32[] px, int sz)
+        {
+            var O  = C( 12,  38,   8); var Gn = C( 38, 108,  22); var Lm = C( 88, 188,  45);
+            // 蜘蛛腿（8条，背面看略微不同角度）
+            for (int i = 0; i < 4; i++)
+            {
+                int lx = 8 + i * 2, rx = 24 - i * 2;
+                int ly = 10 + i * 3, ry = 10 + i * 3;
+                Line(px, sz,  8, ly,  8 + i, ly - 3, O);
+                Line(px, sz, 24, ry, 24 - i, ry - 3, O);
+            }
+            Line(px, sz,  8, 10, 11, 15, O); Line(px, sz,  8, 16, 11, 21, O);
+            Line(px, sz, 24, 10, 21, 15, O); Line(px, sz, 24, 16, 21, 21, O);
+            Line(px, sz,  7, 13, 10, 17, O); Line(px, sz, 25, 13, 22, 17, O);
+            Line(px, sz,  7, 19, 10, 23, O); Line(px, sz, 25, 19, 22, 23, O);
+            // 腹部（背面，无正面纹路）
+            Oval(px, sz, 16, 14, 8, 6, O); Oval(px, sz, 16, 14, 7, 5, Gn);
+            P(px, sz, 16, 14, Lm);
+            // 头部（背面，无眼睛）
+            Circle(px, sz, 16, 22, 4, O); Circle(px, sz, 16, 22, 3, Gn);
+        }
+
+        static void DrawShadowAssassinBack(Color32[] px, int sz)
+        {
+            var O  = C( 12,   6,  20); var Sh = C( 38,  18,  62); var Ac = C( 88,  55, 138);
+            var Bl = C(155, 115, 188);
+            // 靴、腿（暗色）
+            Rect(px, sz, 12, 1, 15, 4, O); Rect(px, sz, 17, 1, 20, 4, O);
+            Rect(px, sz, 12, 4, 15, 11, O); Rect(px, sz, 13, 5, 14, 10, Sh);
+            Rect(px, sz, 17, 4, 20, 11, O); Rect(px, sz, 18, 5, 19, 10, Sh);
+            Rect(px, sz, 11, 11, 21, 13, O);
+            // 暗影斗篷（背面宽）
+            Rect(px, sz, 10, 13, 22, 23, O);
+            Oval(px, sz, 16, 18, 7, 5, Sh);
+            Line(px, sz, 16, 13, 16, 22, O);
+            // 手臂（隐于斗篷）
+            Rect(px, sz, 9, 15, 11, 22, O); Rect(px, sz, 21, 15, 23, 22, O);
+            // 斗篷高光
+            P(px, sz, 13, 16, Ac); P(px, sz, 19, 16, Ac);
+            P(px, sz, 12, 20, Bl); P(px, sz, 20, 20, Bl);
+            // 兜帽后脑
+            Circle(px, sz, 16, 26, 6, O); Circle(px, sz, 16, 26, 5, Sh);
+            Circle(px, sz, 16, 26, 3, O);
+        }
+
+        static void DrawExplosiveDemonBack(Color32[] px, int sz)
+        {
+            var O  = C( 65,  18,   5); var Rd = C(185,  75,  22); var Or = C(225, 130,  38);
+            var Ey = C(255, 200,  50);
+            // 靴、腿
+            Rect(px, sz, 12, 1, 15, 4, O); Rect(px, sz, 17, 1, 20, 4, O);
+            Rect(px, sz, 12, 4, 15, 11, O); Rect(px, sz, 13, 5, 14, 10, Rd);
+            Rect(px, sz, 17, 4, 20, 11, O); Rect(px, sz, 18, 5, 19, 10, Rd);
+            Rect(px, sz, 11, 11, 21, 13, O);
+            // 背部（炎纹）
+            Rect(px, sz, 10, 13, 22, 22, O);
+            Oval(px, sz, 16, 17, 6, 5, Rd);
+            P(px, sz, 16, 17, Or); P(px, sz, 14, 15, Or); P(px, sz, 18, 15, Or);
+            // 手臂
+            Rect(px, sz, 8, 15, 11, 22, O); Rect(px, sz, 21, 15, 24, 22, O);
+            // 后背小角
+            P(px, sz, 13, 24, Or); P(px, sz, 19, 24, Or);
+            // 后脑（无眼）
+            BackHead(px, sz, 16, 26, 4, 4, O, Rd);
+            // 头顶炎光
+            P(px, sz, 16, 31, Ey); P(px, sz, 14, 30, Ey); P(px, sz, 18, 30, Ey);
+        }
+
+        static void DrawCommanderBack(Color32[] px, int sz)
+        {
+            var O  = C( 65,  38,   8); var Gd = C(188, 138,  35); var Hl = C(228, 192,  88);
+            var Rd = C(165,  35,  22);
+            // 靴、腿（金色+红色）
+            Rect(px, sz, 11, 1, 15, 4, O); Rect(px, sz, 17, 1, 21, 4, O);
+            Rect(px, sz, 11, 4, 15, 11, O); Rect(px, sz, 12, 5, 14, 10, Gd);
+            Rect(px, sz, 17, 4, 21, 11, O); Rect(px, sz, 18, 5, 20, 10, Gd);
+            Rect(px, sz, 10, 11, 22, 13, O);
+            // 背甲（将军，宽肩）
+            Rect(px, sz,  8, 13, 24, 22, O);
+            Rect(px, sz,  9, 14, 23, 21, Gd);
+            Line(px, sz, 16, 14, 16, 21, O);
+            Line(px, sz,  9, 20,  9, 15, Hl); Line(px, sz, 23, 20, 23, 15, O);
+            // 披风（红色）
+            Oval(px, sz,  7, 18, 4, 6, O); Oval(px, sz,  7, 18, 3, 5, Rd);
+            Oval(px, sz, 25, 18, 4, 6, O); Oval(px, sz, 25, 18, 3, 5, Rd);
+            // 手臂
+            Rect(px, sz,  7, 15, 10, 22, O); Rect(px, sz, 22, 15, 25, 22, O);
+            // 衣领
+            Rect(px, sz, 14, 22, 18, 24, O); Rect(px, sz, 15, 22, 17, 23, Gd);
+            // 将盔后脑
+            Rect(px, sz, 11, 24, 21, 31, O);
+            Rect(px, sz, 12, 24, 20, 30, Gd);
+            Rect(px, sz, 14, 30, 18, 31, Hl);
+        }
+
+        static void DrawWitchBack(Color32[] px, int sz)
+        {
+            var O  = C( 28,   8,  45); var Rb = C( 95,  32, 158); var Ht = C( 38,  10,  68);
+            var Lk = C(138,  62, 208);
+            // 裙摆（底宽）
+            for (int y = 2; y <= 11; y++)
+            {
+                int hw = 4 + (12 - y);
+                Rect(px, sz, 16 - hw, y, 16 + hw, y, O);
+                Rect(px, sz, 16 - hw + 1, y, 16 + hw - 1, y, Rb);
+            }
+            // 背袍身
+            Rect(px, sz, 11, 12, 21, 22, O);
+            Oval(px, sz, 16, 17, 5, 5, Rb);
+            Line(px, sz, 16, 12, 16, 22, O);
+            P(px, sz, 13, 15, Lk); P(px, sz, 19, 15, Lk);
+            // 手臂
+            Rect(px, sz, 9, 14, 12, 22, O); Rect(px, sz, 20, 14, 23, 22, O);
+            // 衣领
+            Rect(px, sz, 14, 22, 18, 24, O);
+            // 巫师帽背面（锥形）
+            P(px, sz, 16, 31, Ht); Rect(px, sz, 15, 30, 17, 31, Ht);
+            Rect(px, sz, 14, 28, 18, 30, Ht);
+            Rect(px, sz, 13, 26, 19, 28, Ht);
+            Rect(px, sz, 10, 24, 22, 26, O); Rect(px, sz, 11, 24, 21, 25, Ht);
+            // 头部后脑（无面）
+            Oval(px, sz, 16, 23, 4, 2, O); Oval(px, sz, 16, 23, 3, 1, Rb);
+        }
+
+        static void DrawPoisonShamanBack(Color32[] px, int sz)
+        {
+            var O  = C( 18,  50,  10); var Gn = C( 48, 130,  30); var Lm = C( 98, 195,  55);
+            var To = C( 52,  88,  20);
+            // 下摆
+            for (int y = 1; y <= 10; y++)
+            {
+                int hw = 3 + (11 - y);
+                Rect(px, sz, 16 - hw, y, 16 + hw, y, O);
+                Rect(px, sz, 16 - hw + 1, y, 16 + hw - 1, y, Gn);
+            }
+            // 背袍
+            Rect(px, sz, 11, 11, 21, 22, O);
+            Oval(px, sz, 16, 16, 5, 6, Gn);
+            P(px, sz, 16, 16, Lm);
+            // 手臂
+            Rect(px, sz, 9, 13, 12, 22, O); Rect(px, sz, 20, 13, 23, 22, O);
+            // 图腾背面
+            Rect(px, sz, 24, 6, 26, 20, To); Circle(px, sz, 25, 21, 3, O); Circle(px, sz, 25, 21, 2, Lm);
+            // 头部后脑（羽饰）
+            BackHead(px, sz, 16, 25, 4, 3, O, Gn);
+            P(px, sz, 14, 28, Lm); P(px, sz, 18, 28, Lm);
+            P(px, sz, 12, 29, O);  P(px, sz, 20, 29, O);
+        }
+
+        static void DrawNecromancerBack(Color32[] px, int sz)
+        {
+            var O  = C( 20,   6,  35); var Rb = C( 55,  18,  95); var Pp = C( 85,  32, 138);
+            var Sk = C(175, 155, 205);
+            // 下摆
+            for (int y = 1; y <= 10; y++)
+            {
+                int hw = 4 + (11 - y);
+                Rect(px, sz, 16 - hw, y, 16 + hw, y, O);
+                Rect(px, sz, 16 - hw + 1, y, 16 + hw - 1, y, Rb);
+            }
+            // 背袍
+            Rect(px, sz, 11, 11, 21, 22, O);
+            Oval(px, sz, 16, 16, 5, 6, Rb);
+            Line(px, sz, 16, 11, 16, 22, O);
+            // 手臂（长袖）
+            Rect(px, sz, 8, 14, 11, 22, O); Oval(px, sz, 9, 21, 2, 2, Rb);
+            Rect(px, sz, 21, 14, 24, 22, O); Oval(px, sz, 23, 21, 2, 2, Rb);
+            // 衣领
+            Rect(px, sz, 14, 22, 18, 24, O);
+            // 头部（骷髅巾帽后脑）
+            Rect(px, sz, 11, 24, 21, 31, O);
+            Rect(px, sz, 12, 24, 20, 30, Rb);
+            // 灵魂纹（背面）
+            P(px, sz, 14, 27, Sk); P(px, sz, 18, 27, Sk);
+            P(px, sz, 16, 29, Pp);
+        }
+
+        static void DrawHellGiantBack(Color32[] px, int sz)
+        {
+            var O  = C( 48,   8,   5); var Rd = C(155,  35,  18); var Dr = C(105,  22,  10);
+            var Lv = C(255, 120,  30);
+            // 脚（大型）
+            Rect(px, sz, 8, 1, 14, 5, O); Rect(px, sz, 9, 1, 13, 4, Rd);
+            Rect(px, sz, 18, 1, 24, 5, O); Rect(px, sz, 19, 1, 23, 4, Rd);
+            // 腿（粗壮）
+            Rect(px, sz, 8, 5, 14, 13, O); Rect(px, sz, 9, 6, 13, 12, Rd);
+            Rect(px, sz, 18, 5, 24, 13, O); Rect(px, sz, 19, 6, 23, 12, Rd);
+            // 腰带
+            Rect(px, sz, 7, 13, 25, 15, O); Rect(px, sz, 8, 13, 24, 14, Dr);
+            // 背部（宽厚）
+            Rect(px, sz,  5, 15, 27, 24, O);
+            Rect(px, sz,  6, 16, 26, 23, Rd);
+            Line(px, sz, 16, 16, 16, 23, O);
+            P(px, sz, 11, 19, Lv); P(px, sz, 21, 19, Lv);
+            // 手臂（粗大）
+            Rect(px, sz,  3, 17, 6, 24, O); Rect(px, sz,  4, 18, 5, 23, Rd);
+            Rect(px, sz, 26, 17, 29, 24, O); Rect(px, sz, 27, 18, 28, 23, Rd);
+            // 肩甲
+            Circle(px, sz,  5, 23, 4, O); Circle(px, sz,  5, 23, 3, Dr);
+            Circle(px, sz, 27, 23, 4, O); Circle(px, sz, 27, 23, 3, Dr);
+            // 后颈
+            Rect(px, sz, 13, 24, 19, 26, O); Rect(px, sz, 14, 24, 18, 25, Rd);
+            // 头部（大型，无脸）
+            Rect(px, sz,  9, 26, 23, 31, O);
+            Rect(px, sz, 10, 26, 22, 31, Rd);
+            Rect(px, sz, 12, 30, 20, 31, Dr);
+        }
+
+        static void DrawFrostLichBack(Color32[] px, int sz)
+        {
+            var O  = C( 18,  38,  70); var Ic = C( 80, 158, 225); var Wh = C(215, 235, 255);
+            var Gw = C( 45,  95, 165);
+            // 下摆（冰晶裙）
+            for (int y = 1; y <= 11; y++)
+            {
+                int hw = 3 + (12 - y);
+                Rect(px, sz, 16 - hw, y, 16 + hw, y, O);
+                Rect(px, sz, 16 - hw + 1, y, 16 + hw - 1, y, Ic);
+                if (y % 3 == 0) { P(px, sz, 16 - hw, y, Wh); P(px, sz, 16 + hw, y, Wh); }
+            }
+            // 背袍
+            Rect(px, sz, 10, 12, 22, 22, O);
+            Oval(px, sz, 16, 17, 6, 5, Ic);
+            // 冰晶背纹
+            P(px, sz, 16, 17, Wh); P(px, sz, 13, 14, Wh); P(px, sz, 19, 14, Wh);
+            // 手臂（幽灵感）
+            Rect(px, sz,  8, 14, 11, 22, O); Oval(px, sz,  9, 21, 2, 2, Ic);
+            Rect(px, sz, 21, 14, 24, 22, O); Oval(px, sz, 23, 21, 2, 2, Ic);
+            // 头骨后脑
+            Rect(px, sz, 11, 22, 21, 31, O);
+            Oval(px, sz, 16, 27, 5, 5, Ic);
+            Rect(px, sz, 13, 29, 19, 31, O); Rect(px, sz, 14, 29, 18, 30, Gw);
+            // 冰冠（背面）
+            P(px, sz, 16, 31, Wh); P(px, sz, 14, 31, Ic); P(px, sz, 18, 31, Ic);
+        }
+
+        static void DrawChaosLordBack(Color32[] px, int sz)
+        {
+            var O  = C( 30,   6,  48); var Vd = C( 88,  18, 155); var Mg = C(148,  38, 225);
+            var Gd = C(195, 148,  35);
+            // 脚、腿（宽）
+            Rect(px, sz, 9, 1, 14, 5, O); Rect(px, sz, 10, 1, 13, 4, Vd);
+            Rect(px, sz, 18, 1, 23, 5, O); Rect(px, sz, 19, 1, 22, 4, Vd);
+            Rect(px, sz, 9, 5, 14, 13, O); Rect(px, sz, 10, 6, 13, 12, Vd);
+            Rect(px, sz, 18, 5, 23, 13, O); Rect(px, sz, 19, 6, 22, 12, Vd);
+            // 腰甲
+            Rect(px, sz, 8, 13, 24, 15, O); Rect(px, sz, 9, 13, 23, 14, C(55,10,95));
+            // 背甲（宽大）
+            Rect(px, sz,  6, 15, 26, 23, O);
+            Oval(px, sz, 16, 19, 9, 5, Vd);
+            Line(px, sz, 16, 15, 16, 23, O);
+            P(px, sz, 11, 18, Mg); P(px, sz, 21, 18, Mg);
+            // 混沌徽记（背面发光）
+            Circle(px, sz, 16, 19, 2, O); Circle(px, sz, 16, 19, 1, Mg);
+            // 手臂（大型）
+            Rect(px, sz,  4, 17, 7, 24, O); Rect(px, sz,  5, 18, 6, 23, Vd);
+            Rect(px, sz, 25, 17, 28, 24, O); Rect(px, sz, 26, 18, 27, 23, Vd);
+            // 肩甲
+            Circle(px, sz,  6, 23, 4, O); Circle(px, sz,  6, 23, 3, Vd);
+            Circle(px, sz, 26, 23, 4, O); Circle(px, sz, 26, 23, 3, Vd);
+            // 后颈
+            Rect(px, sz, 13, 23, 19, 25, O); Rect(px, sz, 14, 23, 18, 24, Vd);
+            // 头部（混沌角冠，背面）
+            Rect(px, sz, 10, 25, 22, 31, O);
+            Oval(px, sz, 16, 28, 6, 4, Vd);
+            // 混沌角（背面）
+            Line(px, sz, 13, 31, 11, 31, Mg); Line(px, sz, 19, 31, 21, 31, Mg);
+            P(px, sz, 16, 31, Gd);
         }
     }
 }
