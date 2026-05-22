@@ -72,7 +72,7 @@ TextureImporter:
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 1
+    textureCompression: 0
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -108,54 +108,12 @@ TextureImporter:
     forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
-    sprites:
-  - serializedVersion: 2
-    name: PoisonSpider_00
-    rect:
-      serializedVersion: 2
-      x: 0
-      y: 0
-      width: 80
-      height: 48
-    alignment: 0
-    pivot: {x: 0.5, y: 0.5}
-    border: {x: 0, y: 0, z: 0, w: 0}
+    sprites: []
     outline: []
     physicsShape: []
-    tessellationDetail: -1
-    bones: []
-    spriteID: 209ae66f6881415cb8162c0c39757cd3
-    internalID: 1
-    vertices: []
-    indices: 
-    edges: []
-    weights: []
-  - serializedVersion: 2
-    name: PoisonSpider_01
-    rect:
-      serializedVersion: 2
-      x: 80
-      y: 0
-      width: 80
-      height: 48
-    alignment: 0
-    pivot: {x: 0.5, y: 0.5}
-    border: {x: 0, y: 0, z: 0, w: 0}
-    outline: []
-    physicsShape: []
-    tessellationDetail: -1
     bones: []
     spriteID: 4f9bda77e4db4e5289ce8952d6a2e2cc
     internalID: 2
-    vertices: []
-    indices: 
-    edges: []
-    weights: []
-    outline: []
-    physicsShape: []
-    bones: []
-    spriteID: 5e97eb03825dee720800000000000000
-    internalID: 0
     vertices: []
     indices: 
     edges: []

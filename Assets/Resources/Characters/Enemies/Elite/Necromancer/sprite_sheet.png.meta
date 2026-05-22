@@ -72,7 +72,7 @@ TextureImporter:
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 1
+    textureCompression: 0
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -108,42 +108,9 @@ TextureImporter:
     forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
-    sprites:
-  - serializedVersion: 2
-    name: Necromancer_00
-    rect:
-      serializedVersion: 2
-      x: 0
-      y: 0
-      width: 64
-      height: 40
-    alignment: 0
-    pivot: {x: 0.5, y: 0.5}
-    border: {x: 0, y: 0, z: 0, w: 0}
+    sprites: []
     outline: []
     physicsShape: []
-    tessellationDetail: -1
-    bones: []
-    spriteID: 89d2c7cc78124a758418ac61b3872f13
-    internalID: 1
-    vertices: []
-    indices: 
-    edges: []
-    weights: []
-  - serializedVersion: 2
-    name: Necromancer_01
-    rect:
-      serializedVersion: 2
-      x: 64
-      y: 0
-      width: 64
-      height: 40
-    alignment: 0
-    pivot: {x: 0.5, y: 0.5}
-    border: {x: 0, y: 0, z: 0, w: 0}
-    outline: []
-    physicsShape: []
-    tessellationDetail: -1
     bones: []
     spriteID: 8ecc6a1bb0244a93946b2397656b3997
     internalID: 2
@@ -151,39 +118,9 @@ TextureImporter:
     indices: 
     edges: []
     weights: []
-  - serializedVersion: 2
-    name: Necromancer_02
-    rect:
-      serializedVersion: 2
-      x: 128
-      y: 0
-      width: 64
-      height: 40
-    alignment: 0
-    pivot: {x: 0.5, y: 0.5}
-    border: {x: 0, y: 0, z: 0, w: 0}
-    outline: []
-    physicsShape: []
-    tessellationDetail: -1
-    bones: []
-    spriteID: e522ae405e0648b7bb9e72c68e28ce62
-    internalID: 3
-    vertices: []
-    indices:
-    edges: []
-    weights: []
-    outline: []
-    physicsShape: []
-    bones: []
-    spriteID: 5e97eb03825dee720800000000000000
-    internalID: 0
-    vertices: []
-    indices:
-    edges: []
-    weights: []
     secondaryTextures: []
     nameFileIdTable: {}
-  mipmapLimitGroupName:
+  mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
   assetBundleName: 

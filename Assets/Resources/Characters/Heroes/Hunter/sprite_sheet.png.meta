@@ -72,7 +72,7 @@ TextureImporter:
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 1
+    textureCompression: 0
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -108,117 +108,12 @@ TextureImporter:
     forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
-    sprites:
-  - serializedVersion: 2
-    name: Hunter_00
-    rect:
-      serializedVersion: 2
-      x: 0
-      y: 0
-      width: 64
-      height: 64
-    alignment: 0
-    pivot: {x: 0.5, y: 0.5}
-    border: {x: 0, y: 0, z: 0, w: 0}
+    sprites: []
     outline: []
     physicsShape: []
-    tessellationDetail: -1
-    bones: []
-    spriteID: 548c25bcadad415dae494dc85fbfd2d0
-    internalID: 1
-    vertices: []
-    indices: 
-    edges: []
-    weights: []
-  - serializedVersion: 2
-    name: Hunter_01
-    rect:
-      serializedVersion: 2
-      x: 64
-      y: 0
-      width: 64
-      height: 64
-    alignment: 0
-    pivot: {x: 0.5, y: 0.5}
-    border: {x: 0, y: 0, z: 0, w: 0}
-    outline: []
-    physicsShape: []
-    tessellationDetail: -1
     bones: []
     spriteID: 442b002e711b4aeb83af2c0d13a5b7aa
     internalID: 2
-    vertices: []
-    indices: 
-    edges: []
-    weights: []
-  - serializedVersion: 2
-    name: Hunter_02
-    rect:
-      serializedVersion: 2
-      x: 128
-      y: 0
-      width: 64
-      height: 64
-    alignment: 0
-    pivot: {x: 0.5, y: 0.5}
-    border: {x: 0, y: 0, z: 0, w: 0}
-    outline: []
-    physicsShape: []
-    tessellationDetail: -1
-    bones: []
-    spriteID: dd7f5198d4f5456d869c37ba0d50cd24
-    internalID: 3
-    vertices: []
-    indices: 
-    edges: []
-    weights: []
-  - serializedVersion: 2
-    name: Hunter_03
-    rect:
-      serializedVersion: 2
-      x: 192
-      y: 0
-      width: 64
-      height: 64
-    alignment: 0
-    pivot: {x: 0.5, y: 0.5}
-    border: {x: 0, y: 0, z: 0, w: 0}
-    outline: []
-    physicsShape: []
-    tessellationDetail: -1
-    bones: []
-    spriteID: 5b1a01fd5b3d46368dce5f6ea9b1e1c4
-    internalID: 4
-    vertices: []
-    indices: 
-    edges: []
-    weights: []
-  - serializedVersion: 2
-    name: Hunter_04
-    rect:
-      serializedVersion: 2
-      x: 256
-      y: 0
-      width: 64
-      height: 64
-    alignment: 0
-    pivot: {x: 0.5, y: 0.5}
-    border: {x: 0, y: 0, z: 0, w: 0}
-    outline: []
-    physicsShape: []
-    tessellationDetail: -1
-    bones: []
-    spriteID: 38f540e9949e4c67a28f22ccd072e18c
-    internalID: 5
-    vertices: []
-    indices: 
-    edges: []
-    weights: []
-    outline: []
-    physicsShape: []
-    bones: []
-    spriteID: 5e97eb03825dee720800000000000000
-    internalID: 0
     vertices: []
     indices: 
     edges: []
