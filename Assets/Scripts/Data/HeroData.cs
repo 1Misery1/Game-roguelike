@@ -5,7 +5,8 @@ namespace Game.Data
     [CreateAssetMenu(menuName = "Game/Hero", fileName = "Hero_")]
     public class HeroData : ScriptableObject
     {
-        public string heroName;
+        public string heroName;            // 稳定系统键（精灵/初始武器/解锁存档），勿改
+        public string displayName;         // 剧情角色显示名（如「雷昂·铁誓」）
         [TextArea] public string description;
         public Sprite portrait;
         public GameObject prefab;

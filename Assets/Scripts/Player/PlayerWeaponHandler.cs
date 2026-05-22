@@ -1,3 +1,4 @@
+using Game.AI;
 using Game.Combat;
 using Game.Data;
 using Game.Dev;
@@ -16,6 +17,13 @@ namespace Game.Player
         public event System.Action OnNormalAttackFired;
         public event System.Action OnSkillFired;
         public float BonusDamageMultiplier { get; set; } = 1f;
+
+        // Set by GameBootstrap after hero selection; drives class-weapon bonus and backstab
+        public HeroPassiveType HeroPassive { get; set; } = HeroPassiveType.None;
+
+        // Bow charge state (queried by PlayerAnimator for hold animation)
+        public bool  IsChargingBow { get; private set; }
+        private const float MaxChargeTime = 1.5f;
 
         private CharacterStats _stats;
         private Health         _health;
@@ -153,6 +161,61 @@ namespace Game.Player
             }
         }
 
+        // ── 弓蓄力系统 ────────────────────────────────────────────────
+
+        public void StartBowCharge()
+        {
+            IsChargingBow = true;
+            _anim?.StartBowCharge();
+        }
+
+        public void CancelBowCharge()
+        {
+            IsChargingBow = false;
+            _anim?.StopBowCharge();
+        }
+
+        // 释放蓄力箭矢；chargeTime 0~MaxChargeTime → 1x~2.5x 伤害倍率
+        public bool TryFireCharged(float chargeTime, Vector2 aimDir)
+        {
+            IsChargingBow = false;
+            _anim?.StopBowCharge();
+
+            var weapon = ActiveWeapon;
+            if (weapon?.Data?.category != WeaponCategory.Bow) return false;
+
+            float atkSpeed = weapon.Data.attackSpeed * Mathf.Max(_stats.Get(StatType.AttackSpeed), 0.1f);
+            if (Time.time < _lastAttackTime + 1f / atkSpeed) return false;
+            _lastAttackTime = Time.time;
+
+            float chargeRatio = Mathf.Clamp01(chargeTime / MaxChargeTime);
+            float chargeMul   = Mathf.Lerp(1f, 2.5f, chargeRatio);
+            float classBonus  = HeroPassive == HeroPassiveType.EagleEye ? 1.25f : 1f;
+
+            float bonusMul = BonusDamageMultiplier;
+            BonusDamageMultiplier = 1f;
+
+            if (weapon.Data.hpCostPerAttack > 0f && _health != null)
+            {
+                float cost = Mathf.Min(weapon.Data.hpCostPerAttack, _health.Current - 1f);
+                if (cost > 0f)
+                    _health.TakeDamage(new DamageInfo { Amount = cost, Type = DamageType.True, Source = gameObject });
+            }
+
+            float damage = (weapon.EffectiveDamage + _stats.Get(StatType.Attack)) * bonusMul * classBonus * chargeMul;
+            bool isCrit = Random.value < _stats.Get(StatType.CritRate);
+            if (isCrit) damage *= _stats.Get(StatType.CritDamage);
+
+            RangedAttack(damage, aimDir, weapon.Data.attackRange, weapon.Data.damageType, isCrit);
+            if (weapon.Data.lifeStealRate > 0f) _health?.Heal(damage * weapon.Data.lifeStealRate);
+
+            _anim?.PlayAttack(WeaponCategory.Bow, aimDir);
+            OnNormalAttackFired?.Invoke();
+            return true;
+        }
+
+        // ── 普通攻击执行 ──────────────────────────────────────────────
+
         private void ExecuteNormalAttack(WeaponInstance weapon, Vector2 aimDir, float bonusMul = 1f)
         {
             // HP drain (耗血武器) — 保证不低于1点血量
@@ -163,17 +226,29 @@ namespace Game.Player
                     _health.TakeDamage(new DamageInfo { Amount = cost, Type = DamageType.True, Source = gameObject });
             }
 
-            float damage = (weapon.EffectiveDamage + _stats.Get(StatType.Attack)) * bonusMul;
+            // 职业-武器专项加成：法师用法杖 +30%，猎人用弓 +25%
+            float classBonus = 1f;
+            if      (HeroPassive == HeroPassiveType.ManaAmplification && weapon.Data.category == WeaponCategory.Staff)
+                classBonus = 1.3f;
+            else if (HeroPassive == HeroPassiveType.EagleEye          && weapon.Data.category == WeaponCategory.Bow)
+                classBonus = 1.25f;
+
+            float damage = (weapon.EffectiveDamage + _stats.Get(StatType.Attack)) * bonusMul * classBonus;
             bool isCrit = Random.value < _stats.Get(StatType.CritRate);
             if (isCrit) damage *= _stats.Get(StatType.CritDamage);
             var type = weapon.Data.damageType;
+
+            // 背刺：游侠(ComboStrike)固有；匕首类；标有backstabBonus的武器
+            bool canBackstab = HeroPassive == HeroPassiveType.ComboStrike
+                || weapon.Data.category == WeaponCategory.Dagger
+                || weapon.Data.backstabBonus;
 
             switch (weapon.Data.category)
             {
                 case WeaponCategory.Dagger:
                 case WeaponCategory.Longsword:
                 case WeaponCategory.Greatsword:
-                    MeleeAttack(damage, weapon.Data.attackRange, type, isCrit, aimDir);
+                    MeleeAttack(damage, weapon.Data.attackRange, type, isCrit, aimDir, canBackstab);
                     break;
                 case WeaponCategory.Bow:
                     RangedAttack(damage, aimDir, weapon.Data.attackRange, type, isCrit);
@@ -191,15 +266,23 @@ namespace Game.Player
 
         private static readonly int NonWallMask = ~(1 << 9);
 
-        private void MeleeAttack(float damage, float range, DamageType type, bool isCrit, Vector2 aimDir)
+        private void MeleeAttack(float damage, float range, DamageType type, bool isCrit, Vector2 aimDir,
+            bool canBackstab = false)
         {
             var cols = Physics2D.OverlapCircleAll(transform.position, range, NonWallMask);
             foreach (var col in cols)
             {
                 if (col.gameObject == gameObject) continue;
+                float finalDmg = damage;
+                if (canBackstab)
+                {
+                    var ef = col.GetComponent<EnemyFacing>();
+                    if (ef != null && ef.IsBackExposed((Vector2)transform.position))
+                        finalDmg *= 1.2f;
+                }
                 col.GetComponent<IDamageable>()?.TakeDamage(new DamageInfo
                 {
-                    Amount = damage, Type = type, IsCrit = isCrit, Source = gameObject
+                    Amount = finalDmg, Type = type, IsCrit = isCrit, Source = gameObject
                 });
             }
             // 近战刀光特效：在攻击方向生成扇形弧光

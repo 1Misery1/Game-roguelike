@@ -4,6 +4,7 @@ using Game.Combat;
 using Game.Core;
 using Game.Data;
 using Game.Dungeon;
+using Game.Narrative;
 using Game.Player;
 using Game.Systems;
 using UnityEngine;
@@ -14,16 +15,19 @@ namespace Game.Dev
     /// Supports multi-floor runs with enemy scaling and weapon drops.
     public class GameBootstrap : MonoBehaviour
     {
-        // 静态边界（由 MapBuilder 写入，供敌人AI读取）
+        // Static bounds (written by MapBuilder, read by enemy AI)
         public static float ArenaHalfW { get; private set; } = 16f;
         public static float ArenaHalfH { get; private set; } = 10f;
+
+        // 当前房间是否仍处于战斗中（读取方：可交互物，战斗期间禁止交互）
+        public static bool CombatInProgress { get; private set; }
         [SerializeField] private int   clearReward     = 50;
         [SerializeField] private int   nonBossRoomCount = 4;
         [SerializeField] private int   maxFloor        = 3;
 
-        private enum State { Menu, Playing, FloorComplete, Victory, Death }
+        private enum State { Playing, FloorComplete, Victory, Death }
 
-        // 战斗房间权重（Shop 单独固定插入，Boss 固定最后）
+        // Combat room weights (Shop inserted at a fixed position, Boss always last)
         private static readonly (string type, float weight)[] RoomPool =
         {
             ("Monster", 5.0f),
@@ -37,12 +41,11 @@ namespace Game.Dev
         // Enemy stats multiply by this each floor
         private float FloorScale => 1f + (CurrentFloor - 1) * 0.25f;
 
-        private State _state = State.Menu;
+        private State _state = State.Playing;
         private PersistentState _persistent;
-        private HeroData[] _heroes;
-        private int _selectedHeroIndex = 0;
         private MapBuilder.MapInfo _mapInfo;
         private int _mapVariant;
+        private HeroData _currentHero;
 
         private GameObject _arenaRoot;
         private GameObject _player;
@@ -67,7 +70,7 @@ namespace Game.Dev
             public object     Source   = new object();
             public int        RoomsLeft; // -1 = permanent
             public bool       IsPermanent => RoomsLeft < 0;
-            public System.Action OnRoomEntered; // 每进入房间触发的额外效果
+            public System.Action OnRoomEntered; // extra effect triggered on each room entry
         }
         private readonly List<ActiveTalent> _activeTalents = new List<ActiveTalent>();
         private TalentData _pendingTalent;
@@ -77,100 +80,67 @@ namespace Game.Dev
         //  Startup
         // --------------------------------------------------------------------
 
+        private void Awake()
+        {
+            // 创建摄像机必须在 Awake 完成，否则第一帧渲染前 Unity 会报 "no cameras rendering"
+            EnsureCamera();
+        }
+
         private void Start()
         {
             _persistent    = PersistentState.Load();
-            BuildHeroPool();
-            EnsureStarterUnlocked();
-            EnsureCamera();
             _damageNumbers = gameObject.AddComponent<DamageNumbers>();
-            EnterMenu();
+
+            // 从 GameManager 读取本局英雄；若直接在 Editor 打开此场景则用后备角色
+            var hero = GameManager.Instance != null ? GameManager.Instance.Run.Hero : null;
+            if (hero == null) hero = MakeFallbackHero();
+            StartRun(hero);
         }
 
-        private void BuildHeroPool()
-        {
-            _heroes = new[]
-            {
-                MakeHero("Warrior", "坚韧近战战士，擅长正面对抗。",
-                    100f, 14f, 5f, 5.5f, 1.0f, 0,   new Color(0.4f, 0.85f, 1f),
-                    HeroSkillType.WarCry,        10f, "战吼",
-                    HeroPassiveType.BattlefieldWill,  "战场意志"),
-
-                MakeHero("Ranger", "敏捷游侠，连击可叠加攻击加成。",
-                    70f,  12f, 0f, 8.0f, 1.4f, 30,  new Color(0.8f, 1f,   0.5f),
-                    HeroSkillType.ShadowStep,    6f,  "影步",
-                    HeroPassiveType.ComboStrike,      "连击"),
-
-                MakeHero("Mage", "玻璃炮，技能后下次普攻伤害翻倍。",
-                    55f,  22f, 0f, 5.0f, 0.8f, 60,  new Color(1f,   0.6f, 1f),
-                    HeroSkillType.ArcaneSurge,   8f,  "奥术迸发",
-                    HeroPassiveType.ManaAmplification,"魔力增幅"),
-
-                MakeHero("Paladin", "圣骑士，击杀敌人回复5HP。",
-                    110f, 11f, 6f, 5.0f, 0.9f, 100, new Color(1f,   0.9f, 0.4f),
-                    HeroSkillType.HolyLight,     12f, "神圣之光",
-                    HeroPassiveType.SacredOath,       "神圣誓约"),
-
-                MakeHero("Hunter", "猎人，永久爆击率+20%、爆伤+30%。",
-                    65f,  16f, 0f, 7.0f, 1.2f, 150, new Color(1f,   0.55f, 0.3f),
-                    HeroSkillType.PrecisionShot, 7f,  "精准射击",
-                    HeroPassiveType.EagleEye,         "鹰眼"),
-            };
-        }
-
-        private HeroData MakeHero(
-            string name, string desc,
-            float hp, float atk, float def, float ms, float asp,
-            int cost, Color tint,
-            HeroSkillType skillType, float skillCd, string skillName,
-            HeroPassiveType passiveType, string passiveName)
+        // 编辑器直接运行时的后备英雄（无需经过菜单场景）
+        private static HeroData MakeFallbackHero()
         {
             var h = ScriptableObject.CreateInstance<HeroData>();
-            h.heroName          = name;
-            h.description       = desc;
-            h.baseMaxHP         = hp;
-            h.baseAttack        = atk;
-            h.baseDefense       = def;
-            h.baseMoveSpeed     = ms;
-            h.baseAttackSpeed   = asp;
-            h.unlockCost        = cost;
-            h.tintColor         = tint;
-            h.unlockedByDefault = cost == 0;
-            h.heroSkillType     = skillType;
-            h.heroSkillCooldown = skillCd;
-            h.heroSkillName     = skillName;
-            h.heroPassiveType   = passiveType;
-            h.heroPassiveName   = passiveName;
+            h.heroName          = "Warrior";
+            h.description       = "Fallback hero for editor testing.";
+            h.baseMaxHP         = 100f;
+            h.baseAttack        = 14f;
+            h.baseDefense       = 5f;
+            h.baseMoveSpeed     = 5.5f;
+            h.baseAttackSpeed   = 1.0f;
+            h.unlockCost        = 0;
+            h.tintColor         = new Color(0.4f, 0.85f, 1f);
+            h.unlockedByDefault = true;
+            h.heroSkillType     = HeroSkillType.WarCry;
+            h.heroSkillCooldown = 10f;
+            h.heroSkillName     = "War Cry";
+            h.heroPassiveType   = HeroPassiveType.BattlefieldWill;
+            h.heroPassiveName   = "Battlefield Will";
             return h;
-        }
-
-        private void EnsureStarterUnlocked()
-        {
-            if (_heroes.Length == 0) return;
-            var starter = _heroes[0].heroName;
-            if (!_persistent.IsHeroUnlocked(starter))
-            {
-                _persistent.UnlockedHeroIds.Add(starter);
-                _persistent.Save();
-            }
         }
 
         // --------------------------------------------------------------------
         //  State transitions
         // --------------------------------------------------------------------
 
-        private void EnterMenu()
+        private void ReturnToMenu()
         {
             CleanupRun();
-            _state = State.Menu;
+            if (GameManager.Instance != null)
+                GameManager.Instance.ReturnToMenu();
+            else
+                UnityEngine.SceneManagement.SceneManager.LoadScene(
+                    UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
         }
 
-        private void StartRun()
+        private void RestartRun()
         {
-            if (_selectedHeroIndex < 0 || _selectedHeroIndex >= _heroes.Length) return;
-            var hero = _heroes[_selectedHeroIndex];
-            if (!_persistent.IsHeroUnlocked(hero.heroName)) return;
+            StartRun(_currentHero != null ? _currentHero : MakeFallbackHero());
+        }
 
+        private void StartRun(HeroData hero)
+        {
+            _currentHero = hero;
             CleanupRun();
             _state       = State.Playing;
             RunCoins     = 0;
@@ -187,7 +157,7 @@ namespace Game.Dev
         {
             _state = State.Victory;
             _persistent.AddCurrency(clearReward);
-            _persistent.Save();
+            _persistent.RecordRunResult(CurrentFloor, true, _enemiesKilled, Mathf.RoundToInt(_totalDamageDealt));
         }
 
         private void TriggerFloorComplete()
@@ -210,9 +180,21 @@ namespace Game.Dev
             ShowBanner(GetFloorNarrative());
         }
 
+        private const float DeathReturnDelay = 4f;
+        private float _deathReturnAt;
+
         private void TriggerDeath()
         {
             _state = State.Death;
+            _persistent.RecordRunResult(CurrentFloor, false, _enemiesKilled, Mathf.RoundToInt(_totalDamageDealt));
+            _deathReturnAt = Time.time + DeathReturnDelay;
+            StartCoroutine(AutoReturnToMenuRoutine());
+        }
+
+        private System.Collections.IEnumerator AutoReturnToMenuRoutine()
+        {
+            yield return new WaitForSeconds(DeathReturnDelay);
+            if (_state == State.Death) ReturnToMenu();
         }
 
         private void CleanupRun()
@@ -242,7 +224,7 @@ namespace Game.Dev
             float total      = 0f;
             foreach (var e in pool) total += e.weight;
 
-            // 战斗房间数随层数递增：Floor1=4, Floor2=5, Floor3=6
+            // Combat room count increases per floor: Floor1=4, Floor2=5, Floor3=6
             int combatCount  = nonBossRoomCount + (CurrentFloor - 1);
             var rooms        = new List<string>();
             for (int i = 0; i < combatCount; i++)
@@ -256,10 +238,8 @@ namespace Game.Dev
                 }
             }
 
-            // 商店随机插入（不放在第一个和最后一个位置）
-            int shopPos = rooms.Count > 1 ? Random.Range(1, rooms.Count) : 0;
-            rooms.Insert(shopPos, "Shop");
-
+            // 商店固定在 Boss 前的最后一间，方便进 Boss 前补给
+            rooms.Add("Shop");
             rooms.Add("Boss");
             return rooms;
         }
@@ -268,7 +248,7 @@ namespace Game.Dev
         {
             if (_currentRoomRoot != null) Destroy(_currentRoomRoot);
             _currentRoomIndex = index;
-            // 玩家重置到左侧起点
+            // Reset player to left spawn point
             if (_player != null)
                 _player.transform.position = _mapInfo.PlayerSpawn;
 
@@ -278,10 +258,11 @@ namespace Game.Dev
                 return;
             }
 
-            if (index > 0) OnNewRoomEntered(); // 限时天赋倒计时（第0房不计入）
+            if (index > 0) OnNewRoomEntered(); // timed-talent countdown (room 0 excluded)
 
             var type = _floorRooms[index];
             _currentRoomRoot = new GameObject($"Room_{index}_{type}");
+            CombatInProgress = false; // 新房间默认非战斗；有刷怪波次时由 SpawnRoomWave 置位
             switch (type)
             {
                 case "Monster":    BuildMonsterRoom();    break;
@@ -293,6 +274,91 @@ namespace Game.Dev
                 case "FrostGrave": BuildFrostGraveRoom(); break;
                 case "ChaosRift":  BuildChaosRiftRoom();  break;
             }
+
+            // 阶段二垂直切片：第一层入口房放置剧情交互物「封死的升降门」
+            if (CurrentFloor == 1 && index == 0)
+                SpawnFloor1StoryDoor();
+        }
+
+        // --------------------------------------------------------------------
+        //  剧情交互物（阶段二）
+        // --------------------------------------------------------------------
+
+        /// 第一层「封死的升降门」——发现王国军从外侧封锁地牢
+        private void SpawnFloor1StoryDoor()
+        {
+            if (_currentRoomRoot == null) return;
+
+            var go = new GameObject("StoryDoor_SealedLift");
+            go.transform.SetParent(_currentRoomRoot.transform);
+            go.transform.position   = _mapInfo.PlayerSpawn + new Vector3(3.8f, 2.6f, 0f);
+            go.transform.localScale = new Vector3(1.5f, 2.7f, 1f);
+
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite       = MakeUnitSquareSprite();
+            sr.color        = new Color(0.40f, 0.39f, 0.46f);
+            sr.sortingOrder = 1;
+
+            var col = go.AddComponent<BoxCollider2D>();
+            col.isTrigger = true;
+            col.size      = new Vector2(1.5f, 1.25f);
+
+            var si = go.AddComponent<StoryInteractable>();
+            si.ObjectId      = "f1_sealed_door";
+            si.BuildDialogue = BuildSealedDoorDialogue;
+            si.OnResolved    = OnSealedDoorResolved;
+        }
+
+        // 按当前英雄与累计调查次数生成「封死的升降门」对话
+        private static List<DialogueLine> BuildSealedDoorDialogue(HeroData hero, int count)
+        {
+            var lines = new List<DialogueLine>();
+            bool   isLeon   = hero != null && hero.heroName == "Warrior";
+            string speaker  = hero != null && !string.IsNullOrEmpty(hero.displayName)
+                                  ? hero.displayName : "冒险者";
+            string portrait = hero != null ? hero.heroName : null;
+
+            if (count <= 1)
+            {
+                lines.Add(new DialogueLine("旁白", null,
+                    "一扇巨大的铁门横在升降井前，门上烙着王国的封印。"));
+                lines.Add(new DialogueLine("旁白", null,
+                    "铁门从外侧被锁死——门缝里，凝固着一只烧焦的手印。"));
+                if (isLeon)
+                {
+                    lines.Add(new DialogueLine(speaker, portrait,
+                        "这封印……是王国守卫军的封门术。"));
+                    lines.Add(new DialogueLine(speaker, portrait,
+                        "只有军官才有权下令使用。当年困住下面那些人的不是怪物——是我们的人，从外面锁死了门。"));
+                }
+                else
+                {
+                    lines.Add(new DialogueLine(speaker, portrait,
+                        "门是从外面锁上的。里面的人，根本逃不出来。"));
+                }
+            }
+            else
+            {
+                lines.Add(new DialogueLine("旁白", null,
+                    "你再次贴近冰冷的铁门。门后，仿佛有声音穿过岁月渗了出来——"));
+                lines.Add(new DialogueLine("门后的回声", null,
+                    "「开门！下面还有活人！」"));
+                lines.Add(new DialogueLine("门后的回声", null,
+                    "「命令是封锁。不准开启。」"));
+                if (isLeon)
+                    lines.Add(new DialogueLine(speaker, portrait,
+                        "……这道命令，究竟是谁下的。"));
+            }
+            return lines;
+        }
+
+        private void OnSealedDoorResolved(HeroData hero, int count)
+        {
+            var gm = GameManager.Instance;
+            gm?.Run?.SetStoryFlag("f1_sealed_door_seen");
+            if (hero != null && hero.heroName == "Warrior")
+                gm?.Persistent?.AddTruthFlag("truth_kingdom_sealed_door");
+            ShowBanner("【调查】封死的升降门");
         }
 
         // --------------------------------------------------------------------
@@ -302,7 +368,7 @@ namespace Game.Dev
         private GameObject SpawnRandomNormalEnemy(Vector3 pos, System.Action onDied)
         {
             if (_player == null) return null;
-            // 按楼层主题加权随机选择敌人类型
+            // Weighted random enemy selection by floor theme
             float[] weights = GetFloorEnemyWeights();
             float   total   = 0f;
             foreach (var v in weights) total += v;
@@ -330,16 +396,22 @@ namespace Game.Dev
             return enemy;
         }
 
-        // 通用：挂载视觉回调 + 特殊死亡效果 + 金币/死亡事件
+        // Common: attach visual callbacks + special death effects + coin/death events
         private void RegisterEnemy(GameObject enemy, int baseCoins, System.Action onDied)
         {
-            // 设置物理层，让敌人被实心墙阻挡
+            // Set physics layer so enemies are blocked by solid walls
             enemy.layer = 8;
             var col = enemy.GetComponent<CircleCollider2D>();
             if (col != null) col.isTrigger = false;
             ScaleEnemyStats(enemy, FloorScale);
             AttachVisualCallbacks(enemy);
             AttachSpecialDeathEffect(enemy);
+            // 受击反馈：白闪 + 击退 + 命中停顿 + HP 着色
+            if (enemy.GetComponent<EnemyHitFeedback>() == null)
+                enemy.AddComponent<EnemyHitFeedback>();
+            // 头顶血条
+            if (enemy.GetComponent<EnemyHealthBar>() == null)
+                enemy.AddComponent<EnemyHealthBar>();
             int c  = Mathf.RoundToInt(baseCoins * FloorScale);
             var hp = enemy.GetComponent<Health>();
             hp.OnDamaged += dmg => { _totalDamageDealt += dmg.Amount; };
@@ -348,21 +420,18 @@ namespace Game.Dev
             hp.OnDied += onDied;
         }
 
-        // 受击：白色闪光 + 浮动伤害数字
+        // Hit: floating damage number (flash handled by EnemyHitFeedback)
         private void AttachVisualCallbacks(GameObject enemy)
         {
-            var sr = enemy.GetComponent<SpriteRenderer>();
             var hp = enemy.GetComponent<Health>();
             var tr = enemy.transform;
-            if (sr == null) return;
             hp.OnDamaged += dmg =>
             {
-                StartCoroutine(FlashRoutine(sr, new Color(1f, 0.35f, 0.35f), 0.14f));
                 if (tr != null) DamageNumbers.Instance?.Show(tr.position, dmg.Amount, dmg.IsCrit);
             };
         }
 
-        // 特殊死亡效果（在 Destroy 之前触发，可安全读取 transform）
+        // Special death effect (triggered before Destroy, transform is still valid)
         private void AttachSpecialDeathEffect(GameObject enemy)
         {
             var tag = enemy.GetComponent<EnemyTag>();
@@ -396,7 +465,7 @@ namespace Game.Dev
         {
             foreach (var col in Physics2D.OverlapCircleAll(pos, 3f))
             {
-                if (col.GetComponent<EnemyTag>() != null) continue; // 不伤害其他敌人
+                if (col.GetComponent<EnemyTag>() != null) continue; // don't damage other enemies
                 col.GetComponent<IDamageable>()?.TakeDamage(new DamageInfo
                 {
                     Amount = 40f, Type = DamageType.True, Source = null
@@ -407,19 +476,19 @@ namespace Game.Dev
 
         private void BuildMonsterRoom()
         {
-            ShowBanner("消灭所有敌人 → 三选一武器奖励");
+            ShowBanner("Defeat all enemies → choose one of three weapons");
             MaybeAddAltar();
             SpawnFloorHazards();
             int count = GetRoomEnemyCount();
             SpawnRoomWave(count, () =>
             {
-                ShowBanner("战斗胜利！选择一把武器！");
+                ShowBanner("Victory! Choose a weapon!");
                 DropWeaponChoices();
                 OpenRightDoor();
             });
         }
 
-        // 生成3把武器供玩家选一把，选后全部消失
+        // Spawn 3 weapon choices; all disappear once the player picks one
         private void DropWeaponChoices()
         {
             var offers = GetRandomWeaponOffers(3);
@@ -452,7 +521,7 @@ namespace Game.Dev
                 gos[i]           = go;
             }
 
-            // 选中任何一把时销毁全部选项
+            // Destroy all choices when any one is selected
             for (int i = 0; i < gos.Length; i++)
             {
                 var ped        = gos[i].GetComponent<WeaponShopPedestal>();
@@ -465,7 +534,7 @@ namespace Game.Dev
                     if (handler == null) return;
                     if (TryHandleDuplicateWeapon(chosen, handler)) return;
                     handler.EquipWeapon(chosen, handler.ActiveSlotIndex);
-                    ShowBanner($"已选择: {chosen.ShortName}");
+                    ShowBanner($"Selected: {chosen.ShortName}");
                 };
             }
         }
@@ -473,7 +542,7 @@ namespace Game.Dev
 
         private void BuildTalentRoom()
         {
-            ShowBanner("消灭所有敌人 → 选择一个天赋");
+            ShowBanner("Defeat all enemies → choose a talent");
             MaybeAddAltar();
             SpawnFloorHazards();
             int count = GetRoomEnemyCount();
@@ -483,47 +552,47 @@ namespace Game.Dev
         // (name, desc, stat, op, value, color, roomDuration)  -1 = permanent
         private static readonly (string name, string desc, StatType stat, ModifierOp op, float value, Color color, int rooms)[] TalentPool =
         {
-            // ── 永久天赋 ────────────────────────────────────────────
-            ("强力",   "+20% 攻击力",         StatType.Attack,            ModifierOp.PercentMul, 0.20f, new Color(1f,   0.40f, 0.40f), -1),
-            ("疾风",   "+25% 移动速度",       StatType.MoveSpeed,         ModifierOp.PercentMul, 0.25f, new Color(0.4f, 0.90f, 1f  ), -1),
-            ("活力",   "+50 最大生命",        StatType.MaxHP,             ModifierOp.Flat,       50f,   new Color(1f,   0.90f, 0.30f), -1),
-            ("守护",   "+5 防御",             StatType.Defense,           ModifierOp.Flat,        5f,   new Color(0.4f, 0.70f, 1f  ), -1),
-            ("鹰眼",   "+15% 暴击率",         StatType.CritRate,          ModifierOp.Flat,       0.15f, new Color(1f,   0.85f, 0.20f), -1),
-            ("致命",   "+25% 暴击伤害",       StatType.CritDamage,        ModifierOp.Flat,       0.25f, new Color(1f,   0.50f, 0.10f), -1),
-            ("狂战",   "+15% 攻击速度",       StatType.AttackSpeed,       ModifierOp.PercentMul, 0.15f, new Color(1f,   0.30f, 0.60f), -1),
-            ("奥能",   "+30% 技能强度",       StatType.SkillPower,        ModifierOp.PercentMul, 0.30f, new Color(0.7f, 0.40f, 1f  ), -1),
-            ("敏捷",   "+10% 冷却缩减",       StatType.CooldownReduction, ModifierOp.Flat,       0.10f, new Color(0.5f, 1f,   0.90f), -1),
-            ("财富",   "+30% 金币获取",       StatType.CoinGain,          ModifierOp.PercentMul, 0.30f, new Color(1f,   0.85f, 0.10f), -1),
-            ("铁壁",   "+10 防御",            StatType.Defense,           ModifierOp.Flat,       10f,   new Color(0.3f, 0.60f, 1f  ), -1),
-            ("泰坦",   "+100 最大生命",       StatType.MaxHP,             ModifierOp.Flat,      100f,   new Color(0.9f, 0.40f, 0.40f), -1),
-            ("冲劲",   "+20% 移动速度",       StatType.MoveSpeed,         ModifierOp.PercentMul, 0.20f, new Color(0.3f, 0.95f, 0.50f), -1),
-            ("猛力",   "+30% 攻击力",         StatType.Attack,            ModifierOp.PercentMul, 0.30f, new Color(1f,   0.20f, 0.20f), -1),
-            // ── 永久天赋（扩充）────────────────────────────────────────
-            ("血性",   "+80 最大生命",        StatType.MaxHP,             ModifierOp.Flat,       80f,   new Color(0.9f, 0.30f, 0.30f), -1),
-            ("专注",   "+12% 冷却缩减",       StatType.CooldownReduction, ModifierOp.Flat,       0.12f, new Color(0.4f, 1f,   0.85f), -1),
-            ("灵动",   "+20% 攻击速度",       StatType.AttackSpeed,       ModifierOp.PercentMul, 0.20f, new Color(0.8f, 0.55f, 1f  ), -1),
-            ("战意",   "+35% 暴击伤害",       StatType.CritDamage,        ModifierOp.Flat,       0.35f, new Color(1f,   0.40f, 0.05f), -1),
-            ("铁身",   "+8 防御",             StatType.Defense,           ModifierOp.Flat,        8f,   new Color(0.5f, 0.65f, 1f  ), -1),
-            ("贪财",   "+40% 金币获取",       StatType.CoinGain,          ModifierOp.PercentMul, 0.40f, new Color(1f,   0.90f, 0.05f), -1),
-            ("不屈",   "+150 最大生命",       StatType.MaxHP,             ModifierOp.Flat,      150f,   new Color(0.9f, 0.20f, 0.20f), -1),
-            ("万法",   "+50% 技能强度",       StatType.SkillPower,        ModifierOp.PercentMul, 0.50f, new Color(0.65f,0.30f, 1f  ), -1),
-            ("破天",   "+25% 攻击力",         StatType.Attack,            ModifierOp.PercentMul, 0.25f, new Color(1f,   0.35f, 0.35f), -1),
-            ("神速",   "+35% 移动速度",       StatType.MoveSpeed,         ModifierOp.PercentMul, 0.35f, new Color(0.3f, 0.95f, 1f  ), -1),
-            ("锋芒",   "+20% 暴击率",         StatType.CritRate,          ModifierOp.Flat,       0.20f, new Color(1f,   0.80f, 0.10f), -1),
-            ("神盾",   "+15 防御",            StatType.Defense,           ModifierOp.Flat,       15f,   new Color(0.25f,0.55f, 1f  ), -1),
-            // ── 限时天赋（持续若干个房间后消失）──────────────────────
-            ("爆发",   "+80% 攻击力 (3房)",   StatType.Attack,            ModifierOp.PercentMul, 0.80f, new Color(1f,   0.05f, 0.05f),  3),
-            ("急速",   "+50% 攻速 (3房)",     StatType.AttackSpeed,       ModifierOp.PercentMul, 0.50f, new Color(0.9f, 0.55f, 1f  ),  3),
-            ("护甲",   "+25 防御 (4房)",      StatType.Defense,           ModifierOp.Flat,       25f,   new Color(0.5f, 0.80f, 1f  ),  4),
-            ("暴走",   "+35% 暴击率 (3房)",   StatType.CritRate,          ModifierOp.Flat,       0.35f, new Color(1f,   0.95f, 0.05f),  3),
-            ("血怒",   "+120% 攻击力 (2房)",  StatType.Attack,            ModifierOp.PercentMul, 1.20f, new Color(1f,   0.02f, 0.02f),  2),
-            ("极速",   "+80% 攻速 (2房)",     StatType.AttackSpeed,       ModifierOp.PercentMul, 0.80f, new Color(0.7f, 0.30f, 1f  ),  2),
-            ("魔爆",   "+60% 技能强度 (3房)", StatType.SkillPower,        ModifierOp.PercentMul, 0.60f, new Color(0.55f,0.15f, 1f  ),  3),
-            ("钢壁",   "+50 防御 (2房)",      StatType.Defense,           ModifierOp.Flat,       50f,   new Color(0.4f, 0.75f, 1f  ),  2),
-            // 特殊效果天赋（stat modifier value=0，效果由OnRoomEntered实现）
-            ("生机",   "每进入新房间回复 5% 最大生命值", StatType.MaxHP, ModifierOp.Flat, 0f,   new Color(0.3f, 1f,   0.55f), -1),
-            ("生息",   "每进入新房间回复 10 点生命值",   StatType.MaxHP, ModifierOp.Flat, 0f,   new Color(0.4f, 1f,   0.70f), -1),
-            ("商道",   "每进入新房间获得 8 金币",        StatType.CoinGain, ModifierOp.Flat, 0f, new Color(1f,   0.88f, 0.20f), -1),
+            // ── Permanent talents ───────────────────────────────────
+            ("Power",      "+20% Attack",              StatType.Attack,            ModifierOp.PercentMul, 0.20f, new Color(1f,   0.40f, 0.40f), -1),
+            ("Swift",      "+25% Move Speed",          StatType.MoveSpeed,         ModifierOp.PercentMul, 0.25f, new Color(0.4f, 0.90f, 1f  ), -1),
+            ("Vitality",   "+50 Max HP",               StatType.MaxHP,             ModifierOp.Flat,       50f,   new Color(1f,   0.90f, 0.30f), -1),
+            ("Guard",      "+5 Defense",               StatType.Defense,           ModifierOp.Flat,        5f,   new Color(0.4f, 0.70f, 1f  ), -1),
+            ("Keen Eye",   "+15% Crit Rate",           StatType.CritRate,          ModifierOp.Flat,       0.15f, new Color(1f,   0.85f, 0.20f), -1),
+            ("Lethal",     "+25% Crit Damage",         StatType.CritDamage,        ModifierOp.Flat,       0.25f, new Color(1f,   0.50f, 0.10f), -1),
+            ("Frenzy",     "+15% Attack Speed",        StatType.AttackSpeed,       ModifierOp.PercentMul, 0.15f, new Color(1f,   0.30f, 0.60f), -1),
+            ("Arcane",     "+30% Skill Power",         StatType.SkillPower,        ModifierOp.PercentMul, 0.30f, new Color(0.7f, 0.40f, 1f  ), -1),
+            ("Agility",    "+10% Cooldown Reduction",  StatType.CooldownReduction, ModifierOp.Flat,       0.10f, new Color(0.5f, 1f,   0.90f), -1),
+            ("Fortune",    "+30% Coin Gain",           StatType.CoinGain,          ModifierOp.PercentMul, 0.30f, new Color(1f,   0.85f, 0.10f), -1),
+            ("Iron Wall",  "+10 Defense",              StatType.Defense,           ModifierOp.Flat,       10f,   new Color(0.3f, 0.60f, 1f  ), -1),
+            ("Titan",      "+100 Max HP",              StatType.MaxHP,             ModifierOp.Flat,      100f,   new Color(0.9f, 0.40f, 0.40f), -1),
+            ("Momentum",   "+20% Move Speed",          StatType.MoveSpeed,         ModifierOp.PercentMul, 0.20f, new Color(0.3f, 0.95f, 0.50f), -1),
+            ("Might",      "+30% Attack",              StatType.Attack,            ModifierOp.PercentMul, 0.30f, new Color(1f,   0.20f, 0.20f), -1),
+            // ── Permanent talents (extended) ────────────────────────
+            ("Bloodlust",  "+80 Max HP",               StatType.MaxHP,             ModifierOp.Flat,       80f,   new Color(0.9f, 0.30f, 0.30f), -1),
+            ("Focus",      "+12% Cooldown Reduction",  StatType.CooldownReduction, ModifierOp.Flat,       0.12f, new Color(0.4f, 1f,   0.85f), -1),
+            ("Nimble",     "+20% Attack Speed",        StatType.AttackSpeed,       ModifierOp.PercentMul, 0.20f, new Color(0.8f, 0.55f, 1f  ), -1),
+            ("Battle Will","+35% Crit Damage",         StatType.CritDamage,        ModifierOp.Flat,       0.35f, new Color(1f,   0.40f, 0.05f), -1),
+            ("Iron Body",  "+8 Defense",               StatType.Defense,           ModifierOp.Flat,        8f,   new Color(0.5f, 0.65f, 1f  ), -1),
+            ("Greed",      "+40% Coin Gain",           StatType.CoinGain,          ModifierOp.PercentMul, 0.40f, new Color(1f,   0.90f, 0.05f), -1),
+            ("Unyielding", "+150 Max HP",              StatType.MaxHP,             ModifierOp.Flat,      150f,   new Color(0.9f, 0.20f, 0.20f), -1),
+            ("Omnimagic",  "+50% Skill Power",         StatType.SkillPower,        ModifierOp.PercentMul, 0.50f, new Color(0.65f,0.30f, 1f  ), -1),
+            ("Skybreak",   "+25% Attack",              StatType.Attack,            ModifierOp.PercentMul, 0.25f, new Color(1f,   0.35f, 0.35f), -1),
+            ("Godspeed",   "+35% Move Speed",          StatType.MoveSpeed,         ModifierOp.PercentMul, 0.35f, new Color(0.3f, 0.95f, 1f  ), -1),
+            ("Edge",       "+20% Crit Rate",           StatType.CritRate,          ModifierOp.Flat,       0.20f, new Color(1f,   0.80f, 0.10f), -1),
+            ("Divine Shield","+15 Defense",            StatType.Defense,           ModifierOp.Flat,       15f,   new Color(0.25f,0.55f, 1f  ), -1),
+            // ── Timed talents (expire after N rooms) ─────────────────
+            ("Burst",      "+80% Attack (3 rooms)",    StatType.Attack,            ModifierOp.PercentMul, 0.80f, new Color(1f,   0.05f, 0.05f),  3),
+            ("Haste",      "+50% Atk Speed (3 rooms)", StatType.AttackSpeed,       ModifierOp.PercentMul, 0.50f, new Color(0.9f, 0.55f, 1f  ),  3),
+            ("Armor",      "+25 Defense (4 rooms)",    StatType.Defense,           ModifierOp.Flat,       25f,   new Color(0.5f, 0.80f, 1f  ),  4),
+            ("Rampage",    "+35% Crit Rate (3 rooms)", StatType.CritRate,          ModifierOp.Flat,       0.35f, new Color(1f,   0.95f, 0.05f),  3),
+            ("Berserk",    "+120% Attack (2 rooms)",   StatType.Attack,            ModifierOp.PercentMul, 1.20f, new Color(1f,   0.02f, 0.02f),  2),
+            ("Overdrive",  "+80% Atk Speed (2 rooms)", StatType.AttackSpeed,       ModifierOp.PercentMul, 0.80f, new Color(0.7f, 0.30f, 1f  ),  2),
+            ("Spellstorm", "+60% Skill Power (3 rooms)",StatType.SkillPower,       ModifierOp.PercentMul, 0.60f, new Color(0.55f,0.15f, 1f  ),  3),
+            ("Steel Wall", "+50 Defense (2 rooms)",    StatType.Defense,           ModifierOp.Flat,       50f,   new Color(0.4f, 0.75f, 1f  ),  2),
+            // Special-effect talents (stat modifier value=0, effect implemented in OnRoomEntered)
+            ("Renewal",      "Restore 5% max HP on each new room entry",  StatType.MaxHP,    ModifierOp.Flat, 0f, new Color(0.3f, 1f,   0.55f), -1),
+            ("Regeneration", "Restore 10 HP on each new room entry",      StatType.MaxHP,    ModifierOp.Flat, 0f, new Color(0.4f, 1f,   0.70f), -1),
+            ("Merchant",     "Gain 8 coins on each new room entry",       StatType.CoinGain, ModifierOp.Flat, 0f, new Color(1f,   0.88f, 0.20f), -1),
         };
 
         private (string name, string desc, StatType stat, ModifierOp op, float value, Color color, int rooms)[]
@@ -574,19 +643,19 @@ namespace Game.Dev
         private void BuildCoinRoom()
         {
             int reward = 30 + CurrentFloor * 10;
-            ShowBanner($"消灭所有敌人 → 获得 {reward} 金币");
+            ShowBanner($"Defeat all enemies → earn {reward} coins");
             MaybeAddAltar();
             SpawnFloorHazards();
             int count = GetRoomEnemyCount();
             SpawnRoomWave(count, () =>
             {
                 RunCoins += reward;
-                ShowBanner($"战斗胜利！获得 {reward} 金币！");
+                ShowBanner($"Victory! Earned {reward} coins!");
                 OpenRightDoor();
             });
         }
 
-        // 按稀有度分组的武器工厂（用于商店品质分层）
+        // Weapon factories grouped by rarity (for shop quality tiers)
         private static readonly System.Func<WeaponInstance>[][] WeaponsByRarity =
         {
             new System.Func<WeaponInstance>[] { WeaponLibrary.IronDagger,   WeaponLibrary.IronSword,         WeaponLibrary.IronGreatsword, WeaponLibrary.IronMallet,   WeaponLibrary.WoodenBow,    WeaponLibrary.BoneBow,      WeaponLibrary.WoodStaff    },
@@ -612,14 +681,14 @@ namespace Game.Dev
 
         private void BuildShopRoom()
         {
-            ShowBanner("商店 — 靠近后按 E 购买 (可略过)");
+            ShowBanner("Shop — approach and press E to buy (can skip)");
             OpenRightDoor();
 
             int floorIdx   = Mathf.Clamp(CurrentFloor - 1, 0, ShopRarityTable.Length - 1);
             int[] rarities = ShopRarityTable[floorIdx];
             float priceScale = 1f + (CurrentFloor - 1) * 0.3f;
 
-            // 6 把武器一排
+            // 6 weapons in a row
             for (int i = 0; i < rarities.Length; i++)
             {
                 float x   = -5.5f + i * 2.2f;
@@ -628,7 +697,7 @@ namespace Game.Dev
                 SpawnShopWeaponPedestal(new Vector3(x, 1.5f, 0f), GetWeaponOfRarity(ri), price);
             }
 
-            // 锻造台、天赋台、附魔台 排在下方
+            // Forge, talent, and enchant pedestals in the lower row
             int uses = Mathf.Min(CurrentFloor, 2);
             int forgePrice   = Mathf.RoundToInt((20 + CurrentFloor * 5) * priceScale);
             int enchantPrice = Mathf.RoundToInt((30 + CurrentFloor * 5) * priceScale);
@@ -680,12 +749,12 @@ namespace Game.Dev
                     if (ok)
                     {
                         handler.RefreshWeaponHPBonus(slotIdx);
-                        string verb = isForge ? "锻造" : "附魔";
-                        ShowBanner($"{verb}成功！{w.ShortName}");
+                        string verb = isForge ? "Forged" : "Enchanted";
+                        ShowBanner($"{verb}! {w.ShortName}");
                         return true;
                     }
                 }
-                ShowBanner(isForge ? "所有武器已达最高锻造等级！" : "没有可附魔的武器（需蓝/紫品质）！");
+                ShowBanner(isForge ? "All weapons are already at max forge level!" : "No weapon to enchant (requires Blue/Purple quality)!");
                 return false;
             };
         }
@@ -718,7 +787,7 @@ namespace Game.Dev
                 if (_playerHealth == null) return false;
                 float heal = _playerHealth.Max * 0.40f;
                 _playerHealth.Heal(heal);
-                ShowBanner($"喝下血药！回复 {Mathf.RoundToInt(heal)} 点生命值！");
+                ShowBanner($"Health potion used! Restored {Mathf.RoundToInt(heal)} HP!");
                 return true;
             };
         }
@@ -752,7 +821,7 @@ namespace Game.Dev
                 if (handler == null) return;
                 if (TryHandleDuplicateWeapon(w, handler)) return;
                 handler.EquipWeapon(w, handler.ActiveSlotIndex);
-                ShowBanner($"已购买并装备: {w.ShortName}  (-{price}金币)");
+                ShowBanner($"Purchased and equipped: {w.ShortName}  (-{price} coins)");
             };
         }
 
@@ -781,7 +850,7 @@ namespace Game.Dev
             shop.OnPurchased = t =>
             {
                 ApplyTalentToPlayer(t);
-                ShowBanner($"抽取到天赋：{t.talentName}！");
+                ShowBanner($"Talent drawn: {t.talentName}!");
                 Destroy(go);
             };
         }
@@ -810,10 +879,10 @@ namespace Game.Dev
             }
         }
 
-        // 第一层：地狱巨人 — 岩浆 + 重踏
+        // Floor 1: Hell Giant — lava pools + ground stomp
         private void BuildFloor1Boss()
         {
-            ShowBanner("BOSS — 地狱巨人降临！");
+            ShowBanner("BOSS — Hell Giant descends!");
             var boss   = EnemyFactory.SpawnHellGiant(new Vector3(0f, 2.5f, 0f),
                              _player.transform, _currentRoomRoot.transform, null);
             var bossAI = boss.GetComponent<HellGiantAI>();
@@ -824,20 +893,20 @@ namespace Game.Dev
             RegisterBossEvents(boss);
         }
 
-        // 第二层：霜魂巫妖 — 冰霜新星 + 冰锥齐射
+        // Floor 2: Frost Lich — Frost Nova + ice spike volley
         private void BuildFloor2Boss()
         {
-            ShowBanner("BOSS — 霜魂巫妖出现！当心冰霜！");
+            ShowBanner("BOSS — Frost Lich appears! Beware the frost!");
             var boss = EnemyFactory.SpawnFrostLich(new Vector3(0f, 2.5f, 0f),
                            _player.transform, _currentRoomRoot.transform);
             ScaleEnemyStats(boss, FloorScale);
             RegisterBossEvents(boss);
         }
 
-        // 第三层：混沌领主 — 混沌爆发 + 召唤军团
+        // Floor 3: Chaos Lord — Chaos Burst + summon legion
         private void BuildFloor3Boss()
         {
-            ShowBanner("BOSS — 混沌领主现身！终局之战！");
+            ShowBanner("BOSS — Chaos Lord appears! The final battle!");
             var boss   = EnemyFactory.SpawnChaosLord(new Vector3(0f, 2.5f, 0f),
                              _player.transform, _currentRoomRoot.transform);
             var bossAI = boss.GetComponent<ChaosLordAI>();
@@ -846,21 +915,23 @@ namespace Game.Dev
             RegisterBossEvents(boss);
         }
 
-        // Boss通用事件：受击闪烁、浮动伤害、死亡结算
+        // Boss common events: hit flash, floating damage, death settlement
         private void RegisterBossEvents(GameObject boss)
         {
-            var bossSr = boss.GetComponent<SpriteRenderer>();
             var bossHp = boss.GetComponent<Health>();
             var bossTr = boss.transform;
             _bossHealth = bossHp;
             _bossName   = boss.name;
-            if (bossSr != null)
-                bossHp.OnDamaged += dmg =>
-                {
-                    _totalDamageDealt += dmg.Amount;
-                    StartCoroutine(FlashRoutine(bossSr, new Color(1f, 0.35f, 0.35f), 0.14f));
-                    if (bossTr != null) DamageNumbers.Instance?.Show(bossTr.position, dmg.Amount, dmg.IsCrit);
-                };
+
+            // Boss 受击反馈：只做白闪 + HP 着色，无击退（Boss 体型大不应被弹飞）
+            var feedback = boss.AddComponent<EnemyHitFeedback>();
+            feedback.KnockbackForce = 0f;
+
+            bossHp.OnDamaged += dmg =>
+            {
+                _totalDamageDealt += dmg.Amount;
+                if (bossTr != null) DamageNumbers.Instance?.Show(bossTr.position, dmg.Amount, dmg.IsCrit);
+            };
             bossHp.OnDied += () =>
             {
                 _enemiesKilled++;
@@ -873,12 +944,12 @@ namespace Game.Dev
             };
         }
 
-        // ── 场景专属特殊房间 ──────────────────────────────────────────────
+        // ── Special floor rooms ────────────────────────────────────────────
 
-        // 熔炉试炼（第1层专属）：预置岩浆池 + 多敌人 → 武器奖励
+        // Forge Trial (Floor 1 exclusive): preset lava pools + more enemies → weapon reward
         private void BuildHellTrialRoom()
         {
-            ShowBanner("【熔炉试炼】岩浆蔓延！消灭所有敌人 → 精选武器奖励");
+            ShowBanner("[Forge Trial] Lava rising! Defeat all enemies → curated weapon reward");
             MaybeAddAltar();
             var root = _currentRoomRoot.transform;
             var lavaPos = new Vector3[] {
@@ -892,16 +963,16 @@ namespace Game.Dev
             int count = GetRoomEnemyCount() + 2;
             SpawnRoomWave(count, () =>
             {
-                ShowBanner("熔炉试炼完成！选择一把精选武器！");
+                ShowBanner("Forge Trial complete! Choose a curated weapon!");
                 DropWeaponChoices();
                 OpenRightDoor();
             });
         }
 
-        // 霜墓密室（第2层专属）：玩家移速 -25% → 清怪解除冰封 → 天赋+金币奖励
+        // Frost Grave (Floor 2 exclusive): player move speed -25% → clear enemies to break freeze → talent + coin reward
         private void BuildFrostGraveRoom()
         {
-            ShowBanner("【霜墓密室】冰封之地！移速-25%，消灭亡灵 → 天赋+金币奖励");
+            ShowBanner("[Frost Grave] Frozen ground! -25% move speed, defeat the undead → talent + coin reward");
             MaybeAddAltar();
             if (_player == null) return;
             var stats     = _player.GetComponent<CharacterStats>();
@@ -919,7 +990,7 @@ namespace Game.Dev
                 stats?.RemoveModifiersFrom(frostKey);
                 int bonus = 20 + CurrentFloor * 10;
                 RunCoins += bonus;
-                ShowBanner($"冰封解除！获得 {bonus} 金币，选择一个天赋继续前进！");
+                ShowBanner($"Freeze broken! Earned {bonus} coins — choose a talent to advance!");
                 DropTalentChoices();
             };
 
@@ -937,15 +1008,15 @@ namespace Game.Dev
             }
         }
 
-        // 混沌裂隙（第3层专属）：双倍敌人 → 2.5秒后第二波 → 武器+大量金币
+        // Chaos Rift (Floor 3 exclusive): double enemies → second wave after 2.5s → weapon + large coin reward
         private void BuildChaosRiftRoom()
         {
-            ShowBanner("【混沌裂隙】虚空撕裂！敌人倍增，消灭后引发余波！奖励丰厚！");
+            ShowBanner("[Chaos Rift] The void tears open! Doubled enemies, an aftershock follows — rich rewards!");
             MaybeAddAltar();
             int count = GetRoomEnemyCount() * 2;
             SpawnRoomWave(count, () =>
             {
-                ShowBanner("第一波清除！混沌余波即将袭来……");
+                ShowBanner("First wave cleared! Chaos aftershock incoming…");
                 StartCoroutine(ChaosRiftSecondWave());
             }, multiWave: false);
         }
@@ -954,13 +1025,13 @@ namespace Game.Dev
         {
             yield return new WaitForSeconds(2.5f);
             if (_state != State.Playing) yield break;
-            ShowBanner("【混沌余波】第二波入侵！");
+            ShowBanner("[Chaos Aftershock] Second wave incoming!");
             int count = GetRoomEnemyCount();
             SpawnRoomWave(count, () =>
             {
                 int goldBonus = 50 + CurrentFloor * 15;
                 RunCoins     += goldBonus;
-                ShowBanner($"混沌平息！获得 {goldBonus} 金币 + 武器选择！");
+                ShowBanner($"Chaos subsided! Earned {goldBonus} coins + weapon choice!");
                 DropWeaponChoices();
                 OpenRightDoor();
             }, multiWave: false);
@@ -973,7 +1044,7 @@ namespace Game.Dev
             if (_activeTalents.Count >= MaxTalents)
             {
                 _pendingTalent = talent;
-                ShowBanner("天赋已满（上限2个）！请在左下角选择替换");
+                ShowBanner("Talent slots full (max 2)! Choose a replacement in the bottom-left");
                 return;
             }
 
@@ -990,17 +1061,17 @@ namespace Game.Dev
             hp?.Heal(9999f);
 
             string dur = talent.roomDuration > 0 ? $" ({talent.roomDuration}房)" : "";
-            ShowBanner($"获得天赋：{talent.talentName}{dur}");
+            ShowBanner($"Talent acquired: {talent.talentName}{dur}");
         }
 
         private System.Action GetTalentRoomEffect(string talentName)
         {
             switch (talentName)
             {
-                case "生机": return () => _playerHealth?.Heal((_playerHealth?.Max ?? 0f) * 0.05f);
-                case "生息": return () => _playerHealth?.Heal(10f);
-                case "商道": return () => RunCoins += 8;
-                default:    return null;
+                case "Renewal":      return () => _playerHealth?.Heal((_playerHealth?.Max ?? 0f) * 0.05f);
+                case "Regeneration": return () => _playerHealth?.Heal(10f);
+                case "Merchant":     return () => RunCoins += 8;
+                default:             return null;
             }
         }
 
@@ -1020,41 +1091,41 @@ namespace Game.Dev
 
         private int GetRoomEnemyCount()
         {
-            if (_currentRoomIndex == 0) return 2;  // 第一间始终只有2只，让玩家熟悉操作
-            if (_currentRoomIndex == 1) return 3;  // 第二间固定3只
+            if (_currentRoomIndex == 0) return 2;  // first room always 2 enemies to ease the player in
+            if (_currentRoomIndex == 1) return 3;  // second room fixed at 3
             int base_ = 3 + CurrentFloor; // Floor1=4, Floor2=5, Floor3=6
             return Random.Range(base_, base_ + 2);
         }
 
-        // ── 场景分层辅助方法 ──────────────────────────────────────────────
+        // ── Floor helper methods ───────────────────────────────────────────
 
-        // 各层楼敌人出现权重（索引0-7 → 骷髅/小兵/弓箭手/蝙蝠/盾士/毒蜘蛛/暗影刺客/爆炎恶魔）
+        // Enemy spawn weights per floor (index 0-7 → Skeleton/Soldier/Archer/Bat/ShieldGuard/PoisonSpider/ShadowAssassin/ExplosiveDemon)
         private float[] GetFloorEnemyWeights()
         {
-            // 前两间只刷基础小怪，不出现危险特殊敌人
+            // First two rooms only spawn basic enemies, no dangerous special enemies
             if (_currentRoomIndex <= 1)
                 return new float[] { 4f, 4f, 2f, 3f, 0f, 0f, 0f, 0f };
 
-            // 第3间起逐步引入层主题敌人
+            // From room 3 onward, floor-theme enemies gradually appear
             bool earlyRoom = _currentRoomIndex <= 2;
             switch (CurrentFloor)
             {
                 case 1:
                     return earlyRoom
-                        ? new float[] { 2f, 3f, 2f, 2f, 1f, 1f, 0f, 1f }   // 盾士/爆炎恶魔权重压低
-                        : new float[] { 1f, 2f, 1f, 1f, 3f, 1f, 1f, 4f };  // 炼狱完全体
+                        ? new float[] { 2f, 3f, 2f, 2f, 1f, 1f, 0f, 1f }   // ShieldGuard/ExplosiveDemon weight suppressed
+                        : new float[] { 1f, 2f, 1f, 1f, 3f, 1f, 1f, 4f };  // Inferno full roster
                 case 2:
                     return earlyRoom
                         ? new float[] { 4f, 1f, 3f, 3f, 0f, 0f, 0f, 0f }
-                        : new float[] { 4f, 1f, 3f, 3f, 1f, 1f, 1f, 1f };  // 霜境完全体
+                        : new float[] { 4f, 1f, 3f, 3f, 1f, 1f, 1f, 1f };  // Frost Realm full roster
                 default:
                     return earlyRoom
                         ? new float[] { 1f, 3f, 1f, 1f, 1f, 2f, 2f, 1f }
-                        : new float[] { 1f, 3f, 1f, 1f, 1f, 2f, 4f, 2f };  // 混沌完全体
+                        : new float[] { 1f, 3f, 1f, 1f, 1f, 2f, 4f, 2f };  // Chaos Abyss full roster
             }
         }
 
-        // 各层楼精英怪出现概率（前两间永远不出精英）
+        // Elite enemy spawn chance per floor (first two rooms never spawn elites)
         private float GetFloorEliteChance()
         {
             if (_currentRoomIndex <= 1) return 0f;
@@ -1066,7 +1137,7 @@ namespace Game.Dev
             }
         }
 
-        // 各层楼战斗房间池（包含主题特殊房间）
+        // Combat room pool per floor (includes theme-specific special rooms)
         private (string type, float weight)[] GetFloorRoomPool()
         {
             switch (CurrentFloor)
@@ -1083,37 +1154,36 @@ namespace Game.Dev
             }
         }
 
-        // 各层楼墙壁颜色
+        // Wall color per floor
         private Color GetFloorWallColor()
         {
             switch (CurrentFloor)
             {
-                case 1:  return new Color(0.42f, 0.16f, 0.08f); // 炼狱：暗红岩壁
-                case 2:  return new Color(0.10f, 0.20f, 0.40f); // 霜境：冰蓝石壁
-                default: return new Color(0.25f, 0.08f, 0.38f); // 混沌：腐败紫壁
+                case 1:  return new Color(0.42f, 0.16f, 0.08f); // Inferno: dark-red rock wall
+                case 2:  return new Color(0.10f, 0.20f, 0.40f); // Frost Realm: ice-blue stone wall
+                default: return new Color(0.25f, 0.08f, 0.38f); // Chaos Abyss: corrupted purple wall
             }
         }
 
-        // 设置相机背景色以匹配楼层主题
+        // Set camera background color to match the floor theme
         private void SetFloorBackground()
         {
             if (Camera.main == null) return;
             switch (CurrentFloor)
             {
-                case 1:  Camera.main.backgroundColor = new Color(0.15f, 0.05f, 0.03f); break; // 炼狱
-                case 2:  Camera.main.backgroundColor = new Color(0.03f, 0.06f, 0.14f); break; // 霜境
-                default: Camera.main.backgroundColor = new Color(0.07f, 0.03f, 0.11f); break; // 混沌
+                case 1:  Camera.main.backgroundColor = new Color(0.15f, 0.05f, 0.03f); break; // Inferno
+                case 2:  Camera.main.backgroundColor = new Color(0.03f, 0.06f, 0.14f); break; // Frost Realm
+                default: Camera.main.backgroundColor = new Color(0.07f, 0.03f, 0.11f); break; // Chaos Abyss
             }
         }
 
-        // 更新竞技场墙壁颜色并重建背景（楼层切换时调用）
+        // Rebuild arena with new floor colors (called on floor transition)
         private void UpdateArenaColors()
         {
-            // 新楼层：销毁旧地图，随机选一张新地图重建
             if (_arenaRoot != null) { Destroy(_arenaRoot); _arenaRoot = null; }
             _arenaRoot  = new GameObject("Arena");
             _mapVariant = Random.Range(0, 3);
-            _mapInfo    = MapBuilder.Build(CurrentFloor, _mapVariant, _arenaRoot.transform);
+            _mapInfo    = LoadRoomPrefab(CurrentFloor, _mapVariant, _arenaRoot.transform);
             ArenaHalfW  = _mapInfo.HalfW;
             ArenaHalfH  = _mapInfo.HalfH;
         }
@@ -1122,9 +1192,9 @@ namespace Game.Dev
         {
             switch (CurrentFloor)
             {
-                case 1:  return "灼热炼狱";
-                case 2:  return "霜境幽域";
-                default: return "混沌深渊";
+                case 1:  return "Inferno";
+                case 2:  return "Frost Realm";
+                default: return "Chaos Abyss";
             }
         }
 
@@ -1132,9 +1202,9 @@ namespace Game.Dev
         {
             switch (CurrentFloor)
             {
-                case 1:  return "【灼热炼狱】岩浆涌动，炎魔与铁甲把守通道，小心爆炸与熔岩！";
-                case 2:  return "【霜境幽域】严寒入骨，骸骨复活，精英概率大幅提升！";
-                default: return "【混沌深渊】虚空破碎，精英肆虐——终局之战，混沌领主在等着你！";
+                case 1:  return "[Inferno] Lava surges, demons and iron-clad guards block the path — watch for explosions and magma!";
+                case 2:  return "[Frost Realm] Bone-chilling cold, undead rise again, elite spawn rate greatly increased!";
+                default: return "[Chaos Abyss] The void shatters, elites run rampant — the final battle awaits, the Chaos Lord is waiting!";
             }
         }
 
@@ -1185,7 +1255,8 @@ namespace Game.Dev
                 go.transform.localScale = new Vector3(1.8f, 1.8f, 1f);
 
                 var sr = go.AddComponent<SpriteRenderer>();
-                sr.sprite       = MakeUnitSquareSprite();
+                var lavaSpr     = LoadHazardSprite("Tiles/lava_hazard");
+                sr.sprite       = lavaSpr != null ? lavaSpr : MakeUnitSquareSprite();
                 sr.color        = new Color(0.45f, 0.08f, 0.04f, 0.80f);
                 sr.sortingOrder = 3;
 
@@ -1251,15 +1322,40 @@ namespace Game.Dev
             }
         }
 
+        // 危险区贴图加载（Resources/Tiles/*），失败时回退为纯色方块
+        private static readonly Dictionary<string, Sprite> _hazardSpriteCache = new Dictionary<string, Sprite>();
+        private static Sprite LoadHazardSprite(string resourceName)
+        {
+            if (_hazardSpriteCache.TryGetValue(resourceName, out var cached)) return cached;
+            Sprite spr = null;
+            var tex = Resources.Load<Texture2D>(resourceName);
+            if (tex != null)
+            {
+                tex.filterMode = FilterMode.Point;
+                spr = Sprite.Create(tex, new Rect(0f, 0f, tex.width, tex.height),
+                                    new Vector2(0.5f, 0.5f), tex.width);
+            }
+            _hazardSpriteCache[resourceName] = spr;
+            return spr;
+        }
+
         // 分两波刷怪（55%/45%）；每波从房间四壁边缘生成，第一波不出精英
         private void SpawnRoomWave(int totalCount, System.Action onAllDead, bool multiWave = true)
         {
             if (_player == null) return;
 
+            // 战斗开始：禁止可交互物交互，直到全部敌人清场
+            CombatInProgress = true;
+            System.Action onCleared = () =>
+            {
+                CombatInProgress = false;
+                onAllDead?.Invoke();
+            };
+
             if (!multiWave || totalCount <= 2)
             {
                 // 数量 ≤2 或明确禁用时直接单波
-                SpawnWaveGroup(totalCount, false, onAllDead);
+                SpawnWaveGroup(totalCount, false, onCleared);
                 return;
             }
 
@@ -1268,9 +1364,9 @@ namespace Game.Dev
 
             SpawnWaveGroup(w1, false, () =>
             {
-                if (w2 <= 0) { onAllDead(); return; }
+                if (w2 <= 0) { onCleared(); return; }
                 ShowBanner("第二波来袭！");
-                SpawnWaveGroup(w2, true, onAllDead);
+                SpawnWaveGroup(w2, true, onCleared);
             });
         }
 
@@ -1454,6 +1550,7 @@ namespace Game.Dev
         private void SpawnPlayer(HeroData hero)
         {
             _player = new GameObject("Player_" + hero.heroName);
+            _player.tag                  = "Player";
             _player.transform.position   = _mapInfo.PlayerSpawn;
             _player.transform.localScale = new Vector3(0.8f, 0.8f, 1f);
 
@@ -1475,10 +1572,11 @@ namespace Game.Dev
             stats.SetBase(StatType.MaxHP,       hero.baseMaxHP);
             stats.SetBase(StatType.Attack,      hero.baseAttack);
             stats.SetBase(StatType.Defense,     hero.baseDefense);
-            stats.SetBase(StatType.MoveSpeed,   hero.baseMoveSpeed);
+            stats.SetBase(StatType.MoveSpeed,   hero.baseMoveSpeed * 0.8f);
             stats.SetBase(StatType.AttackSpeed, hero.baseAttackSpeed);
 
             _playerHealth = _player.AddComponent<Health>();
+            _playerHealth.IFrameDuration = 0.4f;
             var playerTr = _player.transform;
             _playerHealth.OnDamaged += dmg =>
             {
@@ -1506,7 +1604,13 @@ namespace Game.Dev
             }
 
             var weaponHandler = _player.AddComponent<PlayerWeaponHandler>();
-            _player.AddComponent<PlayerController>();
+            weaponHandler.HeroPassive = hero.heroPassiveType;
+
+            var controller = _player.AddComponent<PlayerController>();
+            controller.SetFacingSprites(
+                HeroSprites.Get(hero.heroName),
+                HeroSprites.GetBack(hero.heroName));
+
             _player.AddComponent<PlayerStateReporter>();
 
             var (slot0, slot1) = WeaponLibrary.GetStarterWeapons(hero.heroName);
@@ -1710,13 +1814,45 @@ namespace Game.Dev
             cam.transform.position = new Vector3(cx, cy, cam.transform.position.z);
         }
 
+        private static readonly string[] _variantLetters = { "A", "B", "C" };
+
         private void BuildArena()
         {
             _arenaRoot  = new GameObject("Arena");
             _mapVariant = Random.Range(0, 3);
-            _mapInfo    = MapBuilder.Build(CurrentFloor, _mapVariant, _arenaRoot.transform);
+            _mapInfo    = LoadRoomPrefab(CurrentFloor, _mapVariant, _arenaRoot.transform);
             ArenaHalfW  = _mapInfo.HalfW;
             ArenaHalfH  = _mapInfo.HalfH;
+        }
+
+        private MapBuilder.MapInfo LoadRoomPrefab(int floor, int variant, Transform parent)
+        {
+            string letter = _variantLetters[variant % 3];
+            string path   = $"Rooms/Floor{floor}/Room_F{floor}{letter}";
+            var prefab    = Resources.Load<GameObject>(path);
+
+            if (prefab == null)
+            {
+                Debug.LogWarning($"[GameBootstrap] Prefab 未找到：{path}，回退到程序化生成");
+                return MapBuilder.Build(floor, variant, parent);
+            }
+
+            var rows = MapBuilder.GetMap(floor, variant);
+            NavGrid.Build(rows);
+            MapBuilder.SetupPhysics();
+            FloorBackground.Create(floor, parent, MapBuilder.TileW + 4f, MapBuilder.TileH + 4f);
+
+            var roomGO = Instantiate(prefab, Vector3.zero, Quaternion.identity, parent);
+            var meta   = roomGO.GetComponent<Game.Dungeon.RoomMetadata>();
+            if (meta != null) return meta.ToMapInfo();
+
+            return new MapBuilder.MapInfo
+            {
+                HalfW       = MapBuilder.TileW * 0.5f,
+                HalfH       = MapBuilder.TileH * 0.5f,
+                PlayerSpawn = new Vector3(-MapBuilder.TileW * 0.5f + 2.5f, 0f, 0f),
+                DoorPos     = new Vector3( MapBuilder.TileW * 0.5f - 0.5f, 0f, 0f),
+            };
         }
 
         // --------------------------------------------------------------------
@@ -1793,123 +1929,11 @@ namespace Game.Dev
         {
             switch (_state)
             {
-                case State.Menu:          DrawMenu();                                                                   break;
-                case State.Playing:       DrawHUD();                                                                   break;
-                case State.FloorComplete: DrawFloorComplete();                                                         break;
-                case State.Victory:       DrawEndScreen("胜利!", new Color(1f, 0.92f, 0.2f), true);                  break;
-                case State.Death:         DrawEndScreen("阵亡", new Color(1f, 0.3f, 0.3f), false);                    break;
+                case State.Playing:       DrawHUD();                                                  break;
+                case State.FloorComplete: DrawFloorComplete();                                        break;
+                case State.Victory:       DrawEndScreen("胜利!", new Color(1f, 0.92f, 0.2f), true);  break;
+                case State.Death:         DrawEndScreen("阵亡",  new Color(1f, 0.3f,  0.3f), false); break;
             }
-        }
-
-        // ─────────────────────────────────────────────────────────────
-        //  主菜单 — 英雄选择
-        // ─────────────────────────────────────────────────────────────
-        private void DrawMenu()
-        {
-            // 渐变背景
-            FillRect(new Rect(0, 0, Screen.width, Screen.height), new Color(0.07f, 0.07f, 0.11f));
-            FillRect(new Rect(0, 0, Screen.width, 4), new Color(0.55f, 0.45f, 0.15f));
-            FillRect(new Rect(0, Screen.height - 4, Screen.width, 4), new Color(0.55f, 0.45f, 0.15f));
-
-            // 标题
-            var titleS = MkLabel(52, TextAnchor.MiddleCenter, FontStyle.Bold, new Color(0.98f, 0.9f, 0.35f));
-            GUI.Label(new Rect(0, 22, Screen.width, 68), "深渊·轮回", titleS);
-            var subtitleS = MkLabel(15, TextAnchor.MiddleCenter, FontStyle.Normal, new Color(0.65f, 0.65f, 0.7f));
-            GUI.Label(new Rect(0, 82, Screen.width, 24), "Roguelike Dungeon  ·  选择英雄开始冒险", subtitleS);
-
-            float currencyY = 112f;
-            var currS = MkLabel(15, TextAnchor.MiddleCenter, FontStyle.Normal, new Color(1f, 0.88f, 0.22f));
-            GUI.Label(new Rect(0, currencyY, Screen.width, 22), $"◈  解锁货币: {_persistent.UnlockCurrency}", currS);
-
-            // 英雄卡片
-            const float cardW = 210f, cardH = 280f, gap = 14f;
-            float totalW = _heroes.Length * cardW + (_heroes.Length - 1) * gap;
-            float startX = (Screen.width - totalW) * 0.5f;
-            float cardY  = 148f;
-
-            for (int i = 0; i < _heroes.Length; i++)
-            {
-                var h = _heroes[i];
-                bool unlocked = _persistent.IsHeroUnlocked(h.heroName);
-                bool selected = i == _selectedHeroIndex;
-                var rect = new Rect(startX + i * (cardW + gap), cardY, cardW, cardH);
-
-                // 卡片背景
-                Color cardBg = !unlocked ? new Color(0.22f, 0.12f, 0.12f)
-                             : selected  ? new Color(0.14f, 0.26f, 0.44f)
-                                         : new Color(0.14f, 0.15f, 0.22f);
-                FillRect(rect, cardBg);
-
-                // 选中边框
-                if (selected)
-                {
-                    FillRect(new Rect(rect.x, rect.y, rect.width, 2), new Color(0.45f, 0.75f, 1f));
-                    FillRect(new Rect(rect.x, rect.yMax - 2, rect.width, 2), new Color(0.45f, 0.75f, 1f));
-                    FillRect(new Rect(rect.x, rect.y, 2, rect.height), new Color(0.45f, 0.75f, 1f));
-                    FillRect(new Rect(rect.xMax - 2, rect.y, 2, rect.height), new Color(0.45f, 0.75f, 1f));
-                }
-
-                // 英雄头像（72×72）
-                float portraitSize = 72f;
-                var portraitRect = new Rect(rect.x + (cardW - portraitSize) * 0.5f, rect.y + 12f, portraitSize, portraitSize);
-                FillRect(portraitRect, new Color(0.08f, 0.08f, 0.14f));
-                var portrait = HeroSprites.Get(h.heroName);
-                if (portrait != null)
-                    GUI.DrawTexture(portraitRect, portrait.texture);
-                else
-                    FillRect(portraitRect, h.tintColor * 0.5f);
-                // 头像底部颜色条
-                FillRect(new Rect(rect.x + (cardW - portraitSize) * 0.5f, rect.y + 12f + portraitSize - 4f, portraitSize, 4), h.tintColor * 0.8f);
-
-                float iy = rect.y + 92f;
-                // 英雄名
-                GUI.Label(new Rect(rect.x + 8, iy, cardW - 16, 24),
-                    h.heroName, MkLabel(18, TextAnchor.MiddleCenter, FontStyle.Bold, unlocked ? Color.white : new Color(0.6f, 0.5f, 0.5f)));
-                // 简介
-                var descS = MkLabel(11, TextAnchor.UpperLeft, FontStyle.Normal, new Color(0.78f, 0.78f, 0.78f));
-                descS.wordWrap = true;
-                GUI.Label(new Rect(rect.x + 8, iy + 26, cardW - 16, 34), h.description, descS);
-                // 属性行
-                GUI.Label(new Rect(rect.x + 8, iy + 62, cardW - 16, 18),
-                    $"♥{h.baseMaxHP:0}  ⚔{h.baseAttack:0}  🛡{h.baseDefense:0}  ⚡{h.baseMoveSpeed:0.0}",
-                    MkLabel(11, TextAnchor.MiddleLeft, FontStyle.Normal, new Color(0.75f, 0.88f, 1f)));
-                // 主动技能
-                GUI.Label(new Rect(rect.x + 8, iy + 82, cardW - 16, 18),
-                    $"[F] {h.heroSkillName}  CD{h.heroSkillCooldown:0}s",
-                    MkLabel(11, TextAnchor.MiddleLeft, FontStyle.Normal, new Color(1f, 0.85f, 0.35f)));
-                // 被动
-                GUI.Label(new Rect(rect.x + 8, iy + 100, cardW - 16, 18),
-                    $"◆ {h.heroPassiveName}",
-                    MkLabel(11, TextAnchor.MiddleLeft, FontStyle.Normal, new Color(0.55f, 1f, 0.65f)));
-
-                // 按钮
-                var btnRect = new Rect(rect.x + 8, rect.y + cardH - 36, cardW - 16, 28);
-                if (unlocked)
-                {
-                    if (GUI.Button(btnRect, selected ? "✓ 已选择" : "选择"))
-                        _selectedHeroIndex = i;
-                }
-                else
-                {
-                    bool canAfford = _persistent.UnlockCurrency >= h.unlockCost;
-                    GUI.enabled = canAfford;
-                    if (GUI.Button(btnRect, $"解锁  {h.unlockCost} ◈"))
-                        _persistent.TryUnlockHero(h.heroName, h.unlockCost);
-                    GUI.enabled = true;
-                }
-            }
-
-            // 开始按钮
-            float startY = cardY + cardH + 18f;
-            bool canStart = _selectedHeroIndex >= 0 && _persistent.IsHeroUnlocked(_heroes[_selectedHeroIndex].heroName);
-            GUI.enabled = canStart;
-            var startS = new GUIStyle(GUI.skin.button) { fontSize = 22, fontStyle = FontStyle.Bold };
-            if (GUI.Button(new Rect(Screen.width * 0.5f - 150, startY, 300, 52), "▶  开始冒险", startS))
-                StartRun();
-            GUI.enabled = true;
-
-            var pathS = MkLabel(11, TextAnchor.MiddleCenter, FontStyle.Normal, new Color(0.4f, 0.4f, 0.45f));
-            GUI.Label(new Rect(0, Screen.height - 24, Screen.width, 20), Application.persistentDataPath, pathS);
         }
 
         // ─────────────────────────────────────────────────────────────
@@ -2238,7 +2262,7 @@ namespace Game.Dev
             if (GUI.Button(new Rect(btnCx - 145, Screen.height * 0.57f, 290, 52), $"进入第 {CurrentFloor + 1} 层  ▶", btn))
                 AdvanceFloor();
             if (GUI.Button(new Rect(btnCx - 145, Screen.height * 0.57f + 62, 290, 46), "返回主菜单", btn))
-                EnterMenu();
+                ReturnToMenu();
         }
 
         // 结算/死亡画面
@@ -2253,17 +2277,34 @@ namespace Game.Dev
                     $"全部 {maxFloor} 层通关完成！  +{clearReward} 解锁货币  (合计: {_persistent.UnlockCurrency})",
                     MkLabel(18, TextAnchor.MiddleCenter, FontStyle.Normal, Color.white));
 
-            float sy = Screen.height * (victory ? 0.35f : 0.28f);
+            // 死亡时显示倒计时
+            if (!victory)
+            {
+                float remaining = Mathf.Max(0f, _deathReturnAt - Time.time);
+                GUI.Label(new Rect(0, Screen.height * 0.27f, Screen.width, 26),
+                    $"{remaining:0.0} 秒后自动返回主菜单…",
+                    MkLabel(15, TextAnchor.MiddleCenter, FontStyle.Italic, new Color(0.75f, 0.55f, 0.55f)));
+            }
+
+            float sy = Screen.height * (victory ? 0.35f : 0.32f);
             var ss = MkLabel(15, TextAnchor.MiddleCenter, FontStyle.Normal, new Color(0.82f, 0.82f, 0.82f));
             GUI.Label(new Rect(0, sy,       Screen.width, 24), $"到达楼层: {CurrentFloor} / {maxFloor}", ss);
             GUI.Label(new Rect(0, sy + 28,  Screen.width, 24), $"击杀数: {_enemiesKilled}", ss);
             GUI.Label(new Rect(0, sy + 56,  Screen.width, 24), $"总伤害: {Mathf.RoundToInt(_totalDamageDealt):N0}", ss);
             GUI.Label(new Rect(0, sy + 84,  Screen.width, 24), $"剩余金币: {RunCoins}", ss);
 
-            float btnY = Screen.height * (victory ? 0.60f : 0.56f);
+            float btnY = Screen.height * (victory ? 0.60f : 0.58f);
             var bs = new GUIStyle(GUI.skin.button) { fontSize = 18 };
-            if (GUI.Button(new Rect(Screen.width * 0.5f - 140, btnY,       280, 44), "再次挑战", bs)) StartRun();
-            if (GUI.Button(new Rect(Screen.width * 0.5f - 140, btnY + 56f, 280, 44), "返回主菜单", bs)) EnterMenu();
+            if (!victory)
+            {
+                if (GUI.Button(new Rect(Screen.width * 0.5f - 140, btnY, 280, 44), "立即返回主菜单", bs))
+                    ReturnToMenu();
+            }
+            else
+            {
+                if (GUI.Button(new Rect(Screen.width * 0.5f - 140, btnY,       280, 44), "再次挑战", bs))  RestartRun();
+                if (GUI.Button(new Rect(Screen.width * 0.5f - 140, btnY + 56f, 280, 44), "返回主菜单", bs)) ReturnToMenu();
+            }
         }
 
         // 样式工厂（避免大量重复 new GUIStyle）

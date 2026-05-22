@@ -42,6 +42,21 @@ namespace Game.Player
             StartCoroutine(AttackAnim(cat, aimDir));
         }
 
+        // Bow charge hold animation (called by PlayerController)
+        public void StartBowCharge()
+        {
+            if (_animating) StopAllCoroutines();
+            _animating = true;
+            StartCoroutine(BowChargeHold());
+        }
+
+        public void StopBowCharge()
+        {
+            StopAllCoroutines();
+            transform.localScale = _baseScale;
+            _animating = false;
+        }
+
         public void PlaySkill(WeaponCategory cat, Vector2 aimDir)
         {
             if (PlayerStateReporter.Instance != null && PlayerStateReporter.Instance.IsCasting) return;
@@ -88,7 +103,7 @@ namespace Game.Player
 
         // ── Primitives ────────────────────────────────────────────────────────
 
-        // 匕首：横向挤压（身体扭转刺出感）
+        // Dagger: horizontal squash (body-twist jab feel)
         IEnumerator Jab(float dur)
         {
             for (float t = 0f; t < dur; t += Time.deltaTime)
@@ -103,7 +118,7 @@ namespace Game.Player
             }
         }
 
-        // 剑类：蓄力压缩 → 挥出拉伸 → 收势还原
+        // Sword: windup squash → swing stretch → recovery return
         IEnumerator Slash(Vector2 aimDir, float dur, float intensity)
         {
             for (float t = 0f; t < dur; t += Time.deltaTime)
@@ -118,7 +133,7 @@ namespace Game.Player
             }
         }
 
-        // 弓：蹲伏拉弦（Y压缩）→ 弹起释放
+        // Bow: crouch draw (Y compress) → spring release
         IEnumerator BowPull(float dur)
         {
             float drawT    = dur * 0.65f;
@@ -143,7 +158,21 @@ namespace Game.Player
             }
         }
 
-        // 法杖：向外扩散的缩放脉冲（频率可调）
+        // Bow charge hold: low-frequency tremor simulating draw tension, until StopBowCharge is called
+        IEnumerator BowChargeHold()
+        {
+            while (true)
+            {
+                float t = Mathf.PingPong(Time.time * 5f, 1f);
+                transform.localScale = new Vector3(
+                    _baseScale.x * Mathf.Lerp(1.10f, 1.20f, t),
+                    _baseScale.y * Mathf.Lerp(0.88f, 0.82f, t),
+                    _baseScale.z);
+                yield return null;
+            }
+        }
+
+        // Staff: outward-expanding scale pulse (adjustable frequency)
         IEnumerator CastPulse(float dur, float freq)
         {
             for (float t = 0f; t < dur; t += Time.deltaTime)

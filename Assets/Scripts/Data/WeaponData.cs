@@ -40,6 +40,8 @@ namespace Game.Data
         public float lifeStealRate = 0f;
         [Tooltip("血量消耗：每次普攻扣除固定血量（真实伤害）")]
         public float hpCostPerAttack = 0f;
+        [Tooltip("背刺加成：近战攻击敌人背后时造成1.2倍伤害")]
+        public bool backstabBonus = false;
 
         public bool HasSkill => rarity >= WeaponRarity.Blue && skill != null;
         public bool CanEnchant => HasSkill;
