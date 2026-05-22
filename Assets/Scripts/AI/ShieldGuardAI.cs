@@ -99,7 +99,7 @@ namespace Game.AI
             {
                 target.GetComponent<IDamageable>()?.TakeDamage(new DamageInfo
                 {
-                    Amount = contactDamage + _stats.Get(StatType.Attack),
+                    Amount = contactDamage,
                     Type   = DamageType.Physical,
                     Source = gameObject
                 });

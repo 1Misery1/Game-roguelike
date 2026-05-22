@@ -120,7 +120,7 @@ namespace Game.AI
             _lastAttackTime = Time.time;
             target.GetComponent<IDamageable>()?.TakeDamage(new DamageInfo
             {
-                Amount = attackDamage + _stats.Get(StatType.Attack),
+                Amount = attackDamage,
                 Type   = DamageType.Physical,
                 Source = gameObject
             });

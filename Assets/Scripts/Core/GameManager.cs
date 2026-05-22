@@ -8,11 +8,11 @@ namespace Game.Core
     {
         public static GameManager Instance { get; private set; }
 
-        public RunState Run { get; private set; } = new RunState();
+        public RunState       Run        { get; private set; } = new RunState();
         public PersistentState Persistent { get; private set; }
 
-        [SerializeField] private string menuSceneName = "MainMenu";
-        [SerializeField] private string dungeonSceneName = "Dungeon";
+        [SerializeField] private string menuSceneName    = "MainMenu";
+        [SerializeField] private string dungeonSceneName = "Test";
 
         private void Awake()
         {
@@ -32,12 +32,16 @@ namespace Game.Core
             SceneManager.LoadScene(dungeonSceneName);
         }
 
+        /// Called by GameBootstrap on run end (death / all floors cleared).
         public void EndRun(bool cleared)
         {
-            if (cleared)
-            {
-                Persistent.AddCurrency(Run.UnlockCurrencyEarned);
-            }
+            Run.End();
+            SceneManager.LoadScene(menuSceneName);
+        }
+
+        /// Shortcut for returning to menu without modifying run state (e.g. mid-floor-complete).
+        public void ReturnToMenu()
+        {
             Run.End();
             SceneManager.LoadScene(menuSceneName);
         }

@@ -9,6 +9,8 @@ namespace Game.Combat
         public DamageType Type;
         public bool IsCrit;
         public GameObject Source;
+        // When true the hit skips player invincibility frames (traps, DoT, environmental hazards)
+        public bool BypassIFrames;
     }
 
     public interface IDamageable

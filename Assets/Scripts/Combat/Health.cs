@@ -21,6 +21,10 @@ namespace Game.Combat
         // 可选拦截器：在计算防御前修改伤害（用于盾牌减伤等机制）
         public System.Func<DamageInfo, DamageInfo> OnBeforeTakeDamage;
 
+        // Seconds of invincibility after each non-bypass hit (0 = disabled, set to 0.4 for player)
+        public float IFrameDuration = 0f;
+        private float _iFrameUntil;
+
         private void Awake()
         {
             _stats = GetComponent<CharacterStats>();
@@ -31,6 +35,12 @@ namespace Game.Combat
         public void TakeDamage(DamageInfo info)
         {
             if (_current <= 0f) return;
+
+            if (!info.BypassIFrames && IFrameDuration > 0f)
+            {
+                if (Time.time < _iFrameUntil) return;
+                _iFrameUntil = Time.time + IFrameDuration;
+            }
 
             LastDamageSource = info.Source;
             if (OnBeforeTakeDamage != null) info = OnBeforeTakeDamage(info);

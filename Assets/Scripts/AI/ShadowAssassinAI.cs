@@ -110,7 +110,7 @@ namespace Game.AI
             // Burst damage
             target.GetComponent<IDamageable>()?.TakeDamage(new DamageInfo
             {
-                Amount = burstDamage + _stats.Get(StatType.Attack),
+                Amount = burstDamage,
                 Type   = DamageType.Physical,
                 Source = gameObject
             });

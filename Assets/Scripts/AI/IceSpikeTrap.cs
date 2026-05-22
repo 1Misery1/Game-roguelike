@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Game.Combat;
 using Game.Data;
 using UnityEngine;
@@ -5,22 +6,26 @@ using UnityEngine;
 namespace Game.AI
 {
     // 霜境冰刺（第2层地形杀）：
-    //   待机时近乎不可见，预警期蓝白闪烁，激活瞬间造成高额伤害 + 移速减缓
+    //   待机时近乎不可见，预警期蓝白闪烁，激活瞬间造成高额伤害 + 移速减缓 50%（2s）
+    //   碰撞检测改用 CircleCollider2D trigger
     public class IceSpikeTrap : MonoBehaviour
     {
-        public float idleTime     = 6.5f;  // 等待时长（秒）
-        public float warningTime  = 1.8f;  // 预警闪烁时长
-        public float activeTime   = 1.2f;  // 冰刺露出时长
-        public float damage       = 28f;   // 激活瞬间一次性伤害
-        public float slowAmount   = 0.50f; // 移速减缓幅度（50%）
-        public float slowDuration = 2.0f;  // 减缓持续时间（秒）
-        public float radius       = 1.0f;  // 伤害半径（世界空间）
+        public float idleTime     = 6.5f;
+        public float warningTime  = 1.8f;
+        public float activeTime   = 1.2f;
+        public float damage       = 28f;
+        public float slowAmount   = 0.50f;
+        public float slowDuration = 2.0f;
+        public float radius       = 0.7f;
 
         private enum Phase { Idle, Warning, Active }
-        private Phase          _phase = Phase.Idle;
-        private float          _timer;
-        private bool           _hitThisCycle;
+        private Phase _phase = Phase.Idle;
+        private float _timer;
+        private bool  _hitThisCycle;
         private SpriteRenderer _sr;
+
+        // Track Collider2D so we can get both IDamageable and CharacterStats
+        private readonly HashSet<Collider2D> _inside = new HashSet<Collider2D>();
 
         private static readonly Color HiddenColor = new Color(0.25f, 0.45f, 0.80f, 0.10f);
         private static readonly Color WarnColor   = new Color(0.80f, 0.92f, 1.00f, 0.80f);
@@ -30,9 +35,12 @@ namespace Game.AI
         {
             _sr       = GetComponent<SpriteRenderer>();
             _sr.color = HiddenColor;
-            // 旋转45°呈菱形（冰晶感）
             transform.rotation = Quaternion.Euler(0f, 0f, 45f);
             _timer = Random.Range(0f, idleTime);
+
+            var col    = gameObject.AddComponent<CircleCollider2D>();
+            col.radius    = radius;
+            col.isTrigger = true;
         }
 
         private void Update()
@@ -59,17 +67,18 @@ namespace Game.AI
 
         private void Transition(Phase next) { _phase = next; _timer = 0f; }
 
-        // 激活瞬间：OverlapCircle 范围内一次性伤害 + 减速
         private void ActivateSpike()
         {
             if (_hitThisCycle) return;
             _hitThisCycle = true;
-            foreach (var col in Physics2D.OverlapCircleAll(transform.position, radius))
+            foreach (var col in _inside)
             {
-                if (col.GetComponent<EnemyTag>() != null) continue;
+                if (col == null) continue;
                 col.GetComponent<IDamageable>()?.TakeDamage(new DamageInfo
                 {
-                    Amount = damage, Type = DamageType.Magical, Source = null
+                    Amount = damage,
+                    Type   = DamageType.Magical,
+                    Source = null,
                 });
                 var stats = col.GetComponent<CharacterStats>();
                 if (stats != null)
@@ -85,6 +94,17 @@ namespace Game.AI
         {
             yield return new WaitForSeconds(delay);
             stats?.RemoveModifiersFrom(key);
+        }
+
+        private void OnTriggerEnter2D(Collider2D other)
+        {
+            if (other.GetComponent<EnemyTag>() != null) return;
+            _inside.Add(other);
+        }
+
+        private void OnTriggerExit2D(Collider2D other)
+        {
+            _inside.Remove(other);
         }
     }
 }

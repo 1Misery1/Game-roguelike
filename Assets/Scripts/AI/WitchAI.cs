@@ -129,7 +129,7 @@ namespace Game.AI
 
         private void FireBlast()
         {
-            float dmg = attackDamage + _stats.Get(StatType.Attack);
+            float dmg = attackDamage;
             Vector2 dir = ((Vector2)target.position - (Vector2)transform.position).normalized;
             EnemyProjectile.Spawn(
                 transform.position, dir, speed: 7f, attackRange,
