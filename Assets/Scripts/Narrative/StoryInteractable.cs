@@ -114,12 +114,111 @@ namespace Game.Narrative
             var lines = BuildDialogue != null ? BuildDialogue(hero, heroCount) : null;
             if (lines == null || lines.Count == 0) return;
 
+            // 本周目是否已做过该交互物的抉择？（用任一 choice 的 runStoryFlags 作为已选标记）
+            bool choiceAlreadyMade = false;
+            if (_data != null && _data.choices != null && gm?.Run != null)
+            {
+                foreach (var c in _data.choices)
+                {
+                    if (c == null || c.runStoryFlags == null) continue;
+                    foreach (var f in c.runStoryFlags)
+                        if (!string.IsNullOrEmpty(f) && gm.Run.HasStoryFlag(f))
+                        { choiceAlreadyMade = true; break; }
+                    if (choiceAlreadyMade) break;
+                }
+            }
+
             _busy = true;
             DialogueBox.Get().Play(lines, () =>
             {
+                // 主对话结束：如果数据有 choices 且本周目尚未选择过 → 弹出选项；否则直接结算
+                if (!choiceAlreadyMade && _data != null && _data.choices != null && _data.choices.Count > 0)
+                {
+                    string title = !string.IsNullOrEmpty(_data.choiceTitle) ? _data.choiceTitle
+                                  : !string.IsNullOrEmpty(_data.bannerText) ? _data.bannerText
+                                  : "选择";
+                    var labels = new List<string>();
+                    var descs  = new List<string>();
+                    foreach (var c in _data.choices)
+                    {
+                        labels.Add(c != null ? c.label : "...");
+                        descs .Add(c != null ? c.description : "");
+                    }
+                    ChoiceBox.Get().Show(title, labels, descs, idx =>
+                    {
+                        OnPlayerPickedChoice(hero, heroCount, idx);
+                    });
+                }
+                else
+                {
+                    OnResolved?.Invoke(hero, heroCount);
+                    _busy = false;
+                }
+            });
+        }
+
+        /// 玩家在 ChoiceBox 上点选后回调：先播 followLines，再叠加选项奖励，最后跑主结算
+        private void OnPlayerPickedChoice(HeroData hero, int heroCount, int idx)
+        {
+            if (_data == null || idx < 0 || idx >= _data.choices.Count)
+            {
                 OnResolved?.Invoke(hero, heroCount);
                 _busy = false;
-            });
+                return;
+            }
+            var ch = _data.choices[idx];
+
+            // 构造选项追加台词（同样支持 {hero}/{heroKey} 占位符）
+            var followLines = new List<DialogueLine>();
+            string heroKey  = hero != null ? hero.heroName : "";
+            string heroName = hero != null && !string.IsNullOrEmpty(hero.displayName)
+                                  ? hero.displayName : "冒险者";
+            if (ch.followLines != null)
+            {
+                foreach (var ln in ch.followLines)
+                {
+                    if (ln == null) continue;
+                    string spk = Resolve(ln.speaker,     heroName, heroKey);
+                    string por = Resolve(ln.portraitKey, heroName, heroKey);
+                    string txt = Resolve(ln.text,        heroName, heroKey);
+                    if (string.IsNullOrEmpty(por)) por = null;
+                    followLines.Add(new DialogueLine(spk, por, txt));
+                }
+            }
+
+            System.Action applyEffects = () =>
+            {
+                ApplyChoiceEffects(ch, hero, heroKey);
+                // 再跑主结算（不会重复发授旗：AddTruthFlag 自动去重）
+                OnResolved?.Invoke(hero, heroCount);
+                _busy = false;
+            };
+
+            if (followLines.Count > 0) DialogueBox.Get().Play(followLines, applyEffects);
+            else                        applyEffects();
+        }
+
+        private void ApplyChoiceEffects(StoryChoice ch, HeroData hero, string heroKey)
+        {
+            var gm = GameManager.Instance;
+            foreach (var f in ch.runStoryFlags)
+                if (!string.IsNullOrEmpty(f)) gm?.Run?.SetStoryFlag(f);
+
+            foreach (var ta in ch.truthAwards)
+            {
+                if (ta == null || string.IsNullOrEmpty(ta.flag)) continue;
+                bool isOwn      = string.IsNullOrEmpty(ta.requireHero) || ta.requireHero == heroKey;
+                bool isFallback = ta.fallbackCount > 0 && _lastGlobalCount >= ta.fallbackCount;
+                if (!isOwn && !isFallback) continue;
+                gm?.Persistent?.AddTruthFlag(ta.flag);
+            }
+
+            foreach (var item in ch.grantStoryItems)
+                if (!string.IsNullOrEmpty(item)) gm?.Run?.AddStoryItem(item);
+
+            if (ch.addCorruption != 0) gm?.Run?.AddCorruption(ch.addCorruption);
+            if (!string.IsNullOrEmpty(ch.bannerOverride))
+                GameBootstrap.PostBanner(ch.bannerOverride);
         }
 
         // ── 数据驱动求值 ─────────────────────────────────────────────────────

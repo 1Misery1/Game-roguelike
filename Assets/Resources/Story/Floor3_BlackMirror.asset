@@ -173,3 +173,37 @@ MonoBehaviour:
   grantStoryItems:
   - "\u865A\u7A7A\u8BB0\u5FC6\u788E\u7247"
   addCorruption: 4
+  choices:
+  - label: "\u5BF9\u5CD9"
+    description: "\u6B63\u89C6\u955C\u4E2D\u7684\u4F60\u2014\u2014\u66F4\u6DF1\u5730\u63A5\u89E6\u865A\u7A7A\uFF0C\u4F46\u80FD\u53D6\u5F97\u5BF9\u5CD9\u8BB0\u5FC6"
+    followLines:
+    - speaker: "\u65C1\u767D"
+      portraitKey: 
+      text: "\u4E24\u4E2A\u4F60\u5BF9\u89C6\u5F88\u4E45\u3002\u6700\u540E\u90A3\u4E2A\u5F71\u5B50\u8F7B\u8F7B\u70B9\u4E86\u5934\uFF0C\u56DE\u5230\u955C\u4E2D\u53BB\u3002"
+    - speaker: '{hero}'
+      portraitKey: '{heroKey}'
+      text: "\u6211\u770B\u89C1\u4F60\u4E86\u3002\u4F60\u4E5F\u770B\u89C1\u6211\u4E86\u3002"
+    runStoryFlags:
+    - f3_mirror_confronted_self
+    truthAwards: []
+    grantStoryItems:
+    - "\u5BF9\u5CD9\u8BB0\u5FC6"
+    addCorruption: 2
+    bannerOverride: "\u3010\u6289\u62E9\u3011\u4F60\u4E0E\u955C\u4E2D\u7684\u4F60\u5BF9\u5CD9"
+  - label: "\u8F6C\u8EAB\u79BB\u5F00"
+    description: "\u62D2\u7EDD\u4EA4\u624B\u2014\u2014\u4FDD\u7559\u514B\u5236\uFF1B\u5C11\u91CF\u51C0\u5316\u6C61\u67D3\uFF0C\u4F46\u4E0D\u4F1A\u83B7\u5F97\u5BF9\u5CD9\u8BB0\u5FC6"
+    followLines:
+    - speaker: "\u65C1\u767D"
+      portraitKey: 
+      text: "\u4F60\u8F6C\u8EAB\u8D70\u5F00\u3002\u80CC\u540E\u6CA1\u6709\u811A\u6B65\u58F0\u8DDF\u4E0A\u6765\u2014\u2014\u4F46\u4F60\u77E5\u9053\uFF0C\u5B83\u4E00\u76F4\u5728\u770B\u7740\u3002"
+    - speaker: '{hero}'
+      portraitKey: '{heroKey}'
+      text: "\u4E0D\u662F\u6BCF\u573A\u5BF9\u5CD9\u90FD\u5F97\u53D1\u751F\u3002"
+    runStoryFlags:
+    - f3_mirror_refused_self
+    truthAwards: []
+    grantStoryItems:
+    - "\u514B\u5236"
+    addCorruption: -4
+    bannerOverride: "\u3010\u6289\u62E9\u3011\u4F60\u4ECE\u955C\u524D\u8F6C\u8EAB"
+  choiceTitle: "\u955C\u4E2D\u7684\u300C\u4F60\u300D\u62AC\u8D77\u5934\u2014\u2014"
