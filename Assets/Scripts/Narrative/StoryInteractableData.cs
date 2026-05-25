@@ -50,6 +50,36 @@ namespace Game.Narrative
         public List<StoryLineData> lines = new List<StoryLineData>();
     }
 
+    /// 玩家在主对话播放完后看到的选项（用于"直视 / 打碎"等抉择类交互）
+    [System.Serializable]
+    public class StoryChoice
+    {
+        [Tooltip("按钮显示的选项标题（如「直视湖面」「打碎湖面」）")]
+        public string label = "选项";
+
+        [TextArea(1, 3)]
+        [Tooltip("按钮下方描述行（简短说明此选项后果，可空）")]
+        public string description = "";
+
+        [Tooltip("选中后追加播放的对话行（在效果应用之前）")]
+        public List<StoryLineData> followLines = new List<StoryLineData>();
+
+        [Tooltip("此选项写入的本周目剧情旗（叠加在主数据 runStoryFlags 之上）")]
+        public List<string> runStoryFlags = new List<string>();
+
+        [Tooltip("此选项写入的真相旗（叠加；同主结构，支持 fallback）")]
+        public List<TruthFlagAward> truthAwards = new List<TruthFlagAward>();
+
+        [Tooltip("此选项授予的剧情道具")]
+        public List<string> grantStoryItems = new List<string>();
+
+        [Tooltip("此选项的虚空污染增量（叠加）")]
+        public int addCorruption = 0;
+
+        [Tooltip("此选项的横幅文字。留空 = 不覆盖（仍用主对话的 bannerText）")]
+        public string bannerOverride = "";
+    }
+
     /// 跨周目真相旗奖励（可绑英雄）。
     /// 设计哲学：每个真相有一个「专属英雄」能在首次调查就立刻领悟；
     /// 其他英雄通过反复探访（fallbackCount 次）也能逐步拼凑真相，
@@ -116,5 +146,12 @@ namespace Game.Narrative
 
         [Tooltip("本周目虚空污染增量。0=不变；正=污染；负=净化（如霜眠祭坛放置工匠名册）")]
         public int addCorruption = 0;
+
+        [Header("玩家抉择（可选）")]
+        [Tooltip("主对话播放完后弹出的选项菜单。留空 = 不弹窗。每个选项可独立设置追加台词与奖励")]
+        public List<StoryChoice> choices = new List<StoryChoice>();
+
+        [Tooltip("弹窗顶部标题（可空，默认为 bannerText）")]
+        public string choiceTitle = "";
     }
 }

@@ -200,7 +200,33 @@ public static class CreateStoryData_AllRemaining
 
         d.runStoryFlags.Add("f2_lake_seen");
         d.truthAwards.Add(new TruthFlagAward { flag = "truth_lake_witnessed", requireHero = "" });
-        d.addCorruption = 2;   // 直视虚空：少量污染
+        d.addCorruption = 2;   // 基线：站在湖前已经少量沾染
+
+        // 玩家抉择：直视 vs 打碎
+        d.choiceTitle = "你怎么面对这面湖？";
+        d.choices.Add(new StoryChoice {
+            label       = "直视湖面",
+            description = "看完所有不愿面对的画面——承担它",
+            followLines = new List<StoryLineData> {
+                L("旁白", "", "你强迫自己看到最后。胸口被某种冰冷的东西轻轻刺穿。"),
+                L("{hero}", "{heroKey}", "看清了，就不必再回头。"),
+            },
+            grantStoryItems = new List<string> { "寒镜碎片" },
+            runStoryFlags   = new List<string> { "f2_lake_witnessed_directly" },
+            bannerOverride  = "【抉择】你直视了湖面",
+        });
+        d.choices.Add(new StoryChoice {
+            label       = "打碎湖面",
+            description = "拒绝再看下去——从碎片下取走某物（污染加重）",
+            followLines = new List<StoryLineData> {
+                L("旁白", "", "玻璃般的裂声响起。湖底浮起一件凉到骨子的遗物——你不知道那原本属于谁。"),
+                L("{hero}", "{heroKey}", "我不想看了。这一次先这样。"),
+            },
+            grantStoryItems = new List<string> { "湖底遗物" },
+            runStoryFlags   = new List<string> { "f2_lake_shattered" },
+            addCorruption   = 5,
+            bannerOverride  = "【抉择】你打碎了湖面",
+        });
         Save(d, "Floor2_FrozenLake");
     }
 
@@ -353,7 +379,34 @@ public static class CreateStoryData_AllRemaining
         d.runStoryFlags.Add("f3_mirror_seen");
         d.truthAwards.Add(new TruthFlagAward { flag = "truth_mirror_confronted", requireHero = "" });
         d.grantStoryItems.Add("虚空记忆碎片");
-        d.addCorruption = 4;   // 与虚空分身对峙：明显污染
+        d.addCorruption = 4;   // 基线：盯着镜中分身已经被它影响
+
+        // 玩家抉择：对峙 vs 转身
+        d.choiceTitle = "镜中的「你」抬起头——";
+        d.choices.Add(new StoryChoice {
+            label       = "对峙",
+            description = "正视镜中的你——更深地接触虚空，但能取得对峙记忆",
+            followLines = new List<StoryLineData> {
+                L("旁白", "", "两个你对视很久。最后那个影子轻轻点了头，回到镜中去。"),
+                L("{hero}", "{heroKey}", "我看见你了。你也看见我了。"),
+            },
+            grantStoryItems = new List<string> { "对峙记忆" },
+            runStoryFlags   = new List<string> { "f3_mirror_confronted_self" },
+            addCorruption   = 2,
+            bannerOverride  = "【抉择】你与镜中的你对峙",
+        });
+        d.choices.Add(new StoryChoice {
+            label       = "转身离开",
+            description = "拒绝交手——保留克制；少量净化污染，但不会获得对峙记忆",
+            followLines = new List<StoryLineData> {
+                L("旁白", "", "你转身走开。背后没有脚步声跟上来——但你知道，它一直在看着。"),
+                L("{hero}", "{heroKey}", "不是每场对峙都得发生。"),
+            },
+            grantStoryItems = new List<string> { "克制" },
+            runStoryFlags   = new List<string> { "f3_mirror_refused_self" },
+            addCorruption   = -4,  // 净化（拒绝与虚空交锋）
+            bannerOverride  = "【抉择】你从镜前转身",
+        });
         Save(d, "Floor3_BlackMirror");
     }
 
