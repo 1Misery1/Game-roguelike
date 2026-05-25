@@ -1,7 +1,18 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Game.Dev
 {
+    /// 房间池条目：类型 + 权重
+    [System.Serializable]
+    public class FloorRoomEntry
+    {
+        [Tooltip("房间类型：Monster / Coin / Talent / Shop / HellTrial / FrostGrave / ChaosRift / Boss")]
+        public string type   = "Monster";
+        [Tooltip("被抽中的权重（越大越常见）")]
+        public float  weight = 1f;
+    }
+
     /// 楼层程序化背景纹理类型
     public enum FloorProceduralKind
     {
@@ -39,5 +50,24 @@ namespace Game.Dev
 
         [Tooltip("当 proceduralKind = Custom 时使用的背景精灵；其他模式忽略")]
         public Sprite customBackground;
+
+        // ── 战斗参数（波次表）─────────────────────────────────────────────
+        // 小怪类型顺序（共 8 个，对应 SpawnRandomNormalEnemy 的 switch）：
+        // 0 Skeleton  1 Soldier  2 Archer  3 Bat
+        // 4 ShieldGuard  5 PoisonSpider  6 ShadowAssassin  7 ExplosiveDemon
+        [Header("小怪权重（8 项，分前期/中后期）")]
+        [Tooltip("前期房间（room index ≤ 2）的小怪权重 8 项")]
+        public float[] earlyEnemyWeights = new float[] { 2f, 3f, 2f, 2f, 1f, 1f, 0f, 1f };
+
+        [Tooltip("中后期房间（room index ≥ 3）的小怪权重 8 项")]
+        public float[] lateEnemyWeights  = new float[] { 1f, 2f, 1f, 1f, 3f, 1f, 1f, 4f };
+
+        [Header("精英刷新")]
+        [Tooltip("精英敌人在中后期房间的出现概率（前 2 间始终为 0）")]
+        [Range(0f, 1f)] public float eliteChance = 0.15f;
+
+        [Header("房间池")]
+        [Tooltip("该层可能出现的非 Boss 房间类型与权重；为空时使用代码默认池")]
+        public List<FloorRoomEntry> roomPool = new List<FloorRoomEntry>();
     }
 }

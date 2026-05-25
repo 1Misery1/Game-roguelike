@@ -1326,35 +1326,44 @@ namespace Game.Dev
         // ── Floor helper methods ───────────────────────────────────────────
 
         // Enemy spawn weights per floor (index 0-7 → Skeleton/Soldier/Archer/Bat/ShieldGuard/PoisonSpider/ShadowAssassin/ExplosiveDemon)
+        // 优先读 FloorThemeData；缺失时退回旧硬编码表
         private float[] GetFloorEnemyWeights()
         {
-            // First two rooms only spawn basic enemies, no dangerous special enemies
+            // 前两间始终只有基础小怪（写死给玩家热身）
             if (_currentRoomIndex <= 1)
                 return new float[] { 4f, 4f, 2f, 3f, 0f, 0f, 0f, 0f };
 
-            // From room 3 onward, floor-theme enemies gradually appear
+            var theme    = GetFloorTheme();
             bool earlyRoom = _currentRoomIndex <= 2;
+            if (theme != null)
+            {
+                var w = earlyRoom ? theme.earlyEnemyWeights : theme.lateEnemyWeights;
+                if (w != null && w.Length == 8) return w;
+            }
+
+            // 回退：旧硬编码
             switch (CurrentFloor)
             {
                 case 1:
                     return earlyRoom
-                        ? new float[] { 2f, 3f, 2f, 2f, 1f, 1f, 0f, 1f }   // ShieldGuard/ExplosiveDemon weight suppressed
-                        : new float[] { 1f, 2f, 1f, 1f, 3f, 1f, 1f, 4f };  // Inferno full roster
+                        ? new float[] { 2f, 3f, 2f, 2f, 1f, 1f, 0f, 1f }
+                        : new float[] { 1f, 2f, 1f, 1f, 3f, 1f, 1f, 4f };
                 case 2:
                     return earlyRoom
                         ? new float[] { 4f, 1f, 3f, 3f, 0f, 0f, 0f, 0f }
-                        : new float[] { 4f, 1f, 3f, 3f, 1f, 1f, 1f, 1f };  // Frost Realm full roster
+                        : new float[] { 4f, 1f, 3f, 3f, 1f, 1f, 1f, 1f };
                 default:
                     return earlyRoom
                         ? new float[] { 1f, 3f, 1f, 1f, 1f, 2f, 2f, 1f }
-                        : new float[] { 1f, 3f, 1f, 1f, 1f, 2f, 4f, 2f };  // Chaos Abyss full roster
+                        : new float[] { 1f, 3f, 1f, 1f, 1f, 2f, 4f, 2f };
             }
         }
 
-        // Elite enemy spawn chance per floor (first two rooms never spawn elites)
         private float GetFloorEliteChance()
         {
             if (_currentRoomIndex <= 1) return 0f;
+            var theme = GetFloorTheme();
+            if (theme != null) return theme.eliteChance;
             switch (CurrentFloor)
             {
                 case 1:  return 0.15f;
@@ -1363,9 +1372,20 @@ namespace Game.Dev
             }
         }
 
-        // Combat room pool per floor (includes theme-specific special rooms)
         private (string type, float weight)[] GetFloorRoomPool()
         {
+            var theme = GetFloorTheme();
+            if (theme != null && theme.roomPool != null && theme.roomPool.Count > 0)
+            {
+                var arr = new (string type, float weight)[theme.roomPool.Count];
+                for (int i = 0; i < theme.roomPool.Count; i++)
+                {
+                    var e = theme.roomPool[i];
+                    arr[i] = (e != null ? e.type : "Monster",
+                              e != null ? e.weight : 1f);
+                }
+                return arr;
+            }
             switch (CurrentFloor)
             {
                 case 1:
