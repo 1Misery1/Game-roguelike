@@ -21,8 +21,9 @@ namespace Game.AI
             Vector2 myPos = transform.position;
             float dist = Vector2.Distance(myPos, target);
 
-            // Skip pathfinding when very close — direct path is always fine
-            if (dist < 1.5f)
+            // Skip pathfinding when very close AND no hazard between us and the target.
+            // Sampling a few interpolated cells catches lava/traps in the direct line.
+            if (dist < 1.5f && !DirectLineHasHazard(myPos, target))
             {
                 _path.Clear();
                 Vector2 d = target - myPos;
@@ -56,5 +57,18 @@ namespace Game.AI
 
         // Force a repath on the next frame (call after teleporting enemy)
         public void InvalidatePath() => _nextRepath = 0f;
+
+        // 沿直线采样 4 个点，若任一格有危险代价，则走 A* 绕开
+        static bool DirectLineHasHazard(Vector2 from, Vector2 to)
+        {
+            for (int i = 1; i <= 4; i++)
+            {
+                float t = i / 5f;
+                var s   = Vector2.Lerp(from, to, t);
+                var cell = NavGrid.WorldToCell(s);
+                if (NavGrid.HazardAt(cell.x, cell.y) > 0) return true;
+            }
+            return false;
+        }
     }
 }

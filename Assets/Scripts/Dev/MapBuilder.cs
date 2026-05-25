@@ -370,9 +370,18 @@ namespace Game.Dev
 
             switch (fi)
             {
-                case 0: go.AddComponent<FlamePillar>();    break;
-                case 1: go.AddComponent<IceSpikeTrap>();   break;
-                case 2: go.AddComponent<VoidRift>();       break;
+                case 0:
+                    go.AddComponent<FlamePillar>();
+                    go.AddComponent<Game.AI.NavHazardRegistrar>().radius = 0.9f;
+                    break;
+                case 1:
+                    go.AddComponent<IceSpikeTrap>();
+                    go.AddComponent<Game.AI.NavHazardRegistrar>().radius = 0.7f;
+                    break;
+                case 2:
+                    go.AddComponent<VoidRift>();
+                    go.AddComponent<Game.AI.NavHazardRegistrar>().radius = 1.4f;
+                    break;
             }
         }
 

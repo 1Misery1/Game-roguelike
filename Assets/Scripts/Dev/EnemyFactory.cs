@@ -332,6 +332,10 @@ namespace Game.Dev
             lava.damagePerSecond = dps;
             lava.lifetime        = lifetime;
             lava.owner           = owner;
+
+            // 让普通敌人 AI 绕开
+            var hazard = go.AddComponent<Game.AI.NavHazardRegistrar>();
+            hazard.radius = radius;
             return go;
         }
 

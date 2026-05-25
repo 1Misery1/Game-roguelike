@@ -11,7 +11,13 @@ namespace Game.AI
         const int W = MapBuilder.TileW;
         const int H = MapBuilder.TileH;
 
-        static readonly bool[,] _w = new bool[W, H]; // _w[col, row]
+        static readonly bool[,] _w        = new bool[W, H]; // _w[col, row]
+        static readonly int [,] _hazard   = new int [W, H]; // 危险代价（A* 加成；可走但成本高）
+
+        // 静态地形危险（'t' 陷阱 / 'l' 岩浆）：穿越一格相当于 15 步路径
+        const int StaticHazardPenalty  = 15;
+        // 动态危险（LavaPool / IceSpike / VoidRift / FlamePillar 等运行时生成）：每格 +12
+        const int DynamicHazardPenalty = 12;
 
         public static void Build(string[] rows)
         {
@@ -23,9 +29,38 @@ namespace Game.AI
                 {
                     char ch = row[c];
                     _w[c, r] = ch == '.' || ch == 'd' || ch == 't' || ch == 'l' || ch == 'x';
+                    // 'l' 岩浆 / 't' 陷阱 → 仍可走（防卡死）但代价极高
+                    _hazard[c, r] = (ch == 't' || ch == 'l') ? StaticHazardPenalty : 0;
                 }
             }
         }
+
+        /// 在 worldCenter 周围 worldRadius 范围内增加动态危险代价（A* 会绕开）。
+        /// 配套：在物体销毁时调用 RemoveDynamicHazard 还原。
+        public static void AddDynamicHazard(Vector2 worldCenter, float worldRadius)
+            => ApplyDynamic(worldCenter, worldRadius, +DynamicHazardPenalty);
+
+        public static void RemoveDynamicHazard(Vector2 worldCenter, float worldRadius)
+            => ApplyDynamic(worldCenter, worldRadius, -DynamicHazardPenalty);
+
+        static void ApplyDynamic(Vector2 worldCenter, float worldRadius, int delta)
+        {
+            var center = WorldToCell(worldCenter);
+            int rad    = Mathf.CeilToInt(worldRadius);
+            float rsq  = worldRadius * worldRadius + 0.001f;
+            for (int dy = -rad; dy <= rad; dy++)
+            for (int dx = -rad; dx <= rad; dx++)
+            {
+                if (dx * dx + dy * dy > rsq) continue;
+                int x = center.x + dx, y = center.y + dy;
+                if (x < 0 || x >= W || y < 0 || y >= H) continue;
+                _hazard[x, y] = Mathf.Max(0, _hazard[x, y] + delta);
+            }
+        }
+
+        /// 调试用：查询某格的当前危险代价
+        public static int HazardAt(int c, int r)
+            => (c < 0 || c >= W || r < 0 || r >= H) ? 0 : _hazard[c, r];
 
         public static Vector2Int WorldToCell(Vector2 pos)
         {
@@ -89,7 +124,10 @@ namespace Game.AI
             => Mathf.Abs(a.x - b.x) + Mathf.Abs(a.y - b.y);
 
         static float MoveCost(Vector2Int a, Vector2Int b)
-            => (a.x != b.x && a.y != b.y) ? 1.414f : 1f;
+        {
+            float baseCost = (a.x != b.x && a.y != b.y) ? 1.414f : 1f;
+            return baseCost + _hazard[b.x, b.y];
+        }
 
         static IEnumerable<Vector2Int> Neighbors(Vector2Int c)
         {

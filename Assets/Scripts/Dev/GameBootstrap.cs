@@ -1360,6 +1360,7 @@ namespace Game.Dev
                 sr.sortingOrder = 3;
 
                 go.AddComponent<FlamePillar>();
+                go.AddComponent<Game.AI.NavHazardRegistrar>().radius = 0.9f;
             }
         }
 
@@ -1392,6 +1393,7 @@ namespace Game.Dev
                 sr.sortingOrder = 3;
 
                 go.AddComponent<IceSpikeTrap>();
+                go.AddComponent<Game.AI.NavHazardRegistrar>().radius = 0.7f;
             }
         }
 
@@ -1418,6 +1420,7 @@ namespace Game.Dev
                 sr.sortingOrder = 3;
 
                 go.AddComponent<VoidRift>();
+                go.AddComponent<Game.AI.NavHazardRegistrar>().radius = 1.4f;
             }
         }
 
