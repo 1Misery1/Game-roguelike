@@ -1132,20 +1132,37 @@ namespace Game.Dev
             };
             Game.Narrative.DialogueBox.Get().Play(lines, () =>
             {
-                // 复用 ChaosLord 实体外观，但替换为「王国之罪」专属 AI
+                // 复用 ChaosLord 实体外观；统计/缩放/颜色/AI 全部按 KingdomGuilt SO 覆盖
                 var boss   = EnemyFactory.SpawnChaosLord(new Vector3(0f, 2.5f, 0f),
                                  _player.transform, _currentRoomRoot.transform);
                 boss.name  = "Kingdom_Guilt";
-                boss.transform.localScale *= 1.6f;
-                // 暖金色调（区别于混沌领主的紫黑）
+
+                var kg = BossStatsRegistry.Get("kingdom_guilt");
+                float kgScaleMul = kg != null ? (kg.visualScale / 1.4f) : 1.6f; // 1.4 是 ChaosLord 默认缩放
+                boss.transform.localScale *= kgScaleMul;
                 var sr = boss.GetComponent<SpriteRenderer>();
-                if (sr != null) sr.color = new Color(0.92f, 0.78f, 0.30f);
+                if (sr != null) sr.color = kg != null ? kg.tintColor : new Color(0.92f, 0.78f, 0.30f);
+
                 // 移除原 ChaosLord AI，挂上自定义 AI
                 var oldAI = boss.GetComponent<ChaosLordAI>();
                 if (oldAI != null) Destroy(oldAI);
                 var bossAI = boss.AddComponent<KingdomGuiltAI>();
                 bossAI.target = _player.transform;
-                ScaleEnemyStats(boss, FloorScale * 2.5f);
+
+                // 覆盖统计：HP/ATK/DEF/SPD 直接用 KG SO 数值（再叠 FloorScale）
+                var kgStats = boss.GetComponent<CharacterStats>();
+                if (kgStats != null && kg != null)
+                {
+                    kgStats.SetBase(StatType.MaxHP,     kg.maxHp     * FloorScale);
+                    kgStats.SetBase(StatType.Attack,    kg.attack    * FloorScale);
+                    kgStats.SetBase(StatType.Defense,   kg.defense);
+                    kgStats.SetBase(StatType.MoveSpeed, kg.moveSpeed);
+                    boss.GetComponent<Health>()?.Heal(99999f);
+                }
+                else
+                {
+                    ScaleEnemyStats(boss, FloorScale * 2.5f);
+                }
 
                 _bossHealth = boss.GetComponent<Health>();
                 _bossName   = "王国之罪";

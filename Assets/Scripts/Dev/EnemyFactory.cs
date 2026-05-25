@@ -184,8 +184,15 @@ namespace Game.Dev
         public static GameObject SpawnHellGiant(Vector3 pos, Transform player, Transform parent,
             System.Func<Vector3, float, float, float, GameObject> spawnLavaCallback)
         {
-            var go = MakeBase("Hell Giant", pos, 1.2f, new Color(0.7f, 0.12f, 0.08f),
-                hp: 320f, atk: 28f, def: 8f, spd: 2.5f, parent: parent, EnemyType.HellGiant);
+            var s = BossStatsRegistry.Get("hell_giant");
+            float scale = s != null ? s.visualScale : 1.2f;
+            Color tint  = s != null ? s.tintColor   : new Color(0.7f, 0.12f, 0.08f);
+            float hp    = s != null ? s.maxHp       : 320f;
+            float atk   = s != null ? s.attack      : 28f;
+            float def_  = s != null ? s.defense     : 8f;
+            float spd   = s != null ? s.moveSpeed   : 2.5f;
+            var go = MakeBase("Hell Giant", pos, scale, tint,
+                hp: hp, atk: atk, def: def_, spd: spd, parent: parent, EnemyType.HellGiant);
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.HellGiant;
             go.GetComponent<SpriteRenderer>().sortingOrder = 6;
 
@@ -256,8 +263,15 @@ namespace Game.Dev
         // Frost Lich: HP480, ATK20, DEF5, SPD1.8 | ranged frost + ice volley + frost nova, phase 2 cooldown reduction
         public static GameObject SpawnFrostLich(Vector3 pos, Transform player, Transform parent)
         {
-            var go = MakeBase("Frost Lich", pos, 1.1f, new Color(0.45f, 0.75f, 1f),
-                hp: 480f, atk: 20f, def: 5f, spd: 1.8f, parent: parent, EnemyType.FrostLich);
+            var s = BossStatsRegistry.Get("frost_lich");
+            float scale = s != null ? s.visualScale : 1.1f;
+            Color tint  = s != null ? s.tintColor   : new Color(0.45f, 0.75f, 1f);
+            float hp    = s != null ? s.maxHp       : 480f;
+            float atk   = s != null ? s.attack      : 20f;
+            float def_  = s != null ? s.defense     : 5f;
+            float spd   = s != null ? s.moveSpeed   : 1.8f;
+            var go = MakeBase("Frost Lich", pos, scale, tint,
+                hp: hp, atk: atk, def: def_, spd: spd, parent: parent, EnemyType.FrostLich);
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.FrostLich;
             go.GetComponent<SpriteRenderer>().sortingOrder = 6;
 
@@ -284,8 +298,15 @@ namespace Game.Dev
         // Chaos Lord: HP700, ATK35, DEF12, SPD3.0 | melee sweep + chaos burst + summon legion, phase 2 speed boost
         public static GameObject SpawnChaosLord(Vector3 pos, Transform player, Transform parent)
         {
-            var go = MakeBase("Chaos Lord", pos, 1.4f, new Color(0.5f, 0.1f, 0.7f),
-                hp: 700f, atk: 35f, def: 12f, spd: 3.0f, parent: parent, EnemyType.ChaosLord);
+            var s = BossStatsRegistry.Get("chaos_lord");
+            float scale = s != null ? s.visualScale : 1.4f;
+            Color tint  = s != null ? s.tintColor   : new Color(0.5f, 0.1f, 0.7f);
+            float hp    = s != null ? s.maxHp       : 700f;
+            float atk   = s != null ? s.attack      : 35f;
+            float def_  = s != null ? s.defense     : 12f;
+            float spd   = s != null ? s.moveSpeed   : 3.0f;
+            var go = MakeBase("Chaos Lord", pos, scale, tint,
+                hp: hp, atk: atk, def: def_, spd: spd, parent: parent, EnemyType.ChaosLord);
             var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.ChaosLord;
             go.GetComponent<SpriteRenderer>().sortingOrder = 6;
 
