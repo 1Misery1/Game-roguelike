@@ -2164,6 +2164,7 @@ namespace Game.Dev
         // ─────────────────────────────────────────────────────────────
         private void OnGUI()
         {
+            UIFonts.ApplyToSkin();   // 全局 IMGUI 字体统一为方舟像素体
             switch (_state)
             {
                 case State.Playing:        DrawHUD();                                                  break;
@@ -2185,6 +2186,7 @@ namespace Game.Dev
             DrawHeroSkillHUD();
             DrawWeaponHUD();
             DrawTalentStatus();
+            DrawStoryItemsPanel();
             DrawBossHPBar();
 
             // 提示横幅
@@ -2446,6 +2448,60 @@ namespace Game.Dev
                 GUI.Label(new Rect(chipX + 6, y + 14, chipW - 6, 13),
                     at.IsPermanent ? at.Data.description : $"{at.Data.description}  [{at.RoomsLeft}间]",
                     MkLabel(10, TextAnchor.MiddleLeft, FontStyle.Normal, new Color(0.75f, 0.75f, 0.75f)));
+            }
+        }
+
+        // 本周目持有的剧情道具（左侧栏，置于天赋之下）
+        // 净化系=青；污染系=紫；纯叙事=米黄
+        private static readonly System.Collections.Generic.HashSet<string> _pureItems = new System.Collections.Generic.HashSet<string> {
+            "寒镜碎片", "克制", "记忆契约", "推翻的勇气"
+        };
+        private static readonly System.Collections.Generic.HashSet<string> _taintedItems = new System.Collections.Generic.HashSet<string> {
+            "湖底遗物", "对峙记忆", "怒火残响", "王座余威", "虚空记忆碎片"
+        };
+
+        private static Color ClassifyStoryItemColor(string id)
+        {
+            if (_pureItems.Contains(id))    return new Color(0.60f, 0.85f, 0.95f);
+            if (_taintedItems.Contains(id)) return new Color(0.93f, 0.62f, 0.95f);
+            return new Color(0.92f, 0.84f, 0.55f);
+        }
+
+        private void DrawStoryItemsPanel()
+        {
+            var run = GameManager.Instance?.Run;
+            if (run == null || run.StoryItems == null || run.StoryItems.Count == 0) return;
+
+            float chipW = 230f;
+            float chipH = 30f;
+            float chipX = 8f;
+            // 接在天赋面板下方；无天赋时直接从 36 起
+            float startY = 36f + _activeTalents.Count * (28f + 4f);
+            if (_activeTalents.Count > 0) startY += 14f;
+
+            int n = run.StoryItems.Count;
+            float panelH = 22f + n * (chipH + 4f);
+            FillRect(new Rect(chipX - 4f, startY - 4f, chipW + 8f, panelH), new Color(0f, 0f, 0f, 0.62f));
+            FillRect(new Rect(chipX - 4f, startY - 4f, chipW + 8f, 2f), new Color(0.92f, 0.78f, 0.40f, 0.6f));
+
+            GUI.Label(new Rect(chipX + 6f, startY - 1f, chipW, 16f), $"✦ 持有道具 ({n})",
+                MkLabel(12, TextAnchor.MiddleLeft, FontStyle.Bold, new Color(0.92f, 0.84f, 0.55f)));
+
+            startY += 18f;
+            for (int i = 0; i < n; i++)
+            {
+                var item = run.StoryItems[i];
+                float y  = startY + i * (chipH + 4f);
+                Color c  = ClassifyStoryItemColor(item);
+
+                FillRect(new Rect(chipX, y, 3f, chipH), c);
+                GUI.Label(new Rect(chipX + 8f, y, chipW - 10f, 16f), $"✦ {item}",
+                    MkLabel(12, TextAnchor.MiddleLeft, FontStyle.Bold, c));
+
+                if (Game.Systems.StoryItemDatabase.TryGet(item, out var def) && !string.IsNullOrEmpty(def.flavorTag))
+                    GUI.Label(new Rect(chipX + 8f, y + 15f, chipW - 10f, 14f), def.flavorTag,
+                        MkLabel(10, TextAnchor.MiddleLeft, FontStyle.Normal,
+                            new Color(c.r * 0.78f, c.g * 0.78f, c.b * 0.85f)));
             }
         }
 
@@ -2796,6 +2852,8 @@ namespace Game.Dev
                 fontStyle = style,
             };
             s.normal.textColor = color;
+            var f = UIFonts.UI;
+            if (f != null) s.font = f;
             return s;
         }
 

@@ -44,6 +44,7 @@ namespace Game.Dungeon
         private void OnGUI()
         {
             if (_taken || Weapon?.Data == null || Camera.main == null) return;
+            Game.Dev.UIFonts.ApplyToSkin();
             var data = Weapon.Data;
 
             Vector3 screen = Camera.main.WorldToScreenPoint(transform.position + Vector3.up * 0.95f);

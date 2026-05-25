@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Game.Dev;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -82,6 +83,7 @@ namespace Game.Narrative
         private void OnGUI()
         {
             if (!_open) return;
+            UIFonts.ApplyToSkin();
 
             // 全屏遮罩
             FillRect(new Rect(0, 0, Screen.width, Screen.height), new Color(0f, 0f, 0f, 0.72f));
@@ -168,10 +170,8 @@ namespace Game.Narrative
             GUI.color = prev;
         }
 
-        private static Font _font;
-        private static Font UIFont => _font != null ? _font :
-            (_font = Font.CreateDynamicFontFromOSFont(
-                new[] { "Microsoft YaHei", "微软雅黑", "SimHei", "黑体" }, 22));
+        // 统一使用方舟像素体（由 UIFonts 提供）
+        private static Font UIFont => UIFonts.UI;
 
         private static GUIStyle Style(int size, TextAnchor align, FontStyle fs, Color color)
         {
