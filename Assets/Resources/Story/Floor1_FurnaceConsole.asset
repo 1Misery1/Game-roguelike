@@ -79,5 +79,6 @@ MonoBehaviour:
   truthAwards:
   - flag: truth_furnace_overload
     requireHero: Mage
+    fallbackCount: 2
   grantStoryItems: []
   addCorruption: 0

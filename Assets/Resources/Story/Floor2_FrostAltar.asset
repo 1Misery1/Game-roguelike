@@ -79,5 +79,6 @@ MonoBehaviour:
   truthAwards:
   - flag: truth_church_silence
     requireHero: Paladin
+    fallbackCount: 2
   grantStoryItems: []
   addCorruption: -3

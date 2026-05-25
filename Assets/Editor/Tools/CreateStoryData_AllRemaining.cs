@@ -74,7 +74,7 @@ public static class CreateStoryData_AllRemaining
             L("旁白", "", "你触碰断裂的拉杆，控制台短暂闪烁，又再次熄灭。")));
 
         d.runStoryFlags.Add("f1_furnace_seen");
-        d.truthAwards.Add(new TruthFlagAward { flag = "truth_furnace_overload", requireHero = "Mage" });
+        d.truthAwards.Add(new TruthFlagAward { flag = "truth_furnace_overload", requireHero = "Mage", fallbackCount = 2 });
         Save(d, "Floor1_FurnaceConsole");
     }
 
@@ -101,7 +101,7 @@ public static class CreateStoryData_AllRemaining
             L("旁白", "", "焦黑的手指仍指着那扇门。仿佛要把这件事再说一遍。")));
 
         d.runStoryFlags.Add("f1_artisan_seen");
-        d.truthAwards.Add(new TruthFlagAward { flag = "truth_artisan_ledger", requireHero = "Paladin" });
+        d.truthAwards.Add(new TruthFlagAward { flag = "truth_artisan_ledger", requireHero = "Paladin", fallbackCount = 2 });
         d.grantStoryItems.Add("烧焦的工匠名册");
         Save(d, "Floor1_ArtisanCorpse");
     }
@@ -133,7 +133,7 @@ public static class CreateStoryData_AllRemaining
             L("{hero}", "{heroKey}", "不是我抛弃了他们。是他们关上冰门，把我推了出去。")));
 
         d.runStoryFlags.Add("f2_scout_camp_seen");
-        d.truthAwards.Add(new TruthFlagAward { flag = "truth_scout_sacrifice", requireHero = "Ranger" });
+        d.truthAwards.Add(new TruthFlagAward { flag = "truth_scout_sacrifice", requireHero = "Ranger", fallbackCount = 2 });
         Save(d, "Floor2_ScoutCamp");
     }
 
@@ -191,7 +191,7 @@ public static class CreateStoryData_AllRemaining
             L("{hero}", "{heroKey}", "教会不是不知道。他们选择让死者永远沉默。")));
 
         d.runStoryFlags.Add("f2_altar_seen");
-        d.truthAwards.Add(new TruthFlagAward { flag = "truth_church_silence", requireHero = "Paladin" });
+        d.truthAwards.Add(new TruthFlagAward { flag = "truth_church_silence", requireHero = "Paladin", fallbackCount = 2 });
         d.addCorruption = -3;   // 教会的封口仪式：祭奠净化少量污染
         Save(d, "Floor2_FrostAltar");
     }
@@ -221,7 +221,7 @@ public static class CreateStoryData_AllRemaining
             L("{hero}", "{heroKey}", "「停止实验的请求已被王室驳回。理由：王国需要永恒能源。」")));
 
         d.runStoryFlags.Add("f3_observatory_seen");
-        d.truthAwards.Add(new TruthFlagAward { flag = "truth_royal_rejected_stop", requireHero = "Mage" });
+        d.truthAwards.Add(new TruthFlagAward { flag = "truth_royal_rejected_stop", requireHero = "Mage", fallbackCount = 2 });
         Save(d, "Floor3_Observatory");
     }
 
@@ -249,7 +249,7 @@ public static class CreateStoryData_AllRemaining
             L("{hero}", "{heroKey}", "虚空不是猎物。它在学怎么当猎人。")));
 
         d.runStoryFlags.Add("f3_prey_seen");
-        d.truthAwards.Add(new TruthFlagAward { flag = "truth_void_predator", requireHero = "Hunter" });
+        d.truthAwards.Add(new TruthFlagAward { flag = "truth_void_predator", requireHero = "Hunter", fallbackCount = 2 });
         Save(d, "Floor3_PreyCorridor");
     }
 

@@ -79,6 +79,7 @@ MonoBehaviour:
   truthAwards:
   - flag: truth_artisan_ledger
     requireHero: Paladin
+    fallbackCount: 2
   grantStoryItems:
   - "\u70E7\u7126\u7684\u5DE5\u5320\u540D\u518C"
   addCorruption: 0

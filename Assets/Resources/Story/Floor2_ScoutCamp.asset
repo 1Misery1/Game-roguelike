@@ -90,5 +90,6 @@ MonoBehaviour:
   truthAwards:
   - flag: truth_scout_sacrifice
     requireHero: Ranger
+    fallbackCount: 2
   grantStoryItems: []
   addCorruption: 0

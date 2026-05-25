@@ -87,5 +87,6 @@ MonoBehaviour:
   truthAwards:
   - flag: truth_void_predator
     requireHero: Hunter
+    fallbackCount: 2
   grantStoryItems: []
   addCorruption: 0

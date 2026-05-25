@@ -162,7 +162,11 @@ namespace Game.Narrative
             foreach (var ta in d.truthAwards)
             {
                 if (ta == null || string.IsNullOrEmpty(ta.flag)) continue;
-                if (!string.IsNullOrEmpty(ta.requireHero) && ta.requireHero != heroKey) continue;
+
+                bool isOwnHero  = string.IsNullOrEmpty(ta.requireHero) || ta.requireHero == heroKey;
+                bool isFallback = ta.fallbackCount > 0 && count >= ta.fallbackCount;
+                if (!isOwnHero && !isFallback) continue;
+
                 gm?.Persistent?.AddTruthFlag(ta.flag);
             }
 

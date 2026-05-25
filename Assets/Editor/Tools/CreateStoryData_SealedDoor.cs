@@ -89,8 +89,9 @@ public static class CreateStoryData_SealedDoor
 
         data.runStoryFlags.Add("f1_sealed_door_seen");
         data.truthAwards.Add(new TruthFlagAward {
-            flag = "truth_kingdom_sealed_door",
-            requireHero = "Warrior"
+            flag          = "truth_kingdom_sealed_door",
+            requireHero   = "Warrior",
+            fallbackCount = 2,   // 非战士第二次调查即解锁，保留单角色通路
         });
 
         AssetDatabase.CreateAsset(data, path);
