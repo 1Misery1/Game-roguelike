@@ -2287,42 +2287,54 @@ namespace Game.Dev
         }
 
         // 结算/死亡画面
-        // 周目结局过场动画（占位画面）。
-        // 真实过场由订阅 OnEndingCutsceneStart 的动画系统接管；本占位仅用作开发期间
-        // 的可视化反馈与跳过 UI，确保流程能跑通。
+        // 周目结局过场基线动画：纯黑幕 fade-in → 静默 hold → fade-out。
+        // 真实动画接入后由订阅 OnEndingCutsceneStart 的系统覆盖；本占位提供
+        // 最小可信的视觉过渡，避免战斗画面突然切到结算 UI。
+        //
+        // 时间线（progress = elapsed / duration）：
+        //   0.00 — 0.15  : 黑幕淡入（alpha 0 → 1）
+        //   0.15 — 0.30  : 标题淡入
+        //   0.30 — 0.85  : 标题保持（hold）
+        //   0.85 — 1.00  : 整体淡出（黑幕 + 标题 alpha 1 → 0）
         private void DrawEndingCutscene()
         {
-            // 全屏黑底
-            FillRect(new Rect(0, 0, Screen.width, Screen.height), Color.black);
+            float elapsed  = Mathf.Max(0f, Time.unscaledTime - _cutsceneStartTime);
+            float progress = _cutsceneDuration > 0f ? Mathf.Clamp01(elapsed / _cutsceneDuration) : 1f;
 
-            float elapsed   = Mathf.Max(0f, Time.unscaledTime - _cutsceneStartTime);
-            float remaining = Mathf.Max(0f, _cutsceneDuration - elapsed);
-            float progress  = _cutsceneDuration > 0f ? Mathf.Clamp01(elapsed / _cutsceneDuration) : 1f;
+            // 黑幕 alpha：开头淡入，结尾淡出
+            float blackAlpha =
+                progress < 0.15f ? Mathf.SmoothStep(0f, 1f, progress / 0.15f) :
+                progress > 0.85f ? Mathf.SmoothStep(1f, 0f, (progress - 0.85f) / 0.15f) :
+                                   1f;
+            FillRect(new Rect(0, 0, Screen.width, Screen.height), new Color(0f, 0f, 0f, blackAlpha));
 
-            // 占位文字：标题
-            string title = _isTrueEnding ? "—— 真相·余烬 ——" : "—— 周目结束 ——";
-            Color  tint  = _isTrueEnding ? new Color(0.92f, 0.78f, 1f, 1f) : new Color(1f, 0.92f, 0.5f, 1f);
-            GUI.Label(new Rect(0, Screen.height * 0.38f, Screen.width, 60), title,
-                MkLabel(36, TextAnchor.MiddleCenter, FontStyle.Bold, tint));
+            // 标题 alpha：中段淡入并保持，结尾随黑幕同步淡出
+            float titleAlpha =
+                progress < 0.15f ? 0f :
+                progress < 0.30f ? Mathf.SmoothStep(0f, 1f, (progress - 0.15f) / 0.15f) :
+                progress < 0.85f ? 1f :
+                                   Mathf.SmoothStep(1f, 0f, (progress - 0.85f) / 0.15f);
 
-            // 占位提示
-            GUI.Label(new Rect(0, Screen.height * 0.48f, Screen.width, 30),
-                $"〔 周目结局动画占位 · 预留 {_cutsceneDuration:0.0}s 〕",
-                MkLabel(18, TextAnchor.MiddleCenter, FontStyle.Italic, new Color(0.7f, 0.7f, 0.8f)));
+            if (titleAlpha > 0.001f)
+            {
+                string title = _isTrueEnding ? "「记住地下之名。」" : "「世界暂时合上了眼。」";
+                Color  tint  = _isTrueEnding
+                                ? new Color(0.92f, 0.78f, 1f, titleAlpha)
+                                : new Color(0.85f, 0.85f, 0.78f, titleAlpha);
+                GUI.Label(new Rect(0, Screen.height * 0.46f, Screen.width, 60), title,
+                    MkLabel(28, TextAnchor.MiddleCenter, FontStyle.Italic, tint));
+            }
 
-            // 进度条
-            float pbW = Screen.width * 0.35f;
-            float pbX = (Screen.width - pbW) * 0.5f;
-            float pbY = Screen.height * 0.58f;
-            FillRect(new Rect(pbX, pbY, pbW, 4f), new Color(1f, 1f, 1f, 0.15f));
-            FillRect(new Rect(pbX, pbY, pbW * progress, 4f), tint);
+            // 极淡的跳过提示（仅在黑幕完全展开时显示）
+            if (blackAlpha > 0.95f && progress < 0.85f)
+            {
+                GUI.Label(new Rect(0, Screen.height * 0.88f, Screen.width, 22),
+                    "（空格 / 回车 跳过）",
+                    MkLabel(12, TextAnchor.MiddleCenter, FontStyle.Normal,
+                        new Color(0.45f, 0.45f, 0.50f, 0.6f)));
+            }
 
-            // 跳过提示与处理
-            GUI.Label(new Rect(0, Screen.height * 0.66f, Screen.width, 24),
-                $"剩余 {remaining:0.0}s   ·   按 空格 / 回车 / 鼠标左键 跳过",
-                MkLabel(14, TextAnchor.MiddleCenter, FontStyle.Normal, new Color(0.55f, 0.55f, 0.6f)));
-
-            // 跳过键（OnGUI 内监听 Event）
+            // 跳过键
             var e = Event.current;
             bool skipReq =
                 (e.type == EventType.KeyDown && (e.keyCode == KeyCode.Space ||
