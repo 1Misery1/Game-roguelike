@@ -313,6 +313,11 @@ namespace Game.Narrative
                     : $"✦ 获得「{item}」  {def.flavorTag}");
             else
                 GameBootstrap.PostBanner($"✦ 获得「{item}」");
+
+            // 检查协同：如果新道具满足任意协同条件，立即叠加加成 + banner 通知
+            var activated = StoryItemSynergyDatabase.CheckAndActivate(gm?.Run, stats);
+            foreach (var s in activated)
+                GameBootstrap.PostBanner($"★ 协同激活：{s.displayName}  ·  {s.flavor}");
         }
     }
 }

@@ -2214,6 +2214,7 @@ namespace Game.Dev
             DrawWeaponHUD();
             DrawTalentStatus();
             DrawStoryItemsPanel();
+            DrawActiveSynergiesPanel();
             DrawBossHPBar();
 
             // 提示横幅
@@ -2529,6 +2530,51 @@ namespace Game.Dev
                     GUI.Label(new Rect(chipX + 8f, y + 15f, chipW - 10f, 14f), def.flavorTag,
                         MkLabel(10, TextAnchor.MiddleLeft, FontStyle.Normal,
                             new Color(c.r * 0.78f, c.g * 0.78f, c.b * 0.85f)));
+            }
+        }
+
+        // 本周目已激活的道具协同（紧贴道具栏下方）
+        private void DrawActiveSynergiesPanel()
+        {
+            var run = GameManager.Instance?.Run;
+            if (run == null) return;
+
+            // 收集已激活协同
+            var active = new System.Collections.Generic.List<Game.Systems.StoryItemSynergyDatabase.SynergyDef>();
+            foreach (var s in Game.Systems.StoryItemSynergyDatabase.All)
+                if (Game.Systems.StoryItemSynergyDatabase.IsActive(run, s.id))
+                    active.Add(s);
+            if (active.Count == 0) return;
+
+            // 位置：紧跟道具栏（道具栏顶 = 36 + talents + 14；占 22 + items*34）
+            int itemCount = run.StoryItems != null ? run.StoryItems.Count : 0;
+            float anchor  = 36f + _activeTalents.Count * 32f;
+            if (_activeTalents.Count > 0) anchor += 14f;
+            if (itemCount > 0)            anchor += 22f + itemCount * 34f + 8f;
+
+            float chipW = 250f;
+            float chipH = 34f;
+            float chipX = 8f;
+            int   n     = active.Count;
+            float panelH = 22f + n * (chipH + 4f);
+
+            FillRect(new Rect(chipX - 4f, anchor - 4f, chipW + 8f, panelH), new Color(0f, 0f, 0f, 0.62f));
+            FillRect(new Rect(chipX - 4f, anchor - 4f, chipW + 8f, 2f),     new Color(1f, 0.55f, 0.85f, 0.7f));
+
+            GUI.Label(new Rect(chipX + 6f, anchor - 1f, chipW, 16f), $"★ 协同 ({n})",
+                MkLabel(12, TextAnchor.MiddleLeft, FontStyle.Bold, new Color(1f, 0.78f, 0.92f)));
+
+            anchor += 18f;
+            for (int i = 0; i < n; i++)
+            {
+                var s = active[i];
+                float y = anchor + i * (chipH + 4f);
+                Color c = new Color(1f, 0.72f, 0.92f);
+                FillRect(new Rect(chipX, y, 3f, chipH), c);
+                GUI.Label(new Rect(chipX + 8f, y, chipW - 10f, 16f), $"★ {s.displayName}",
+                    MkLabel(12, TextAnchor.MiddleLeft, FontStyle.Bold, c));
+                GUI.Label(new Rect(chipX + 8f, y + 16f, chipW - 10f, 16f), s.flavor,
+                    MkLabel(10, TextAnchor.MiddleLeft, FontStyle.Normal, new Color(0.82f, 0.68f, 0.82f)));
             }
         }
 
