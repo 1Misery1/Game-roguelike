@@ -28,6 +28,10 @@ public static class DebugVerifyHeroSequences
             new[] { "Warrior", "Mage",     "Hunter",  "Paladin", "Ranger" },
             new[] { "Paladin", "Warrior",  "Mage",    "Hunter",  "Ranger" },
             new[] { "Ranger",  "Hunter",   "Paladin", "Warrior", "Mage"   },
+            // 长尾：5 角色各 1 周后回到首发英雄继续推进
+            new[] { "Hunter", "Mage", "Paladin", "Warrior", "Ranger", "Hunter", "Hunter" },
+            // 极端单角色 8 周目，验证深度内容是否消耗殆尽
+            new[] { "Warrior","Warrior","Warrior","Warrior","Warrior","Warrior","Warrior","Warrior" },
         };
 
         foreach (var seq in sequences)

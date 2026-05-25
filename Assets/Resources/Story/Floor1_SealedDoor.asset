@@ -102,6 +102,42 @@ MonoBehaviour:
     - speaker: "\u95E8\u540E\u7684\u56DE\u58F0"
       portraitKey: 
       text: "\u300C\u8BF7\u8BB0\u4F4F\u6211\u4EEC\u7684\u540D\u5B57\u2014\u2014\u300D"
+  - note: "\u4E09\u6B21-\u95E8\u540E\u6258\u4ED8"
+    minCount: 3
+    maxCount: 3
+    requireHero: 
+    forbidHero: 
+    minRunCount: 0
+    maxRunCount: 0
+    lines:
+    - speaker: "\u65C1\u767D"
+      portraitKey: 
+      text: "\u95E8\u540E\u8FD9\u4E00\u6B21\u6CA1\u6709\u6012\u543C\uFF0C\u53EA\u6709\u66F4\u6DF1\u7684\u6C89\u9ED8\u2014\u2014"
+    - speaker: "\u95E8\u540E\u7684\u56DE\u58F0"
+      portraitKey: 
+      text: "\u300C\u2026\u2026\u5982\u679C\u4F60\u542C\u5F97\u5230\uFF0C\u8BF7\u66FF\u6211\u4EEC\u8BF4\u3002\u300D"
+  - note: "\u4E09\u6B21-\u96F7\u6602\u90D1\u91CD\u627F\u8BFA"
+    minCount: 3
+    maxCount: 3
+    requireHero: Warrior
+    forbidHero: 
+    minRunCount: 0
+    maxRunCount: 0
+    lines:
+    - speaker: '{hero}'
+      portraitKey: '{heroKey}'
+      text: "\u6211\u4F1A\u7684\u3002\u4F1A\u66FF\u4F60\u4EEC\u8BF4\uFF0C\u76F4\u5230\u6CA1\u6709\u4EBA\u80FD\u518D\u88C5\u804B\u3002"
+  - note: "\u56DB\u6B21+-\u6C89\u9ED8\u544A\u522B"
+    minCount: 4
+    maxCount: 0
+    requireHero: 
+    forbidHero: 
+    minRunCount: 0
+    maxRunCount: 0
+    lines:
+    - speaker: "\u65C1\u767D"
+      portraitKey: 
+      text: "\u4F60\u4F38\u624B\u6309\u5728\u94C1\u95E8\u4E0A\u3002\u8FD9\u4E00\u6B21\u6CA1\u6709\u4EFB\u4F55\u58F0\u97F3\u56DE\u6765\u2014\u2014\u4F46\u4F60\u77E5\u9053\uFF0C\u4ED6\u4EEC\u542C\u89C1\u4E86\u3002"
   runStoryFlags:
   - f1_sealed_door_seen
   truthAwards:

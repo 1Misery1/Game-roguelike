@@ -62,7 +62,7 @@ MonoBehaviour:
       text: "\u7B26\u6587\u4E0E\u661F\u56FE\u3002\u6211\u770B\u4E0D\u61C2\uFF0C\u4F46\u5199\u6EE1\u4E86\u60CA\u6050\u3002"
   - note: "\u4E8C\u6B21-\u8D5B\u7433\u5A1C"
     minCount: 2
-    maxCount: 0
+    maxCount: 2
     requireHero: Mage
     forbidHero: 
     minRunCount: 0
@@ -74,6 +74,39 @@ MonoBehaviour:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
       text: "\u300C\u505C\u6B62\u5B9E\u9A8C\u7684\u8BF7\u6C42\u5DF2\u88AB\u738B\u5BA4\u9A73\u56DE\u3002\u7406\u7531\uFF1A\u738B\u56FD\u9700\u8981\u6C38\u6052\u80FD\u6E90\u3002\u300D"
+  - note: "\u4E09\u6B21-\u65C1\u767D"
+    minCount: 3
+    maxCount: 3
+    requireHero: 
+    forbidHero: 
+    minRunCount: 0
+    maxRunCount: 0
+    lines:
+    - speaker: "\u65C1\u767D"
+      portraitKey: 
+      text: "\u7834\u788E\u7684\u4EEA\u5668\u6700\u540E\u95EA\u4E86\u4E00\u4E0B\u3002\u661F\u56FE\u4E0A\u7A7A\u767D\u7684\u4E00\u683C\u2014\u2014\u7ADF\u4EAE\u4E86\u4E00\u79D2\u3002"
+  - note: "\u4E09\u6B21-\u8D5B\u7433\u5A1C\u6289\u62E9"
+    minCount: 3
+    maxCount: 3
+    requireHero: Mage
+    forbidHero: 
+    minRunCount: 0
+    maxRunCount: 0
+    lines:
+    - speaker: '{hero}'
+      portraitKey: '{heroKey}'
+      text: "\u6211\u4F1A\u628A\u8FD9\u4E9B\u8BB0\u5F55\u516C\u5F00\u3002\u8BA9\u77E5\u8BC6\u4E0D\u518D\u4E3A\u738B\u5EA7\u52A0\u5195\u3002"
+  - note: "\u56DB\u6B21+-\u6C89\u5BC2"
+    minCount: 4
+    maxCount: 0
+    requireHero: 
+    forbidHero: 
+    minRunCount: 0
+    maxRunCount: 0
+    lines:
+    - speaker: "\u65C1\u767D"
+      portraitKey: 
+      text: "\u89C2\u6D4B\u53F0\u518D\u4E5F\u6CA1\u6709\u53CD\u5E94\u3002\u4F46\u4F60\u5DF2\u7ECF\u77E5\u9053\u5B83\u8BF4\u8FC7\u4EC0\u4E48\u3002"
   runStoryFlags:
   - f3_observatory_seen
   truthAwards:
