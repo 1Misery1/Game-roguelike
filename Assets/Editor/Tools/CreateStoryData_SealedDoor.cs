@@ -124,6 +124,37 @@ public static class CreateStoryData_SealedDoor
             fallbackCount = 2,   // 非战士第二次调查即解锁，保留单角色通路
         });
 
+        // 抉择：砸开 vs 静默离开
+        data.choiceTitle = "你怎么面对这扇门？";
+        data.choices.Add(new StoryChoice {
+            label       = "砸开它",
+            description = "用蛮力宣泄怒火（封印纹丝不动，但你留下回响）",
+            followLines = new System.Collections.Generic.List<StoryLineData> {
+                new StoryLineData { speaker = "旁白", portraitKey = "",
+                    text = "你砸了一下、两下、十下。门只是把你的怒火原样弹回来。" },
+                new StoryLineData { speaker = "{hero}", portraitKey = "{heroKey}",
+                    text = "可恶。可恶。" },
+            },
+            grantStoryItems = new System.Collections.Generic.List<string> { "怒火残响" },
+            runStoryFlags   = new System.Collections.Generic.List<string> { "f1_door_struck" },
+            addCorruption   = 3,
+            bannerOverride  = "【抉择】你砸向了铁门",
+        });
+        data.choices.Add(new StoryChoice {
+            label       = "静默离开",
+            description = "把「记得」作为承诺（少量净化）",
+            followLines = new System.Collections.Generic.List<StoryLineData> {
+                new StoryLineData { speaker = "旁白", portraitKey = "",
+                    text = "你把手从冰冷的铁面上松开，没有回头。你会记得。" },
+                new StoryLineData { speaker = "{hero}", portraitKey = "{heroKey}",
+                    text = "我会替你们说。先从今天开始。" },
+            },
+            grantStoryItems = new System.Collections.Generic.List<string> { "记忆契约" },
+            runStoryFlags   = new System.Collections.Generic.List<string> { "f1_door_oath" },
+            addCorruption   = -2,
+            bannerOverride  = "【抉择】你许下了沉默的承诺",
+        });
+
         AssetDatabase.CreateAsset(data, path);
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();

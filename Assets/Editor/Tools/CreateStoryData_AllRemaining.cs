@@ -443,6 +443,33 @@ public static class CreateStoryData_AllRemaining
         d.branches.Add(B("三次-崩塌", 3, 0, "", "",
             L("旁白", "", "你最后一次走近王座。这次它没有再坚持——金箔剥落、石身崩开，像在让出位置。")));
 
+        // 抉择：坐下 vs 推倒
+        d.choiceTitle = "你怎么处置这座王座？";
+        d.choices.Add(new StoryChoice {
+            label       = "坐到上面",
+            description = "替自己加冕一刻（污染巨大，但获得王座余威）",
+            followLines = new List<StoryLineData> {
+                L("旁白", "", "你坐了下去。石头比你预想的更暖——像有人长久地坐过、长久地不肯让出。"),
+                L("{hero}", "{heroKey}", "原来如此。原来是这样的感觉。"),
+            },
+            grantStoryItems = new List<string> { "王座余威" },
+            runStoryFlags   = new List<string> { "f3_throne_sat" },
+            addCorruption   = 6,
+            bannerOverride  = "【抉择】你坐上了王座",
+        });
+        d.choices.Add(new StoryChoice {
+            label       = "推倒它",
+            description = "让王座彻底崩塌（污染净化，获得推翻的勇气）",
+            followLines = new List<StoryLineData> {
+                L("旁白", "", "你用尽全力向前一推。基座先碎，靠背随后倾倒——金箔像一阵被点亮的灰，飘进黑暗里。"),
+                L("{hero}", "{heroKey}", "这一脚，是替地下万人踢的。"),
+            },
+            grantStoryItems = new List<string> { "推翻的勇气" },
+            runStoryFlags   = new List<string> { "f3_throne_toppled" },
+            addCorruption   = -3,
+            bannerOverride  = "【抉择】你推倒了王座",
+        });
+
         d.runStoryFlags.Add("f3_throne_seen");
         d.truthAwards.Add(new TruthFlagAward { flag = "truth_kingdom_guilt", requireHero = "" });
         Save(d, "Floor3_BrokenThrone");
