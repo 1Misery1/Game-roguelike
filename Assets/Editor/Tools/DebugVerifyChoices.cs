@@ -10,9 +10,15 @@ public static class DebugVerifyChoices
             "Assets/Resources/Story/Floor2_FrozenLake.asset");
         var mirror = AssetDatabase.LoadAssetAtPath<StoryInteractableData>(
             "Assets/Resources/Story/Floor3_BlackMirror.asset");
+        var door = AssetDatabase.LoadAssetAtPath<StoryInteractableData>(
+            "Assets/Resources/Story/Floor1_SealedDoor.asset");
+        var throne = AssetDatabase.LoadAssetAtPath<StoryInteractableData>(
+            "Assets/Resources/Story/Floor3_BrokenThrone.asset");
 
         Inspect("Lake",   lake);
         Inspect("Mirror", mirror);
+        Inspect("SealedDoor", door);
+        Inspect("Throne",     throne);
     }
 
     static void Inspect(string tag, StoryInteractableData d)
