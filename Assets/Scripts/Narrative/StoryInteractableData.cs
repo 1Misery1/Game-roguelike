@@ -40,6 +40,12 @@ namespace Game.Narrative
         [Tooltip("排除指定英雄美术键（留空=不排除）")]
         public string forbidHero = "";
 
+        [Tooltip("最少累计通关次数（PersistentState.TotalVictories）。0=不限。例：2 → 第二次通关后才解锁该分支")]
+        public int minRunCount = 0;
+
+        [Tooltip("最多累计通关次数。0=不限")]
+        public int maxRunCount = 0;
+
         [Tooltip("此分支贡献的对话行")]
         public List<StoryLineData> lines = new List<StoryLineData>();
     }
@@ -69,6 +75,16 @@ namespace Game.Narrative
         [Tooltip("调查完成后顶部横幅。留空 = 不显示横幅")]
         public string bannerText = "";
 
+        [Header("生成位置（运行时自动 spawn）")]
+        [Tooltip("在哪一层生成（1/2/3）。0 = 不自动生成，由代码手动 SpawnStoryFromData")]
+        public int spawnFloor = 0;
+
+        [Tooltip("在该层第几个房间生成（0 起）")]
+        public int spawnRoomIndex = 0;
+
+        [Tooltip("相对玩家出生点的偏移位置（世界单位）")]
+        public Vector3 spawnOffset = Vector3.zero;
+
         [Header("外观（白盒占位）")]
         [Tooltip("纯色方块颜色。如果 prefab 自带 SpriteRenderer 已设贴图，此项仍会覆盖颜色")]
         public Color tintColor = new Color(0.40f, 0.39f, 0.46f, 1f);
@@ -88,5 +104,11 @@ namespace Game.Narrative
 
         [Tooltip("跨周目真相旗，写入 PersistentState.TruthFlags（可绑英雄）")]
         public List<TruthFlagAward> truthAwards = new List<TruthFlagAward>();
+
+        [Tooltip("本周目剧情道具 ID（如「烧焦的工匠名册」「寒镜碎片」），写入 RunState.StoryItems")]
+        public List<string> grantStoryItems = new List<string>();
+
+        [Tooltip("本周目虚空污染增量。0=不变；正=污染；负=净化（如霜眠祭坛放置工匠名册）")]
+        public int addCorruption = 0;
     }
 }

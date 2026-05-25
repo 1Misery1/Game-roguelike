@@ -14,6 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   objectId: f1_sealed_door
   bannerText: "\u3010\u8C03\u67E5\u3011\u5C01\u6B7B\u7684\u5347\u964D\u95E8"
+  spawnFloor: 1
+  spawnRoomIndex: 0
+  spawnOffset: {x: 3.8, y: 2.6, z: 0}
   tintColor: {r: 0.4, g: 0.39, b: 0.46, a: 1}
   visualScale: {x: 1.5, y: 2.7}
   colliderSize: {x: 1.5, y: 1.25}
@@ -23,6 +26,8 @@ MonoBehaviour:
     maxCount: 1
     requireHero: 
     forbidHero: 
+    minRunCount: 0
+    maxRunCount: 0
     lines:
     - speaker: "\u65C1\u767D"
       portraitKey: 
@@ -35,6 +40,8 @@ MonoBehaviour:
     maxCount: 1
     requireHero: Warrior
     forbidHero: 
+    minRunCount: 0
+    maxRunCount: 0
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
@@ -47,6 +54,8 @@ MonoBehaviour:
     maxCount: 1
     requireHero: 
     forbidHero: Warrior
+    minRunCount: 0
+    maxRunCount: 0
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
@@ -56,6 +65,8 @@ MonoBehaviour:
     maxCount: 0
     requireHero: 
     forbidHero: 
+    minRunCount: 0
+    maxRunCount: 0
     lines:
     - speaker: "\u65C1\u767D"
       portraitKey: 
@@ -71,12 +82,30 @@ MonoBehaviour:
     maxCount: 0
     requireHero: Warrior
     forbidHero: 
+    minRunCount: 0
+    maxRunCount: 0
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
       text: "\u2026\u2026\u8FD9\u9053\u547D\u4EE4\uFF0C\u7A76\u7ADF\u662F\u8C01\u4E0B\u7684\u3002"
+  - note: "\u4E8C\u5468\u76EE-\u95E8\u540E\u589E\u6BB5"
+    minCount: 1
+    maxCount: 0
+    requireHero: 
+    forbidHero: 
+    minRunCount: 1
+    maxRunCount: 0
+    lines:
+    - speaker: "\u95E8\u540E\u7684\u56DE\u58F0"
+      portraitKey: 
+      text: "\u300C\u2026\u2026\u8FD8\u6709\u4EBA\u5417\uFF1F\u300D"
+    - speaker: "\u95E8\u540E\u7684\u56DE\u58F0"
+      portraitKey: 
+      text: "\u300C\u8BF7\u8BB0\u4F4F\u6211\u4EEC\u7684\u540D\u5B57\u2014\u2014\u300D"
   runStoryFlags:
   - f1_sealed_door_seen
   truthAwards:
   - flag: truth_kingdom_sealed_door
     requireHero: Warrior
+  grantStoryItems: []
+  addCorruption: 0
