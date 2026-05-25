@@ -18,6 +18,9 @@ public static class CreateStoryData_SealedDoor
         data.tintColor   = new Color(0.40f, 0.39f, 0.46f, 1f);
         data.visualScale = new Vector2(1.5f, 2.7f);
         data.colliderSize = new Vector2(1.5f, 1.25f);
+        data.spawnFloor      = 1;
+        data.spawnRoomIndex  = 0;
+        data.spawnOffset     = new Vector3(3.8f, 2.6f, 0f);
 
         // 首次调查
         var b1 = new StoryBranch {
@@ -66,11 +69,23 @@ public static class CreateStoryData_SealedDoor
             }
         };
 
+        // 第二周目起：门后的回声变得更连贯（多周目剧情递进示例）
+        var b3SecondRun = new StoryBranch {
+            note = "二周目-门后增段", minCount = 1, minRunCount = 1,
+            lines = new System.Collections.Generic.List<StoryLineData> {
+                new StoryLineData { speaker = "门后的回声", portraitKey = "",
+                    text = "「……还有人吗？」" },
+                new StoryLineData { speaker = "门后的回声", portraitKey = "",
+                    text = "「请记住我们的名字——」" },
+            }
+        };
+
         data.branches.Add(b1);
         data.branches.Add(b1Leon);
         data.branches.Add(b1Other);
         data.branches.Add(b2);
         data.branches.Add(b2Leon);
+        data.branches.Add(b3SecondRun);
 
         data.runStoryFlags.Add("f1_sealed_door_seen");
         data.truthAwards.Add(new TruthFlagAward {

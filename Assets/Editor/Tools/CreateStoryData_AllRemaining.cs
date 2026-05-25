@@ -59,6 +59,7 @@ public static class CreateStoryData_AllRemaining
         d.tintColor   = new Color(0.55f, 0.28f, 0.18f, 1f);
         d.visualScale = new Vector2(1.4f, 1.0f);
         d.colliderSize = new Vector2(1.4f, 1.0f);
+        d.spawnFloor = 1; d.spawnRoomIndex = 1; d.spawnOffset = new Vector3(-3.5f,  1.5f, 0f);
 
         d.branches.Add(B("首次-旁白", 1, 1, "", "",
             L("旁白", "", "锈蚀的机械控制台立在锻造大厅中央。指针仍卡在一组刺眼的数字上——"),
@@ -85,6 +86,7 @@ public static class CreateStoryData_AllRemaining
         d.tintColor  = new Color(0.18f, 0.13f, 0.10f, 1f);
         d.visualScale = new Vector2(1.2f, 0.7f);
         d.colliderSize = new Vector2(1.2f, 0.9f);
+        d.spawnFloor = 1; d.spawnRoomIndex = 2; d.spawnOffset = new Vector3( 3.0f, -2.0f, 0f);
 
         d.branches.Add(B("首次-旁白", 1, 1, "", "",
             L("旁白", "", "一具半跪的焦黑尸体。双手蜷曲，指尖伸向那扇被封死的铁门。")));
@@ -100,6 +102,7 @@ public static class CreateStoryData_AllRemaining
 
         d.runStoryFlags.Add("f1_artisan_seen");
         d.truthAwards.Add(new TruthFlagAward { flag = "truth_artisan_ledger", requireHero = "Paladin" });
+        d.grantStoryItems.Add("烧焦的工匠名册");
         Save(d, "Floor1_ArtisanCorpse");
     }
 
@@ -113,6 +116,7 @@ public static class CreateStoryData_AllRemaining
         d.tintColor  = new Color(0.55f, 0.75f, 0.85f, 1f);
         d.visualScale = new Vector2(1.7f, 1.6f);
         d.colliderSize = new Vector2(1.7f, 1.6f);
+        d.spawnFloor = 2; d.spawnRoomIndex = 0; d.spawnOffset = new Vector3( 3.8f,  2.6f, 0f);
 
         d.branches.Add(B("首次-旁白", 1, 1, "", "",
             L("旁白", "", "几顶冻硬的帐篷围成半圈，篝火早已熄灭。一截箭袋插在雪里。")));
@@ -141,6 +145,7 @@ public static class CreateStoryData_AllRemaining
         d.tintColor  = new Color(0.05f, 0.10f, 0.18f, 1f);
         d.visualScale = new Vector2(2.4f, 2.0f);
         d.colliderSize = new Vector2(2.4f, 1.6f);
+        d.spawnFloor = 2; d.spawnRoomIndex = 1; d.spawnOffset = new Vector3( 0.0f,  0.5f, 0f);
 
         d.branches.Add(B("首次-旁白", 1, 1, "", "",
             L("旁白", "", "脚下的黑色冰面，映出一段你不愿面对的画面。")));
@@ -159,6 +164,7 @@ public static class CreateStoryData_AllRemaining
 
         d.runStoryFlags.Add("f2_lake_seen");
         d.truthAwards.Add(new TruthFlagAward { flag = "truth_lake_witnessed", requireHero = "" });
+        d.addCorruption = 2;   // 直视虚空：少量污染
         Save(d, "Floor2_FrozenLake");
     }
 
@@ -170,6 +176,7 @@ public static class CreateStoryData_AllRemaining
         d.tintColor  = new Color(0.78f, 0.82f, 0.90f, 1f);
         d.visualScale = new Vector2(1.6f, 1.0f);
         d.colliderSize = new Vector2(1.6f, 1.0f);
+        d.spawnFloor = 2; d.spawnRoomIndex = 2; d.spawnOffset = new Vector3(-3.5f,  2.0f, 0f);
 
         d.branches.Add(B("首次-旁白", 1, 1, "", "",
             L("旁白", "", "祭坛覆着一层厚冰，冰下是教会留下的祷文。")));
@@ -185,6 +192,7 @@ public static class CreateStoryData_AllRemaining
 
         d.runStoryFlags.Add("f2_altar_seen");
         d.truthAwards.Add(new TruthFlagAward { flag = "truth_church_silence", requireHero = "Paladin" });
+        d.addCorruption = -3;   // 教会的封口仪式：祭奠净化少量污染
         Save(d, "Floor2_FrostAltar");
     }
 
@@ -198,6 +206,7 @@ public static class CreateStoryData_AllRemaining
         d.tintColor  = new Color(0.22f, 0.16f, 0.32f, 1f);
         d.visualScale = new Vector2(1.8f, 1.4f);
         d.colliderSize = new Vector2(1.8f, 1.4f);
+        d.spawnFloor = 3; d.spawnRoomIndex = 0; d.spawnOffset = new Vector3( 3.8f,  2.6f, 0f);
 
         d.branches.Add(B("首次-旁白", 1, 1, "", "",
             L("旁白", "", "破碎的星图与观测仪器。一本日志还摊开在台面上。")));
@@ -224,6 +233,7 @@ public static class CreateStoryData_AllRemaining
         d.tintColor  = new Color(0.15f, 0.12f, 0.20f, 1f);
         d.visualScale = new Vector2(2.0f, 0.8f);
         d.colliderSize = new Vector2(2.0f, 1.4f);
+        d.spawnFloor = 3; d.spawnRoomIndex = 1; d.spawnOffset = new Vector3(-4.0f,  0.0f, 0f);
 
         d.branches.Add(B("首次-旁白", 1, 1, "", "",
             L("旁白", "", "墙上、地上、甚至天花板，到处是奇形怪状的足迹。")));
@@ -251,6 +261,7 @@ public static class CreateStoryData_AllRemaining
         d.tintColor  = new Color(0.05f, 0.05f, 0.08f, 1f);
         d.visualScale = new Vector2(1.4f, 2.4f);
         d.colliderSize = new Vector2(1.4f, 2.0f);
+        d.spawnFloor = 3; d.spawnRoomIndex = 2; d.spawnOffset = new Vector3( 3.0f, -2.0f, 0f);
 
         d.branches.Add(B("首次-旁白", 1, 1, "", "",
             L("旁白", "", "镜面没有反射任何光，却映出一个动作与你略错半拍的「你」。")));
@@ -269,6 +280,8 @@ public static class CreateStoryData_AllRemaining
 
         d.runStoryFlags.Add("f3_mirror_seen");
         d.truthAwards.Add(new TruthFlagAward { flag = "truth_mirror_confronted", requireHero = "" });
+        d.grantStoryItems.Add("虚空记忆碎片");
+        d.addCorruption = 4;   // 与虚空分身对峙：明显污染
         Save(d, "Floor3_BlackMirror");
     }
 
@@ -280,6 +293,7 @@ public static class CreateStoryData_AllRemaining
         d.tintColor  = new Color(0.42f, 0.32f, 0.12f, 1f);
         d.visualScale = new Vector2(2.0f, 2.4f);
         d.colliderSize = new Vector2(2.0f, 2.0f);
+        d.spawnFloor = 3; d.spawnRoomIndex = 3; d.spawnOffset = new Vector3( 0.0f,  3.0f, 0f);
 
         d.branches.Add(B("首次-旁白", 1, 1, "", "",
             L("旁白", "", "断裂的王座深埋于回廊尽头。靠背上，金字仍未完全褪色。")));

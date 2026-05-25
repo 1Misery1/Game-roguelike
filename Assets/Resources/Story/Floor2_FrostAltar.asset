@@ -14,6 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   objectId: f2_frost_altar
   bannerText: "\u3010\u8C03\u67E5\u3011\u971C\u7720\u796D\u575B"
+  spawnFloor: 2
+  spawnRoomIndex: 2
+  spawnOffset: {x: -3.5, y: 2, z: 0}
   tintColor: {r: 0.78, g: 0.82, b: 0.9, a: 1}
   visualScale: {x: 1.6, y: 1}
   colliderSize: {x: 1.6, y: 1}
@@ -23,6 +26,8 @@ MonoBehaviour:
     maxCount: 1
     requireHero: 
     forbidHero: 
+    minRunCount: 0
+    maxRunCount: 0
     lines:
     - speaker: "\u65C1\u767D"
       portraitKey: 
@@ -32,6 +37,8 @@ MonoBehaviour:
     maxCount: 1
     requireHero: Paladin
     forbidHero: 
+    minRunCount: 0
+    maxRunCount: 0
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
@@ -50,6 +57,8 @@ MonoBehaviour:
     maxCount: 1
     requireHero: 
     forbidHero: Paladin
+    minRunCount: 0
+    maxRunCount: 0
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
@@ -59,6 +68,8 @@ MonoBehaviour:
     maxCount: 0
     requireHero: Paladin
     forbidHero: 
+    minRunCount: 0
+    maxRunCount: 0
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
@@ -68,3 +79,5 @@ MonoBehaviour:
   truthAwards:
   - flag: truth_church_silence
     requireHero: Paladin
+  grantStoryItems: []
+  addCorruption: -3

@@ -118,6 +118,8 @@ namespace Game.Narrative
             string heroKey  = hero != null ? hero.heroName : "";
             string heroName = hero != null && !string.IsNullOrEmpty(hero.displayName)
                                   ? hero.displayName : "冒险者";
+            int runs = GameManager.Instance != null && GameManager.Instance.Persistent != null
+                          ? GameManager.Instance.Persistent.TotalVictories : 0;
 
             var result = new List<DialogueLine>();
             foreach (var br in d.branches)
@@ -125,6 +127,8 @@ namespace Game.Narrative
                 if (br == null) continue;
                 if (count < Mathf.Max(1, br.minCount)) continue;
                 if (br.maxCount > 0 && count > br.maxCount) continue;
+                if (br.minRunCount > 0 && runs < br.minRunCount) continue;
+                if (br.maxRunCount > 0 && runs > br.maxRunCount) continue;
                 if (!string.IsNullOrEmpty(br.requireHero) && br.requireHero != heroKey) continue;
                 if (!string.IsNullOrEmpty(br.forbidHero)  && br.forbidHero  == heroKey) continue;
 
@@ -161,6 +165,12 @@ namespace Game.Narrative
                 if (!string.IsNullOrEmpty(ta.requireHero) && ta.requireHero != heroKey) continue;
                 gm?.Persistent?.AddTruthFlag(ta.flag);
             }
+
+            foreach (var item in d.grantStoryItems)
+                if (!string.IsNullOrEmpty(item)) gm?.Run?.AddStoryItem(item);
+
+            if (d.addCorruption != 0)
+                gm?.Run?.AddCorruption(d.addCorruption);
 
             if (!string.IsNullOrEmpty(d.bannerText))
                 GameBootstrap.PostBanner(d.bannerText);

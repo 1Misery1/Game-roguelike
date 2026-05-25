@@ -154,11 +154,19 @@ namespace Game.Dev
             ShowBanner(GetFloorNarrative());
         }
 
+        /// 真相结局触发阈值：跨周目累计真相旗 ≥ 此数 → 隐藏真相结局
+        private const int TrueEndingTruthThreshold = 4;
+
+        private bool _isTrueEnding;
+        private int  _endingTruthCount;
+
         private void TriggerVictory()
         {
             _state = State.Victory;
             _persistent.AddCurrency(clearReward);
             _persistent.RecordRunResult(CurrentFloor, true, _enemiesKilled, Mathf.RoundToInt(_totalDamageDealt));
+            _endingTruthCount = _persistent.TruthFlags != null ? _persistent.TruthFlags.Count : 0;
+            _isTrueEnding     = _endingTruthCount >= TrueEndingTruthThreshold;
         }
 
         private void TriggerFloorComplete()
@@ -283,43 +291,22 @@ namespace Game.Dev
         //  剧情交互物 —— (floor, index) -> Resources 路径 + 偏移
         // --------------------------------------------------------------------
 
-        private struct StorySpawnEntry
-        {
-            public int       Floor;
-            public int       RoomIndex;
-            public string    ResourcePath;          // 相对 Resources 的路径（不含扩展名）
-            public Vector3   OffsetFromPlayerSpawn; // 相对玩家出生点的位置
-        }
+        // 缓存 Resources/Story/ 下全部交互物数据，避免每次切房间都重新扫描
+        private static StoryInteractableData[] _storyDataCache;
+        private static StoryInteractableData[] StoryDataAll =>
+            _storyDataCache ?? (_storyDataCache = Resources.LoadAll<StoryInteractableData>("Story"));
 
-        private static readonly StorySpawnEntry[] _storySpawnTable = new[]
-        {
-            // 第一层
-            new StorySpawnEntry { Floor = 1, RoomIndex = 0, ResourcePath = "Story/Floor1_SealedDoor",     OffsetFromPlayerSpawn = new Vector3( 3.8f,  2.6f, 0f) },
-            new StorySpawnEntry { Floor = 1, RoomIndex = 1, ResourcePath = "Story/Floor1_FurnaceConsole", OffsetFromPlayerSpawn = new Vector3(-3.5f,  1.5f, 0f) },
-            new StorySpawnEntry { Floor = 1, RoomIndex = 2, ResourcePath = "Story/Floor1_ArtisanCorpse",  OffsetFromPlayerSpawn = new Vector3( 3.0f, -2.0f, 0f) },
-            // 第二层
-            new StorySpawnEntry { Floor = 2, RoomIndex = 0, ResourcePath = "Story/Floor2_ScoutCamp",      OffsetFromPlayerSpawn = new Vector3( 3.8f,  2.6f, 0f) },
-            new StorySpawnEntry { Floor = 2, RoomIndex = 1, ResourcePath = "Story/Floor2_FrozenLake",     OffsetFromPlayerSpawn = new Vector3( 0.0f,  0.5f, 0f) },
-            new StorySpawnEntry { Floor = 2, RoomIndex = 2, ResourcePath = "Story/Floor2_FrostAltar",     OffsetFromPlayerSpawn = new Vector3(-3.5f,  2.0f, 0f) },
-            // 第三层
-            new StorySpawnEntry { Floor = 3, RoomIndex = 0, ResourcePath = "Story/Floor3_Observatory",    OffsetFromPlayerSpawn = new Vector3( 3.8f,  2.6f, 0f) },
-            new StorySpawnEntry { Floor = 3, RoomIndex = 1, ResourcePath = "Story/Floor3_PreyCorridor",   OffsetFromPlayerSpawn = new Vector3(-4.0f,  0.0f, 0f) },
-            new StorySpawnEntry { Floor = 3, RoomIndex = 2, ResourcePath = "Story/Floor3_BlackMirror",    OffsetFromPlayerSpawn = new Vector3( 3.0f, -2.0f, 0f) },
-            new StorySpawnEntry { Floor = 3, RoomIndex = 3, ResourcePath = "Story/Floor3_BrokenThrone",   OffsetFromPlayerSpawn = new Vector3( 0.0f,  3.0f, 0f) },
-        };
-
+        /// 扫描 Resources/Story/ 全部 StoryInteractableData，按 spawnFloor/spawnRoomIndex 匹配本房间，
+        /// 用 data.spawnOffset 生成。彻底零代码新增交互物：只需 Create → Game → Narrative → Story Interactable
+        /// 并填好 SpawnFloor/SpawnRoomIndex/SpawnOffset。
         private void TrySpawnStoryForRoom(int floor, int index)
         {
-            foreach (var e in _storySpawnTable)
+            foreach (var data in StoryDataAll)
             {
-                if (e.Floor != floor || e.RoomIndex != index) continue;
-                var data = Resources.Load<StoryInteractableData>(e.ResourcePath);
-                if (data == null)
-                {
-                    Debug.LogWarning($"[Story] Missing Resources/{e.ResourcePath}.asset");
-                    continue;
-                }
-                SpawnStoryFromData(data, e.OffsetFromPlayerSpawn);
+                if (data == null) continue;
+                if (data.spawnFloor != floor) continue;
+                if (data.spawnRoomIndex != index) continue;
+                SpawnStoryFromData(data, data.spawnOffset);
             }
         }
 
@@ -1920,7 +1907,7 @@ namespace Game.Dev
             {
                 case State.Playing:       DrawHUD();                                                  break;
                 case State.FloorComplete: DrawFloorComplete();                                        break;
-                case State.Victory:       DrawEndScreen("胜利!", new Color(1f, 0.92f, 0.2f), true);  break;
+                case State.Victory:       DrawVictoryScreen();                                        break;
                 case State.Death:         DrawEndScreen("阵亡",  new Color(1f, 0.3f,  0.3f), false); break;
             }
         }
@@ -2255,16 +2242,39 @@ namespace Game.Dev
         }
 
         // 结算/死亡画面
-        private void DrawEndScreen(string title, Color color, bool victory)
+        // 真相结局画面：根据收集的真相旗数量分支文案与配色
+        private void DrawVictoryScreen()
+        {
+            if (_isTrueEnding)
+                DrawEndScreen("真相·余烬", new Color(0.92f, 0.78f, 1f, 1f), true,
+                    "「世界暂时得救。」",
+                    $"地下的名字，再无人能忽视。  （已知真相 {_endingTruthCount} / 10）");
+            else
+                DrawEndScreen("胜利", new Color(1f, 0.92f, 0.2f, 1f), true,
+                    "「世界暂时得救。」",
+                    $"但地下的名字，仍无人记得。  （已知真相 {_endingTruthCount} / 10）");
+        }
+
+        private void DrawEndScreen(string title, Color color, bool victory, string subtitle = null, string footnote = null)
         {
             FillRect(new Rect(0, 0, Screen.width, Screen.height), new Color(0f, 0f, 0f, 0.72f));
             GUI.Label(new Rect(0, Screen.height * 0.12f, Screen.width, 86),
                 title, MkLabel(62, TextAnchor.MiddleCenter, FontStyle.Bold, color));
 
             if (victory)
-                GUI.Label(new Rect(0, Screen.height * 0.27f, Screen.width, 30),
+            {
+                if (!string.IsNullOrEmpty(subtitle))
+                    GUI.Label(new Rect(0, Screen.height * 0.215f, Screen.width, 30), subtitle,
+                        MkLabel(20, TextAnchor.MiddleCenter, FontStyle.Italic, new Color(0.92f, 0.86f, 0.7f)));
+
+                GUI.Label(new Rect(0, Screen.height * 0.265f, Screen.width, 30),
                     $"全部 {maxFloor} 层通关完成！  +{clearReward} 解锁货币  (合计: {_persistent.UnlockCurrency})",
                     MkLabel(18, TextAnchor.MiddleCenter, FontStyle.Normal, Color.white));
+
+                if (!string.IsNullOrEmpty(footnote))
+                    GUI.Label(new Rect(0, Screen.height * 0.305f, Screen.width, 28), footnote,
+                        MkLabel(16, TextAnchor.MiddleCenter, FontStyle.Normal, new Color(0.78f, 0.78f, 0.85f)));
+            }
 
             // 死亡时显示倒计时
             if (!victory)
