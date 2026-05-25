@@ -19,3 +19,31 @@ MonoBehaviour:
   cameraBackground: {r: 0.03, g: 0.06, b: 0.14, a: 1}
   proceduralKind: 2
   customBackground: {fileID: 0}
+  earlyEnemyWeights:
+  - 4
+  - 1
+  - 3
+  - 3
+  - 0
+  - 0
+  - 0
+  - 0
+  lateEnemyWeights:
+  - 4
+  - 1
+  - 3
+  - 3
+  - 1
+  - 1
+  - 1
+  - 1
+  eliteChance: 0.3
+  roomPool:
+  - type: Monster
+    weight: 4
+  - type: Coin
+    weight: 1.5
+  - type: Talent
+    weight: 3
+  - type: FrostGrave
+    weight: 2
