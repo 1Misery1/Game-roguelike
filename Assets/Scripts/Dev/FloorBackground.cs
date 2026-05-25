@@ -11,10 +11,29 @@ namespace Game.Dev
         const int H   = 144;
         const int PPU = 20;
 
+        /// 旧接口：根据楼层编号生成程序化背景
         public static GameObject Create(int floor, Transform parent, float worldWidth, float worldHeight)
+            => CreateInternal(KindFromFloor(floor), null, parent, worldWidth, worldHeight);
+
+        /// 新接口：按 FloorThemeData 生成（None = 不生成；Custom = 用 theme.customBackground）
+        public static GameObject Create(FloorThemeData theme, Transform parent, float worldWidth, float worldHeight)
         {
-            var tex    = GenerateTexture(floor);
-            var sprite = Sprite.Create(tex, new Rect(0, 0, W, H), new Vector2(0.5f, 0.5f), PPU);
+            if (theme == null) return null;
+            if (theme.proceduralKind == FloorProceduralKind.None) return null;
+            return CreateInternal(theme.proceduralKind, theme.customBackground, parent, worldWidth, worldHeight);
+        }
+
+        static GameObject CreateInternal(FloorProceduralKind kind, Sprite customSprite,
+                                         Transform parent, float worldWidth, float worldHeight)
+        {
+            Sprite sprite;
+            if (kind == FloorProceduralKind.Custom && customSprite != null)
+                sprite = customSprite;
+            else
+            {
+                var tex = GenerateTexture(kind);
+                sprite  = Sprite.Create(tex, new Rect(0, 0, W, H), new Vector2(0.5f, 0.5f), PPU);
+            }
 
             var go = new GameObject("FloorBackground");
             go.transform.SetParent(parent, false);
@@ -24,13 +43,24 @@ namespace Game.Dev
             sr.sprite       = sprite;
             sr.sortingOrder = -10;
 
-            float scaleX = worldWidth  / (W / (float)PPU);
-            float scaleY = worldHeight / (H / (float)PPU);
-            go.transform.localScale = new Vector3(scaleX, scaleY, 1f);
+            // 自定义精灵按其原始大小填房间；程序化纹理按 W/PPU 已知尺寸
+            float refW = sprite.rect.width  / sprite.pixelsPerUnit;
+            float refH = sprite.rect.height / sprite.pixelsPerUnit;
+            go.transform.localScale = new Vector3(worldWidth / refW, worldHeight / refH, 1f);
             return go;
         }
 
-        static Texture2D GenerateTexture(int floor)
+        static FloorProceduralKind KindFromFloor(int floor)
+        {
+            switch (floor)
+            {
+                case 1:  return FloorProceduralKind.Inferno;
+                case 2:  return FloorProceduralKind.Frost;
+                default: return FloorProceduralKind.Chaos;
+            }
+        }
+
+        static Texture2D GenerateTexture(FloorProceduralKind kind)
         {
             var tex = new Texture2D(W, H, TextureFormat.RGBA32, false)
             {
@@ -38,11 +68,11 @@ namespace Game.Dev
                 wrapMode   = TextureWrapMode.Clamp
             };
             var px = new Color[W * H];
-            switch (floor)
+            switch (kind)
             {
-                case 1:  FillInferno(px); break;
-                case 2:  FillFrost(px);   break;
-                default: FillChaos(px);   break;
+                case FloorProceduralKind.Inferno: FillInferno(px); break;
+                case FloorProceduralKind.Frost:   FillFrost(px);   break;
+                default:                          FillChaos(px);   break;
             }
             tex.SetPixels(px);
             tex.Apply();

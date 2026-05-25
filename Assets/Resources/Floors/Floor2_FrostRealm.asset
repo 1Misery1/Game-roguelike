@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 575487e8b2f610b4db867a8f92505853, type: 3}
+  m_Name: Floor2_FrostRealm
+  m_EditorClassIdentifier: 
+  floorNumber: 2
+  displayName: Frost Realm
+  narrativeBanner: '[Frost Realm] Bone-chilling cold, undead rise again, elite spawn
+    rate greatly increased!'
+  cameraBackground: {r: 0.03, g: 0.06, b: 0.14, a: 1}
+  proceduralKind: 2
+  customBackground: {fileID: 0}
