@@ -1,0 +1,109 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6bfc61c34e0a4e040866f2a97d7e1a25, type: 3}
+  m_Name: Default
+  m_EditorClassIdentifier: 
+  shopkeeper:
+    name: Shopkeeper
+    anchor: {x: 0, y: 3.2, z: 0}
+    enabled: 1
+    parts:
+    - note: "\u515C\u5E3D"
+      localPos: {x: 0, y: 0.55}
+      size: {x: 1.05, y: 0.85}
+      color: {r: 0.22, g: 0.21, b: 0.28, a: 1}
+      sortingOrder: 6
+    - note: "\u8138"
+      localPos: {x: 0, y: 0.42}
+      size: {x: 0.55, y: 0.45}
+      color: {r: 0.95, g: 0.78, b: 0.65, a: 1}
+      sortingOrder: 7
+    - note: "\u773C-\u5DE6"
+      localPos: {x: -0.13, y: 0.46}
+      size: {x: 0.08, y: 0.1}
+      color: {r: 0.1, g: 0.07, b: 0.05, a: 1}
+      sortingOrder: 8
+    - note: "\u773C-\u53F3"
+      localPos: {x: 0.13, y: 0.46}
+      size: {x: 0.08, y: 0.1}
+      color: {r: 0.1, g: 0.07, b: 0.05, a: 1}
+      sortingOrder: 8
+    - note: "\u5927\u80E1\u5B50"
+      localPos: {x: 0, y: 0.27}
+      size: {x: 0.55, y: 0.2}
+      color: {r: 0.78, g: 0.75, b: 0.72, a: 1}
+      sortingOrder: 8
+    - note: "\u957F\u888D"
+      localPos: {x: 0, y: -0.3}
+      size: {x: 1.15, y: 1.1}
+      color: {r: 0.5, g: 0.18, b: 0.22, a: 1}
+      sortingOrder: 6
+    - note: "\u8170\u5E26"
+      localPos: {x: 0, y: -0.18}
+      size: {x: 1.15, y: 0.1}
+      color: {r: 0.92, g: 0.78, b: 0.3, a: 1}
+      sortingOrder: 7
+    - note: "\u62DB\u724C-\u6846"
+      localPos: {x: 0, y: 1.25}
+      size: {x: 1.5, y: 0.32}
+      color: {r: 0.1, g: 0.08, b: 0.12, a: 1}
+      sortingOrder: 6
+    - note: "\u62DB\u724C-\u706F"
+      localPos: {x: 0, y: 1.25}
+      size: {x: 1.42, y: 0.22}
+      color: {r: 0.95, g: 0.78, b: 0.3, a: 1}
+      sortingOrder: 7
+  shelf:
+    name: ShopShelf
+    anchor: {x: 0, y: 1, z: 0}
+    enabled: 1
+    parts:
+    - note: "\u677F-\u4E3B\u4F53"
+      localPos: {x: 0, y: 0}
+      size: {x: 13.5, y: 0.45}
+      color: {r: 0.36078432, g: 0.21960784, b: 0.12156863, a: 1}
+      sortingOrder: 4
+    - note: "\u677F-\u9AD8\u5149"
+      localPos: {x: 0, y: 0.2}
+      size: {x: 13.5, y: 0.06}
+      color: {r: 0.62352943, g: 0.41960785, b: 0.21960784, a: 1}
+      sortingOrder: 5
+    - note: "\u677F-\u9634\u5F71"
+      localPos: {x: 0, y: -0.21}
+      size: {x: 13.5, y: 0.05}
+      color: {r: 0.18039216, g: 0.101960786, b: 0.050980393, a: 1}
+      sortingOrder: 5
+    - note: "\u7ACB\u67F1-\u5DE6"
+      localPos: {x: -4.86, y: -0.55}
+      size: {x: 0.2, y: 1}
+      color: {r: 0.2784314, g: 0.16862746, b: 0.078431375, a: 1}
+      sortingOrder: 4
+    - note: "\u7ACB\u67F1-\u4E2D"
+      localPos: {x: 0, y: -0.55}
+      size: {x: 0.2, y: 1}
+      color: {r: 0.2784314, g: 0.16862746, b: 0.078431375, a: 1}
+      sortingOrder: 4
+    - note: "\u7ACB\u67F1-\u53F3"
+      localPos: {x: 4.86, y: -0.55}
+      size: {x: 0.2, y: 1}
+      color: {r: 0.2784314, g: 0.16862746, b: 0.078431375, a: 1}
+      sortingOrder: 4
+  weaponRowStart: {x: -5.5, y: 1.5, z: 0}
+  weaponSpacing: 2.2
+  weaponScale: {x: 1.1, y: 1.1, z: 1}
+  weaponSortingOrder: 8
+  weaponGlowSortingOrder: 7
+  weaponGlowLocalPos: {x: 0, y: -0.08}
+  weaponGlowScale: {x: 0.95, y: 0.3}
+  weaponGlowAlpha: 0.55
+  weaponColliderRadius: 0.85
+  extraDecor: []
