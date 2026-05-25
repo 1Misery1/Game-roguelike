@@ -709,6 +709,10 @@ namespace Game.Dev
             ShowBanner("Shop — approach and press E to buy (can skip)");
             OpenRightDoor();
 
+            // 视觉装饰：货架长条 + 老板像素小人（位于武器排正后方）
+            SpawnShopShelf(new Vector3(0f, 1.0f, 0f), width: 13.5f);
+            SpawnShopkeeper(new Vector3(0f, 3.2f, 0f));
+
             int floorIdx   = Mathf.Clamp(CurrentFloor - 1, 0, ShopRarityTable.Length - 1);
             int[] rarities = ShopRarityTable[floorIdx];
             float priceScale = 1f + (CurrentFloor - 1) * 0.3f;
@@ -734,6 +738,81 @@ namespace Game.Dev
 
             int potionPrice = Mathf.RoundToInt(25 * priceScale);
             SpawnHealthPotionPedestal(new Vector3(0f, -3.0f, 0f), potionPrice);
+        }
+
+        // ── 商店视觉装饰 ─────────────────────────────────────────────────
+
+        /// 商店货架：一条木色长板 + 上下两根支架，背景层
+        private void SpawnShopShelf(Vector3 center, float width)
+        {
+            var root = new GameObject("ShopShelf");
+            root.transform.SetParent(_currentRoomRoot.transform, true);
+            root.transform.position = center;
+
+            // 主板（深木色）
+            MakeShopPart(root.transform, new Vector2(0f, 0f),   new Vector2(width, 0.45f),
+                new Color(0.36f, 0.22f, 0.12f), order: 4);
+            // 板上沿亮色（高光）
+            MakeShopPart(root.transform, new Vector2(0f, 0.20f), new Vector2(width, 0.06f),
+                new Color(0.62f, 0.42f, 0.22f), order: 5);
+            // 板下沿阴影
+            MakeShopPart(root.transform, new Vector2(0f, -0.21f), new Vector2(width, 0.05f),
+                new Color(0.18f, 0.10f, 0.05f), order: 5);
+            // 三根立柱
+            for (int i = -1; i <= 1; i++)
+            {
+                MakeShopPart(root.transform, new Vector2(i * width * 0.36f, -0.55f),
+                    new Vector2(0.20f, 1.0f), new Color(0.28f, 0.18f, 0.08f), order: 4);
+            }
+        }
+
+        /// 商店老板（程序化像素小人，胡萝卜色衣服 + 灰色兜帽 + 柜台）
+        private void SpawnShopkeeper(Vector3 pos)
+        {
+            var root = new GameObject("Shopkeeper");
+            root.transform.SetParent(_currentRoomRoot.transform, true);
+            root.transform.position = pos;
+
+            // 兜帽（暗灰）
+            MakeShopPart(root.transform, new Vector2(0f, 0.55f), new Vector2(1.05f, 0.85f),
+                new Color(0.22f, 0.21f, 0.28f), order: 6);
+            // 脸（暖肤色）
+            MakeShopPart(root.transform, new Vector2(0f, 0.42f), new Vector2(0.55f, 0.45f),
+                new Color(0.95f, 0.78f, 0.65f), order: 7);
+            // 眼睛（两点）
+            MakeShopPart(root.transform, new Vector2(-0.13f, 0.46f), new Vector2(0.08f, 0.10f),
+                new Color(0.10f, 0.07f, 0.05f), order: 8);
+            MakeShopPart(root.transform, new Vector2( 0.13f, 0.46f), new Vector2(0.08f, 0.10f),
+                new Color(0.10f, 0.07f, 0.05f), order: 8);
+            // 大胡子
+            MakeShopPart(root.transform, new Vector2(0f, 0.27f), new Vector2(0.55f, 0.20f),
+                new Color(0.78f, 0.75f, 0.72f), order: 8);
+            // 长袍（深紫红）
+            MakeShopPart(root.transform, new Vector2(0f, -0.30f), new Vector2(1.15f, 1.10f),
+                new Color(0.50f, 0.18f, 0.22f), order: 6);
+            // 腰带（金）
+            MakeShopPart(root.transform, new Vector2(0f, -0.18f), new Vector2(1.15f, 0.10f),
+                new Color(0.92f, 0.78f, 0.30f), order: 7);
+
+            // 头顶招牌（小灯笼+「商店」字感觉用方块）
+            MakeShopPart(root.transform, new Vector2(0f, 1.25f), new Vector2(1.5f, 0.32f),
+                new Color(0.10f, 0.08f, 0.12f), order: 6);
+            MakeShopPart(root.transform, new Vector2(0f, 1.25f), new Vector2(1.42f, 0.22f),
+                new Color(0.95f, 0.78f, 0.30f), order: 7);
+        }
+
+        // 一个统一的"贴像素方块"工具：返回子物体便于继续装饰
+        private GameObject MakeShopPart(Transform parent, Vector2 localPos, Vector2 size, Color color, int order)
+        {
+            var go = new GameObject("part");
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = new Vector3(localPos.x, localPos.y, 0f);
+            go.transform.localScale    = new Vector3(size.x, size.y, 1f);
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite       = MakeUnitSquareSprite();
+            sr.color        = color;
+            sr.sortingOrder = order;
+            return go;
         }
 
         private void SpawnActionPedestal(Vector3 pos, ActionPedestal.ActionType actionType, int price, int uses)
@@ -822,15 +901,28 @@ namespace Game.Dev
             var go = new GameObject("ShopWeapon_" + weapon.Data.weaponName);
             go.transform.SetParent(_currentRoomRoot.transform, true);
             go.transform.position   = pos;
-            go.transform.localScale = new Vector3(0.65f, 0.65f, 1f);
+            go.transform.localScale = new Vector3(1.1f, 1.1f, 1f);
 
+            // 武器实物精灵作为陈列；rarity 颜色变成发光底座
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite       = MakeUnitSquareSprite();
-            sr.color        = WeaponData.GetRarityColor(weapon.Data.rarity);
-            sr.sortingOrder = 7;
+            var wsprite = WeaponSprites.Get(weapon.Data.weaponName);
+            sr.sprite       = wsprite != null ? wsprite : MakeUnitSquareSprite();
+            sr.color        = Color.white;
+            sr.sortingOrder = 8;
+
+            // 发光底座（rarity 颜色）—— 货架格里的浅色衬底
+            var glow = new GameObject("Glow");
+            glow.transform.SetParent(go.transform, false);
+            glow.transform.localPosition = new Vector3(0f, -0.08f, 0f);
+            glow.transform.localScale    = new Vector3(0.95f, 0.30f, 1f);
+            var glowSr = glow.AddComponent<SpriteRenderer>();
+            glowSr.sprite       = MakeUnitSquareSprite();
+            var rc = WeaponData.GetRarityColor(weapon.Data.rarity);
+            glowSr.color        = new Color(rc.r, rc.g, rc.b, 0.55f);
+            glowSr.sortingOrder = 7;
 
             var col = go.AddComponent<CircleCollider2D>();
-            col.radius    = 0.9f;
+            col.radius    = 0.85f;
             col.isTrigger = true;
 
             var pedestal         = go.AddComponent<WeaponShopPedestal>();
@@ -2561,14 +2653,15 @@ namespace Game.Dev
                     MkLabel(15, TextAnchor.MiddleCenter, FontStyle.Italic, new Color(0.75f, 0.55f, 0.55f)));
             }
 
-            float sy = Screen.height * (victory ? 0.35f : 0.32f);
+            float sy = Screen.height * (victory ? 0.36f : 0.32f);
             var ss = MkLabel(15, TextAnchor.MiddleCenter, FontStyle.Normal, new Color(0.82f, 0.82f, 0.82f));
             GUI.Label(new Rect(0, sy,       Screen.width, 24), $"到达楼层: {CurrentFloor} / {maxFloor}", ss);
-            GUI.Label(new Rect(0, sy + 28,  Screen.width, 24), $"击杀数: {_enemiesKilled}", ss);
-            GUI.Label(new Rect(0, sy + 56,  Screen.width, 24), $"总伤害: {Mathf.RoundToInt(_totalDamageDealt):N0}", ss);
-            GUI.Label(new Rect(0, sy + 84,  Screen.width, 24), $"剩余金币: {RunCoins}", ss);
+            GUI.Label(new Rect(0, sy + 26,  Screen.width, 24), $"击杀数: {_enemiesKilled}    总伤害: {Mathf.RoundToInt(_totalDamageDealt):N0}    剩余金币: {RunCoins}", ss);
 
-            float btnY = Screen.height * (victory ? 0.60f : 0.58f);
+            // 胜利结算追加：本周目抉择回顾 + 道具收藏
+            if (victory) DrawChoiceAndLootRecap();
+
+            float btnY = Screen.height * (victory ? 0.78f : 0.58f);
             var bs = new GUIStyle(GUI.skin.button) { fontSize = 18 };
             if (!victory)
             {
@@ -2577,8 +2670,90 @@ namespace Game.Dev
             }
             else
             {
-                if (GUI.Button(new Rect(Screen.width * 0.5f - 140, btnY,       280, 44), "再次挑战", bs))  RestartRun();
-                if (GUI.Button(new Rect(Screen.width * 0.5f - 140, btnY + 56f, 280, 44), "返回主菜单", bs)) ReturnToMenu();
+                if (GUI.Button(new Rect(Screen.width * 0.5f - 290, btnY, 270, 44), "再次挑战",    bs)) RestartRun();
+                if (GUI.Button(new Rect(Screen.width * 0.5f + 20,  btnY, 270, 44), "返回主菜单", bs)) ReturnToMenu();
+            }
+        }
+
+        // 在胜利画面中段绘制本周目玩家做出的抉择 + 持有的剧情道具
+        private void DrawChoiceAndLootRecap()
+        {
+            var run = GameManager.Instance?.Run;
+            if (run == null) return;
+
+            float topY    = Screen.height * 0.44f;
+            float colW    = Screen.width  * 0.34f;
+            float leftX   = Screen.width  * 0.11f;
+            float rightX  = Screen.width  * 0.55f;
+            float lineH   = 22f;
+            Color hdrCol  = new Color(0.95f, 0.86f, 0.55f);
+            Color pure    = new Color(0.60f, 0.85f, 0.95f); // 净化系（青）
+            Color tainted = new Color(0.93f, 0.62f, 0.95f); // 污染系（紫）
+            Color none    = new Color(0.55f, 0.55f, 0.58f);
+
+            // ── 左列：本周目抉择 ────────────────────────────────────────
+            GUI.Label(new Rect(leftX, topY, colW, 24), "── 你的抉择 ──",
+                MkLabel(16, TextAnchor.MiddleCenter, FontStyle.Bold, hdrCol));
+
+            var entries = new (string flag, string label, Color color, string tag)[] {
+                ("f1_door_struck",             "封死的升降门  ·  砸开",     tainted, "[污染]"),
+                ("f1_door_oath",               "封死的升降门  ·  静默离开",  pure,    "[净化]"),
+                ("f2_lake_witnessed_directly", "冻结湖面  ·  直视",        pure,    "[净化]"),
+                ("f2_lake_shattered",          "冻结湖面  ·  打碎",        tainted, "[污染]"),
+                ("f3_mirror_confronted_self",  "黑色镜子  ·  对峙",        tainted, "[污染]"),
+                ("f3_mirror_refused_self",     "黑色镜子  ·  转身离开",     pure,    "[净化]"),
+                ("f3_throne_sat",              "破碎王座  ·  坐到上面",     tainted, "[污染]"),
+                ("f3_throne_toppled",          "破碎王座  ·  推倒",        pure,    "[净化]"),
+            };
+
+            float y = topY + 28f;
+            int picked = 0;
+            foreach (var e in entries)
+            {
+                if (!run.HasStoryFlag(e.flag)) continue;
+                GUI.Label(new Rect(leftX + 16f, y, colW - 70f, 22f), $"·  {e.label}",
+                    MkLabel(13, TextAnchor.MiddleLeft, FontStyle.Normal, e.color));
+                GUI.Label(new Rect(leftX + colW - 58f, y, 50f, 22f), e.tag,
+                    MkLabel(11, TextAnchor.MiddleLeft, FontStyle.Italic, e.color));
+                y += lineH;
+                picked++;
+            }
+            if (picked == 0)
+                GUI.Label(new Rect(leftX, y, colW, 22f), "（本周目未做任何抉择）",
+                    MkLabel(13, TextAnchor.MiddleCenter, FontStyle.Italic, none));
+
+            // 污染最终值
+            int corruption = run.VoidCorruption;
+            GUI.Label(new Rect(leftX, topY + 28f + lineH * 8.5f, colW, 22f),
+                $"虚空污染终值：{corruption}",
+                MkLabel(13, TextAnchor.MiddleCenter, FontStyle.Bold,
+                    corruption >= 10 ? new Color(0.95f, 0.30f, 0.85f) :
+                    corruption >= 5  ? new Color(0.78f, 0.55f, 0.92f) :
+                    corruption >= 1  ? new Color(0.78f, 0.78f, 0.92f) :
+                                       new Color(0.55f, 0.85f, 0.95f)));
+
+            // ── 右列：剧情道具 ────────────────────────────────────────
+            GUI.Label(new Rect(rightX, topY, colW, 24), "── 你的收藏 ──",
+                MkLabel(16, TextAnchor.MiddleCenter, FontStyle.Bold, hdrCol));
+
+            y = topY + 28f;
+            if (run.StoryItems == null || run.StoryItems.Count == 0)
+            {
+                GUI.Label(new Rect(rightX, y, colW, 22f), "（无）",
+                    MkLabel(13, TextAnchor.MiddleCenter, FontStyle.Italic, none));
+            }
+            else
+            {
+                foreach (var item in run.StoryItems)
+                {
+                    string flavor = Game.Systems.StoryItemDatabase.TryGet(item, out var def) ? def.flavorTag : "";
+                    GUI.Label(new Rect(rightX + 8f, y, 132f, 22f), $"✦ {item}",
+                        MkLabel(13, TextAnchor.MiddleLeft, FontStyle.Bold, new Color(0.92f, 0.84f, 0.55f)));
+                    if (!string.IsNullOrEmpty(flavor))
+                        GUI.Label(new Rect(rightX + 142f, y, colW - 142f, 22f), flavor,
+                            MkLabel(11, TextAnchor.MiddleLeft, FontStyle.Italic, new Color(0.68f, 0.68f, 0.75f)));
+                    y += lineH;
+                }
             }
         }
 
