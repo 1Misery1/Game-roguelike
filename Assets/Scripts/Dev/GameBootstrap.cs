@@ -82,6 +82,7 @@ namespace Game.Dev
 
         private void Awake()
         {
+            _instance = this;
             // 创建摄像机必须在 Awake 完成，否则第一帧渲染前 Unity 会报 "no cameras rendering"
             EnsureCamera();
         }
@@ -287,78 +288,28 @@ namespace Game.Dev
         /// 第一层「封死的升降门」——发现王国军从外侧封锁地牢
         private void SpawnFloor1StoryDoor()
         {
-            if (_currentRoomRoot == null) return;
+            var data = Resources.Load<StoryInteractableData>("Story/Floor1_SealedDoor");
+            if (data == null) { Debug.LogWarning("[Story] 缺少 Resources/Story/Floor1_SealedDoor.asset"); return; }
+            SpawnStoryFromData(data, new Vector3(3.8f, 2.6f, 0f));
+        }
 
-            var go = new GameObject("StoryDoor_SealedLift");
+        /// 通用：根据 StoryInteractableData 在当前房间生成一个剧情交互物。
+        /// 视觉/触发器尺寸均由 data 控制；offset 相对 PlayerSpawn 放置。
+        private void SpawnStoryFromData(StoryInteractableData data, Vector3 offsetFromSpawn)
+        {
+            if (_currentRoomRoot == null || data == null) return;
+
+            var go = new GameObject($"Story_{data.objectId}");
             go.transform.SetParent(_currentRoomRoot.transform);
-            go.transform.position   = _mapInfo.PlayerSpawn + new Vector3(3.8f, 2.6f, 0f);
-            go.transform.localScale = new Vector3(1.5f, 2.7f, 1f);
+            go.transform.position = _mapInfo.PlayerSpawn + offsetFromSpawn;
 
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sprite       = MakeUnitSquareSprite();
-            sr.color        = new Color(0.40f, 0.39f, 0.46f);
             sr.sortingOrder = 1;
 
-            var col = go.AddComponent<BoxCollider2D>();
-            col.isTrigger = true;
-            col.size      = new Vector2(1.5f, 1.25f);
-
+            go.AddComponent<BoxCollider2D>();   // 大小在 ApplyData 中由 data 写入
             var si = go.AddComponent<StoryInteractable>();
-            si.ObjectId      = "f1_sealed_door";
-            si.BuildDialogue = BuildSealedDoorDialogue;
-            si.OnResolved    = OnSealedDoorResolved;
-        }
-
-        // 按当前英雄与累计调查次数生成「封死的升降门」对话
-        private static List<DialogueLine> BuildSealedDoorDialogue(HeroData hero, int count)
-        {
-            var lines = new List<DialogueLine>();
-            bool   isLeon   = hero != null && hero.heroName == "Warrior";
-            string speaker  = hero != null && !string.IsNullOrEmpty(hero.displayName)
-                                  ? hero.displayName : "冒险者";
-            string portrait = hero != null ? hero.heroName : null;
-
-            if (count <= 1)
-            {
-                lines.Add(new DialogueLine("旁白", null,
-                    "一扇巨大的铁门横在升降井前，门上烙着王国的封印。"));
-                lines.Add(new DialogueLine("旁白", null,
-                    "铁门从外侧被锁死——门缝里，凝固着一只烧焦的手印。"));
-                if (isLeon)
-                {
-                    lines.Add(new DialogueLine(speaker, portrait,
-                        "这封印……是王国守卫军的封门术。"));
-                    lines.Add(new DialogueLine(speaker, portrait,
-                        "只有军官才有权下令使用。当年困住下面那些人的不是怪物——是我们的人，从外面锁死了门。"));
-                }
-                else
-                {
-                    lines.Add(new DialogueLine(speaker, portrait,
-                        "门是从外面锁上的。里面的人，根本逃不出来。"));
-                }
-            }
-            else
-            {
-                lines.Add(new DialogueLine("旁白", null,
-                    "你再次贴近冰冷的铁门。门后，仿佛有声音穿过岁月渗了出来——"));
-                lines.Add(new DialogueLine("门后的回声", null,
-                    "「开门！下面还有活人！」"));
-                lines.Add(new DialogueLine("门后的回声", null,
-                    "「命令是封锁。不准开启。」"));
-                if (isLeon)
-                    lines.Add(new DialogueLine(speaker, portrait,
-                        "……这道命令，究竟是谁下的。"));
-            }
-            return lines;
-        }
-
-        private void OnSealedDoorResolved(HeroData hero, int count)
-        {
-            var gm = GameManager.Instance;
-            gm?.Run?.SetStoryFlag("f1_sealed_door_seen");
-            if (hero != null && hero.heroName == "Warrior")
-                gm?.Persistent?.AddTruthFlag("truth_kingdom_sealed_door");
-            ShowBanner("【调查】封死的升降门");
+            si.Data = data;                     // 触发 ApplyData：scale/color/collider/dialogue
         }
 
         // --------------------------------------------------------------------
@@ -1873,6 +1824,14 @@ namespace Game.Dev
             _bannerMessage = message;
             _bannerUntil   = Time.time + 3f;
         }
+
+        /// 外部脚本（如数据驱动的 StoryInteractable）转发横幅显示
+        public static void PostBanner(string message)
+        {
+            if (_instance != null) _instance.ShowBanner(message);
+        }
+
+        private static GameBootstrap _instance;
 
         private static Sprite _cachedSquare;
         private static Sprite MakeUnitSquareSprite()
