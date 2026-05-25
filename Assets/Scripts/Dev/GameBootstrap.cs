@@ -709,21 +709,33 @@ namespace Game.Dev
             ShowBanner("Shop — approach and press E to buy (can skip)");
             OpenRightDoor();
 
-            // 视觉装饰：货架长条 + 老板像素小人（位于武器排正后方）
-            SpawnShopShelf(new Vector3(0f, 1.0f, 0f), width: 13.5f);
-            SpawnShopkeeper(new Vector3(0f, 3.2f, 0f));
+            // 商店装饰：优先读取 SO，缺失时回退到程序化默认值
+            var decor = Resources.Load<ShopDecorData>("Shop/Default");
+            if (decor != null)
+            {
+                SpawnDecorGroup(decor.shopkeeper);
+                SpawnDecorGroup(decor.shelf);
+                foreach (var extra in decor.extraDecor) SpawnDecorGroup(extra);
+            }
+            else
+            {
+                SpawnShopShelf(new Vector3(0f, 1.0f, 0f), width: 13.5f);
+                SpawnShopkeeper(new Vector3(0f, 3.2f, 0f));
+            }
 
             int floorIdx   = Mathf.Clamp(CurrentFloor - 1, 0, ShopRarityTable.Length - 1);
             int[] rarities = ShopRarityTable[floorIdx];
             float priceScale = 1f + (CurrentFloor - 1) * 0.3f;
 
-            // 6 weapons in a row
+            // 武器排：起点 / 间距 / 大小 / 排序 全部来自 SO（缺失则用代码默认）
+            Vector3 wStart  = decor != null ? decor.weaponRowStart : new Vector3(-5.5f, 1.5f, 0f);
+            float   wSpace  = decor != null ? decor.weaponSpacing  : 2.2f;
             for (int i = 0; i < rarities.Length; i++)
             {
-                float x   = -5.5f + i * 2.2f;
-                int   ri  = rarities[i];
+                int   ri    = rarities[i];
                 int   price = Mathf.RoundToInt(WeaponBasePrice[ri] * priceScale);
-                SpawnShopWeaponPedestal(new Vector3(x, 1.5f, 0f), GetWeaponOfRarity(ri), price);
+                SpawnShopWeaponPedestal(wStart + new Vector3(i * wSpace, 0f, 0f),
+                    GetWeaponOfRarity(ri), price, decor);
             }
 
             // Forge, talent, and enchant pedestals in the lower row
@@ -741,6 +753,20 @@ namespace Game.Dev
         }
 
         // ── 商店视觉装饰 ─────────────────────────────────────────────────
+
+        /// 数据驱动版：按 ShopDecorGroup 在场景里组装一组像素方块
+        private void SpawnDecorGroup(ShopDecorGroup g)
+        {
+            if (g == null || !g.enabled || g.parts == null || g.parts.Count == 0) return;
+            var root = new GameObject(string.IsNullOrEmpty(g.name) ? "DecorGroup" : g.name);
+            root.transform.SetParent(_currentRoomRoot.transform, true);
+            root.transform.position = g.anchor;
+            foreach (var p in g.parts)
+            {
+                if (p == null) continue;
+                MakeShopPart(root.transform, p.localPos, p.size, p.color, p.sortingOrder);
+            }
+        }
 
         /// 商店货架：一条木色长板 + 上下两根支架，背景层
         private void SpawnShopShelf(Vector3 center, float width)
@@ -896,33 +922,36 @@ namespace Game.Dev
             };
         }
 
-        private void SpawnShopWeaponPedestal(Vector3 pos, WeaponInstance weapon, int price)
+        private void SpawnShopWeaponPedestal(Vector3 pos, WeaponInstance weapon, int price, ShopDecorData decor = null)
         {
             var go = new GameObject("ShopWeapon_" + weapon.Data.weaponName);
             go.transform.SetParent(_currentRoomRoot.transform, true);
             go.transform.position   = pos;
-            go.transform.localScale = new Vector3(1.1f, 1.1f, 1f);
+            go.transform.localScale = decor != null ? decor.weaponScale : new Vector3(1.1f, 1.1f, 1f);
 
             // 武器实物精灵作为陈列；rarity 颜色变成发光底座
             var sr = go.AddComponent<SpriteRenderer>();
             var wsprite = WeaponSprites.Get(weapon.Data.weaponName);
             sr.sprite       = wsprite != null ? wsprite : MakeUnitSquareSprite();
             sr.color        = Color.white;
-            sr.sortingOrder = 8;
+            sr.sortingOrder = decor != null ? decor.weaponSortingOrder : 8;
 
             // 发光底座（rarity 颜色）—— 货架格里的浅色衬底
             var glow = new GameObject("Glow");
             glow.transform.SetParent(go.transform, false);
-            glow.transform.localPosition = new Vector3(0f, -0.08f, 0f);
-            glow.transform.localScale    = new Vector3(0.95f, 0.30f, 1f);
+            var glowPos   = decor != null ? decor.weaponGlowLocalPos : new Vector2(0f, -0.08f);
+            var glowScale = decor != null ? decor.weaponGlowScale    : new Vector2(0.95f, 0.30f);
+            float gAlpha  = decor != null ? decor.weaponGlowAlpha    : 0.55f;
+            glow.transform.localPosition = new Vector3(glowPos.x, glowPos.y, 0f);
+            glow.transform.localScale    = new Vector3(glowScale.x, glowScale.y, 1f);
             var glowSr = glow.AddComponent<SpriteRenderer>();
             glowSr.sprite       = MakeUnitSquareSprite();
             var rc = WeaponData.GetRarityColor(weapon.Data.rarity);
-            glowSr.color        = new Color(rc.r, rc.g, rc.b, 0.55f);
-            glowSr.sortingOrder = 7;
+            glowSr.color        = new Color(rc.r, rc.g, rc.b, gAlpha);
+            glowSr.sortingOrder = decor != null ? decor.weaponGlowSortingOrder : 7;
 
             var col = go.AddComponent<CircleCollider2D>();
-            col.radius    = 0.85f;
+            col.radius    = decor != null ? decor.weaponColliderRadius : 0.85f;
             col.isTrigger = true;
 
             var pedestal         = go.AddComponent<WeaponShopPedestal>();
