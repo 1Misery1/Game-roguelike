@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 345e5ac57f217064181d436d3bc8ee2e, type: 3}
+  m_Name: FrostLich
+  m_EditorClassIdentifier: 
+  bossId: frost_lich
+  displayName: Frost Lich
+  maxHp: 480
+  attack: 20
+  defense: 5
+  moveSpeed: 1.8
+  visualScale: 1.1
+  tintColor: {r: 0.45, g: 0.75, b: 1, a: 1}
