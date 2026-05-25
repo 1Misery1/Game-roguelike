@@ -110,6 +110,7 @@ namespace Game.UI
 
         private void OnGUI()
         {
+            Game.Dev.UIFonts.ApplyToSkin();   // 全局 IMGUI 字体统一为方舟像素体
             // 背景
             FillRect(new Rect(0, 0, Screen.width, Screen.height), new Color(0.07f, 0.07f, 0.11f));
             FillRect(new Rect(0, 0, Screen.width, 3), new Color(0.55f, 0.45f, 0.15f));

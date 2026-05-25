@@ -79,6 +79,7 @@ namespace Game.Dungeon
         {
             if (usesLeft <= 0) return;
             if (Camera.main == null) return;
+            Game.Dev.UIFonts.ApplyToSkin();
 
             Vector3 screen = Camera.main.WorldToScreenPoint(transform.position + Vector3.up * 0.9f);
             if (screen.z < 0) return;

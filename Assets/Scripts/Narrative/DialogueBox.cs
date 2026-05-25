@@ -162,31 +162,8 @@ namespace Game.Narrative
                       new Color(0.66f, 0.64f, 0.74f)));
         }
 
-        // ── 字体（方舟像素字体 Ark Pixel Font，从 Resources/Fonts 加载）────────
-        private static Font _arkFont;
-        private static bool _arkLoaded;
-        private static Font ArkFont
-        {
-            get
-            {
-                if (!_arkLoaded)
-                {
-                    _arkFont   = Resources.Load<Font>("Fonts/ark-pixel-12px");
-                    _arkLoaded = true;
-                }
-                return _arkFont;
-            }
-        }
-
-        // 方舟像素字体未导入时的系统字体回退
-        private static Font _fallbackFont;
-        private static Font Fallback => _fallbackFont != null
-            ? _fallbackFont
-            : (_fallbackFont = Font.CreateDynamicFontFromOSFont(
-                  new[] { "Microsoft YaHei", "微软雅黑", "SimHei", "黑体" }, 22));
-
-        // 名字与正文统一使用方舟像素字体（契合像素美术风格）
-        private static Font UIFont   => ArkFont != null ? ArkFont : Fallback;
+        // 字体由全局 UIFonts 统一提供（方舟像素体；缺失时系统中文兜底）
+        private static Font UIFont   => Game.Dev.UIFonts.UI;
         private static Font NameFont => UIFont;
 
         // ── IMGUI 工具 ────────────────────────────────────────────────────────

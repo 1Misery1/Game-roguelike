@@ -42,6 +42,7 @@ namespace Game.Dev
         private void OnGUI()
         {
             if (Camera.main == null) return;
+            UIFonts.ApplyToSkin();
             float now = Time.time;
             for (int i = _active.Count - 1; i >= 0; i--)
             {
