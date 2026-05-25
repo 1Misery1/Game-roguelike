@@ -162,6 +162,8 @@ namespace Game.Dev
         public const float NormalEndingCutsceneDuration = 4.0f;
         /// 真相结局占位动画时长（秒）。真相结局动画通常更长
         public const float TrueEndingCutsceneDuration   = 6.5f;
+        /// 王冠结局占位动画时长（秒）。击败「王国之罪」后的终章
+        public const float CrownEndingCutsceneDuration  = 8.5f;
 
         /// 过场开始时触发的全局 hook：动画系统可订阅此事件按当前结局类型播放
         /// (isTrueEnding, durationSeconds) -> 由订阅者使用
@@ -169,26 +171,37 @@ namespace Game.Dev
         /// 过场结束（自然完成或玩家跳过）时触发
         public static event System.Action OnEndingCutsceneEnd;
 
-        private bool  _isTrueEnding;
-        private int   _endingTruthCount;
-        private float _cutsceneStartTime;
-        private float _cutsceneDuration;
+        /// 三档结局
+        public enum EndingTier { Normal, Truth, Crown }
+
+        private EndingTier _endingTier;
+        private bool       _isTrueEnding;   // 兼容旧逻辑：Truth/Crown 都视作 true
+        private int        _endingTruthCount;
+        private float      _cutsceneStartTime;
+        private float      _cutsceneDuration;
 
         private void TriggerVictory()
         {
             _persistent.AddCurrency(clearReward);
             _persistent.RecordRunResult(CurrentFloor, true, _enemiesKilled, Mathf.RoundToInt(_totalDamageDealt));
             _endingTruthCount = _persistent.TruthFlags != null ? _persistent.TruthFlags.Count : 0;
-            _isTrueEnding     = _endingTruthCount >= TrueEndingTruthThreshold;
 
-            // 先进入过场动画状态，结束后切到 Victory 结算画面
+            // 三档：击败「王国之罪」 > 真相旗 ≥ 阈值 > 普通
+            if (_persistent.HasTruthFlag("truth_final_boss_defeated")) _endingTier = EndingTier.Crown;
+            else if (_endingTruthCount >= TrueEndingTruthThreshold)    _endingTier = EndingTier.Truth;
+            else                                                        _endingTier = EndingTier.Normal;
+            _isTrueEnding = _endingTier != EndingTier.Normal;
+
             EnterEndingCutscene();
         }
 
         private void EnterEndingCutscene()
         {
-            _state             = State.EndingCutscene;
-            _cutsceneDuration  = _isTrueEnding ? TrueEndingCutsceneDuration : NormalEndingCutsceneDuration;
+            _state = State.EndingCutscene;
+            _cutsceneDuration =
+                _endingTier == EndingTier.Crown ? CrownEndingCutsceneDuration :
+                _endingTier == EndingTier.Truth ? TrueEndingCutsceneDuration  :
+                                                  NormalEndingCutsceneDuration;
             _cutsceneStartTime = Time.unscaledTime;
             OnEndingCutsceneStart?.Invoke(_isTrueEnding, _cutsceneDuration);
             StartCoroutine(EndingCutsceneRoutine());
@@ -951,9 +964,83 @@ namespace Game.Dev
                 _bossName   = null;
                 PlayerPassiveEvents.RaisePlayerKilledEnemy();
                 Destroy(boss);
-                if (CurrentFloor >= maxFloor) TriggerVictory();
-                else                          TriggerFloorComplete();
+
+                // 最终层 Boss 击败：若已满足隐藏 Boss 条件且尚未召唤过 → 进入「王国之罪」战
+                if (CurrentFloor >= maxFloor)
+                {
+                    if (!_hiddenBossSpawned && IsHiddenBossUnlocked()) SpawnHiddenBoss();
+                    else                                                TriggerVictory();
+                }
+                else
+                {
+                    TriggerFloorComplete();
+                }
             };
+        }
+
+        // ── 隐藏 Boss「王国之罪」 ───────────────────────────────────────────
+        // 触发条件：4 个关键真相旗（设计文档对应 工匠名册 / 教会沉默 / 王室驳回 / 王座罪行）
+        private static readonly string[] HiddenBossRequiredFlags = {
+            "truth_artisan_ledger",
+            "truth_church_silence",
+            "truth_royal_rejected_stop",
+            "truth_kingdom_guilt",
+        };
+
+        private bool _hiddenBossSpawned;
+
+        public bool IsHiddenBossUnlocked()
+        {
+            if (_persistent == null) return false;
+            foreach (var f in HiddenBossRequiredFlags)
+                if (!_persistent.HasTruthFlag(f)) return false;
+            return true;
+        }
+
+        private void SpawnHiddenBoss()
+        {
+            _hiddenBossSpawned = true;
+            ShowBanner("「怪物穿着王冠，坐在地上。」");
+
+            // 战前对话铺垫：用现有 DialogueBox 播放 4 句铭文
+            var lines = new System.Collections.Generic.List<Game.Narrative.DialogueLine> {
+                new Game.Narrative.DialogueLine("旁白",     null, "回廊深处，断裂的王座缓缓抬起。它从来不是一座座椅。"),
+                new Game.Narrative.DialogueLine("王国之罪", null, "「你们想杀死怪物。」"),
+                new Game.Narrative.DialogueLine("王国之罪", null, "「可怪物不是从虚空来的。」"),
+                new Game.Narrative.DialogueLine("王国之罪", null, "「怪物穿着王冠，坐在地上。」"),
+            };
+            Game.Narrative.DialogueBox.Get().Play(lines, () =>
+            {
+                // 复用 ChaosLord 实体 + AI，整体放大 1.6×，HP 与伤害 2.5×
+                var boss   = EnemyFactory.SpawnChaosLord(new Vector3(0f, 2.5f, 0f),
+                                 _player.transform, _currentRoomRoot.transform);
+                boss.name  = "Kingdom_Guilt";
+                boss.transform.localScale *= 1.6f;
+                var bossAI = boss.GetComponent<ChaosLordAI>();
+                bossAI.SpawnMinionCallback = pos => SpawnRandomNormalEnemy(pos, () => { });
+                ScaleEnemyStats(boss, FloorScale * 2.5f);
+
+                _bossHealth = boss.GetComponent<Health>();
+                _bossName   = "王国之罪";
+                var feedback = boss.AddComponent<EnemyHitFeedback>();
+                feedback.KnockbackForce = 0f;
+                _bossHealth.OnDamaged += dmg =>
+                {
+                    _totalDamageDealt += dmg.Amount;
+                    if (boss != null) DamageNumbers.Instance?.Show(boss.transform.position, dmg.Amount, dmg.IsCrit);
+                };
+                _bossHealth.OnDied += () =>
+                {
+                    _enemiesKilled++;
+                    _bossHealth = null;
+                    _bossName   = null;
+                    PlayerPassiveEvents.RaisePlayerKilledEnemy();
+                    if (boss != null) Destroy(boss);
+                    // 通关隐藏 Boss → 永久记 truth_final_boss_defeated
+                    _persistent.AddTruthFlag("truth_final_boss_defeated");
+                    TriggerVictory();
+                };
+            });
         }
 
         // ── Special floor rooms ────────────────────────────────────────────
@@ -2317,10 +2404,24 @@ namespace Game.Dev
 
             if (titleAlpha > 0.001f)
             {
-                string title = _isTrueEnding ? "「记住地下之名。」" : "「世界暂时合上了眼。」";
-                Color  tint  = _isTrueEnding
-                                ? new Color(0.92f, 0.78f, 1f, titleAlpha)
-                                : new Color(0.85f, 0.85f, 0.78f, titleAlpha);
+                string title;
+                Color  baseTint;
+                switch (_endingTier)
+                {
+                    case EndingTier.Crown:
+                        title    = "「王冠落地，名字归来。」";
+                        baseTint = new Color(1f,    0.86f, 0.55f);
+                        break;
+                    case EndingTier.Truth:
+                        title    = "「记住地下之名。」";
+                        baseTint = new Color(0.92f, 0.78f, 1f);
+                        break;
+                    default:
+                        title    = "「世界暂时合上了眼。」";
+                        baseTint = new Color(0.85f, 0.85f, 0.78f);
+                        break;
+                }
+                var tint = new Color(baseTint.r, baseTint.g, baseTint.b, titleAlpha);
                 GUI.Label(new Rect(0, Screen.height * 0.46f, Screen.width, 60), title,
                     MkLabel(28, TextAnchor.MiddleCenter, FontStyle.Italic, tint));
             }
@@ -2344,17 +2445,27 @@ namespace Game.Dev
             if (skipReq) FinishEndingCutscene();
         }
 
-        // 真相结局画面：根据收集的真相旗数量分支文案与配色
+        // 三档结局画面
         private void DrawVictoryScreen()
         {
-            if (_isTrueEnding)
-                DrawEndScreen("真相·余烬", new Color(0.92f, 0.78f, 1f, 1f), true,
-                    "「世界暂时得救。」",
-                    $"地下的名字，再无人能忽视。  （已知真相 {_endingTruthCount} / 10）");
-            else
-                DrawEndScreen("胜利", new Color(1f, 0.92f, 0.2f, 1f), true,
-                    "「世界暂时得救。」",
-                    $"但地下的名字，仍无人记得。  （已知真相 {_endingTruthCount} / 10）");
+            switch (_endingTier)
+            {
+                case EndingTier.Crown:
+                    DrawEndScreen("真相·王冠", new Color(1f, 0.86f, 0.55f, 1f), true,
+                        "「怪物穿着王冠，坐在地上——而你将它推下了王座。」",
+                        $"王国之罪已被揭穿。  （已知真相 {_endingTruthCount} / 10）");
+                    break;
+                case EndingTier.Truth:
+                    DrawEndScreen("真相·余烬", new Color(0.92f, 0.78f, 1f, 1f), true,
+                        "「世界暂时得救。」",
+                        $"地下的名字，再无人能忽视。  （已知真相 {_endingTruthCount} / 10）");
+                    break;
+                default:
+                    DrawEndScreen("胜利", new Color(1f, 0.92f, 0.2f, 1f), true,
+                        "「世界暂时得救。」",
+                        $"但地下的名字，仍无人记得。  （已知真相 {_endingTruthCount} / 10）");
+                    break;
+            }
         }
 
         private void DrawEndScreen(string title, Color color, bool victory, string subtitle = null, string footnote = null)
