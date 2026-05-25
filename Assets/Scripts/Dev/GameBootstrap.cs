@@ -1392,14 +1392,33 @@ namespace Game.Dev
         }
 
         // Set camera background color to match the floor theme
+        // ── Floor 主题（数据驱动）────────────────────────────────────────
+        static FloorThemeData[] _floorThemeCache;
+        static FloorThemeData[] FloorThemesAll =>
+            _floorThemeCache ?? (_floorThemeCache = Resources.LoadAll<FloorThemeData>("Floors"));
+
+        private FloorThemeData GetFloorTheme()
+        {
+            foreach (var t in FloorThemesAll)
+                if (t != null && t.floorNumber == CurrentFloor) return t;
+            return null;
+        }
+
         private void SetFloorBackground()
         {
             if (Camera.main == null) return;
+            var theme = GetFloorTheme();
+            if (theme != null)
+            {
+                Camera.main.backgroundColor = theme.cameraBackground;
+                return;
+            }
+            // 回退：旧 switch
             switch (CurrentFloor)
             {
-                case 1:  Camera.main.backgroundColor = new Color(0.15f, 0.05f, 0.03f); break; // Inferno
-                case 2:  Camera.main.backgroundColor = new Color(0.03f, 0.06f, 0.14f); break; // Frost Realm
-                default: Camera.main.backgroundColor = new Color(0.07f, 0.03f, 0.11f); break; // Chaos Abyss
+                case 1:  Camera.main.backgroundColor = new Color(0.15f, 0.05f, 0.03f); break;
+                case 2:  Camera.main.backgroundColor = new Color(0.03f, 0.06f, 0.14f); break;
+                default: Camera.main.backgroundColor = new Color(0.07f, 0.03f, 0.11f); break;
             }
         }
 
@@ -1416,6 +1435,8 @@ namespace Game.Dev
 
         private string GetFloorName()
         {
+            var theme = GetFloorTheme();
+            if (theme != null && !string.IsNullOrEmpty(theme.displayName)) return theme.displayName;
             switch (CurrentFloor)
             {
                 case 1:  return "Inferno";
@@ -1426,6 +1447,8 @@ namespace Game.Dev
 
         private string GetFloorNarrative()
         {
+            var theme = GetFloorTheme();
+            if (theme != null && !string.IsNullOrEmpty(theme.narrativeBanner)) return theme.narrativeBanner;
             switch (CurrentFloor)
             {
                 case 1:  return "[Inferno] Lava surges, demons and iron-clad guards block the path — watch for explosions and magma!";
@@ -2069,7 +2092,11 @@ namespace Game.Dev
             var rows = MapBuilder.GetMap(floor, variant);
             NavGrid.Build(rows);
             MapBuilder.SetupPhysics();
-            FloorBackground.Create(floor, parent, MapBuilder.TileW + 4f, MapBuilder.TileH + 4f);
+            var fbTheme = GetFloorTheme();
+            if (fbTheme != null)
+                FloorBackground.Create(fbTheme, parent, MapBuilder.TileW + 4f, MapBuilder.TileH + 4f);
+            else
+                FloorBackground.Create(floor, parent, MapBuilder.TileW + 4f, MapBuilder.TileH + 4f);
 
             var roomGO = Instantiate(prefab, Vector3.zero, Quaternion.identity, parent);
             var meta   = roomGO.GetComponent<Game.Dungeon.RoomMetadata>();
