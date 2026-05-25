@@ -2919,6 +2919,7 @@ namespace Game.Dev
             {
                 GUI.Label(new Rect(rightX, y, colW, 22f), "（无）",
                     MkLabel(13, TextAnchor.MiddleCenter, FontStyle.Italic, none));
+                y += lineH;
             }
             else
             {
@@ -2931,6 +2932,37 @@ namespace Game.Dev
                         GUI.Label(new Rect(rightX + 142f, y, colW - 142f, 22f), flavor,
                             MkLabel(11, TextAnchor.MiddleLeft, FontStyle.Italic, new Color(0.68f, 0.68f, 0.75f)));
                     y += lineH;
+                }
+            }
+
+            // ── 右列下半：已激活协同 ──────────────────────────────────
+            y += 8f; // 与道具列表保持视觉间距
+            var activeSyn = new System.Collections.Generic.List<Game.Systems.StoryItemSynergyDatabase.SynergyDef>();
+            foreach (var s in Game.Systems.StoryItemSynergyDatabase.All)
+                if (Game.Systems.StoryItemSynergyDatabase.IsActive(run, s.id))
+                    activeSyn.Add(s);
+
+            Color synHdr = new Color(1f, 0.78f, 0.92f);
+            GUI.Label(new Rect(rightX, y, colW, 22f), "── 已激活协同 ──",
+                MkLabel(16, TextAnchor.MiddleCenter, FontStyle.Bold, synHdr));
+            y += 26f;
+
+            if (activeSyn.Count == 0)
+            {
+                GUI.Label(new Rect(rightX, y, colW, 22f), "（未触发任何道具协同）",
+                    MkLabel(13, TextAnchor.MiddleCenter, FontStyle.Italic, none));
+            }
+            else
+            {
+                Color synLine = new Color(1f, 0.72f, 0.92f);
+                foreach (var s in activeSyn)
+                {
+                    GUI.Label(new Rect(rightX + 8f, y, colW - 16f, 22f), $"★ {s.displayName}",
+                        MkLabel(13, TextAnchor.MiddleLeft, FontStyle.Bold, synLine));
+                    GUI.Label(new Rect(rightX + 8f, y + 16f, colW - 16f, 18f), s.flavor,
+                        MkLabel(11, TextAnchor.MiddleLeft, FontStyle.Italic,
+                            new Color(0.82f, 0.68f, 0.82f)));
+                    y += 36f;
                 }
             }
         }
