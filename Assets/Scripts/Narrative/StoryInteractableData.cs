@@ -28,10 +28,10 @@ namespace Game.Narrative
         [Tooltip("调试用名字，不影响逻辑")]
         public string note = "branch";
 
-        [Tooltip("最少调查次数（≥1）。第一次调查时 count=1")]
+        [Tooltip("最少调查次数（≥1）。计数为「本英雄」专属：换英雄重玩时仍从 1 起，保证每个新英雄都能从首次见到自己专属内容")]
         public int minCount = 1;
 
-        [Tooltip("最多调查次数（0 = 不限）。例：min=1,max=1 → 只在首次播放")]
+        [Tooltip("最多调查次数（0 = 不限）。例：min=1,max=1 → 只在该英雄首次播放")]
         public int maxCount = 0;
 
         [Tooltip("仅当英雄美术键等于此值才播放（Warrior/Ranger/Mage/Paladin/Hunter；留空=任意英雄）")]
@@ -63,7 +63,7 @@ namespace Game.Narrative
         [Tooltip("专属英雄美术键。首次调查即解锁；留空 = 任意英雄首次即解锁")]
         public string requireHero = "";
 
-        [Tooltip("后备解锁次数（任意英雄调查 N 次后无视 requireHero 解锁）。0 = 不允许非专属英雄解锁。建议 2-3 给单角色玩家留通路")]
+        [Tooltip("后备解锁次数（按「全局」累计调查 N 次后无视 requireHero 解锁——任意英雄顺序都计入）。0 = 不允许非专属英雄解锁。建议 2-3")]
         public int fallbackCount = 0;
     }
 
