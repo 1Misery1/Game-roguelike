@@ -1011,13 +1011,19 @@ namespace Game.Dev
             };
             Game.Narrative.DialogueBox.Get().Play(lines, () =>
             {
-                // 复用 ChaosLord 实体 + AI，整体放大 1.6×，HP 与伤害 2.5×
+                // 复用 ChaosLord 实体外观，但替换为「王国之罪」专属 AI
                 var boss   = EnemyFactory.SpawnChaosLord(new Vector3(0f, 2.5f, 0f),
                                  _player.transform, _currentRoomRoot.transform);
                 boss.name  = "Kingdom_Guilt";
                 boss.transform.localScale *= 1.6f;
-                var bossAI = boss.GetComponent<ChaosLordAI>();
-                bossAI.SpawnMinionCallback = pos => SpawnRandomNormalEnemy(pos, () => { });
+                // 暖金色调（区别于混沌领主的紫黑）
+                var sr = boss.GetComponent<SpriteRenderer>();
+                if (sr != null) sr.color = new Color(0.92f, 0.78f, 0.30f);
+                // 移除原 ChaosLord AI，挂上自定义 AI
+                var oldAI = boss.GetComponent<ChaosLordAI>();
+                if (oldAI != null) Destroy(oldAI);
+                var bossAI = boss.AddComponent<KingdomGuiltAI>();
+                bossAI.target = _player.transform;
                 ScaleEnemyStats(boss, FloorScale * 2.5f);
 
                 _bossHealth = boss.GetComponent<Health>();
@@ -2135,6 +2141,60 @@ namespace Game.Dev
             GUI.Label(new Rect(goldX, barY + 4, 114, 22),
                 $"◈  {RunCoins}",
                 MkLabel(16, TextAnchor.MiddleCenter, FontStyle.Bold, new Color(1f, 0.88f, 0.2f)));
+
+            // 虚空污染指示（金币条左侧）
+            DrawCorruptionIndicator(goldX - 168f, barY);
+        }
+
+        // 周目虚空污染：阶梯式颜色 + 进度条，让玩家直观看到抉择代价
+        private void DrawCorruptionIndicator(float x, float y)
+        {
+            int corruption = GameManager.Instance?.Run?.VoidCorruption ?? 0;
+            if (corruption < 0) corruption = 0;
+
+            // 阈值：0 净 / 1-4 沾染 / 5-9 深陷 / 10+ 虚空附体
+            string tierName;
+            Color  tierColor;
+            float  fillRatio;
+            const int MaxShown = 12;
+            if (corruption == 0)
+            {
+                tierName  = "清明";
+                tierColor = new Color(0.55f, 0.75f, 0.85f);
+                fillRatio = 0f;
+            }
+            else if (corruption < 5)
+            {
+                tierName  = "沾染";
+                tierColor = new Color(0.78f, 0.62f, 0.92f);
+                fillRatio = corruption / (float)MaxShown;
+            }
+            else if (corruption < 10)
+            {
+                tierName  = "深陷";
+                tierColor = new Color(0.62f, 0.32f, 0.85f);
+                fillRatio = corruption / (float)MaxShown;
+            }
+            else
+            {
+                tierName  = "附体";
+                tierColor = new Color(0.92f, 0.18f, 0.85f);
+                fillRatio = 1f;
+            }
+
+            FillRect(new Rect(x - 4f, y - 2f, 160f, 32f), new Color(0f, 0f, 0f, 0.65f));
+
+            // 进度条
+            float barFullW = 90f;
+            FillRect(new Rect(x + 60f, y + 12f, barFullW, 6f), new Color(1f, 1f, 1f, 0.10f));
+            FillRect(new Rect(x + 60f, y + 12f, barFullW * Mathf.Clamp01(fillRatio), 6f), tierColor);
+
+            // 文字标签
+            GUI.Label(new Rect(x, y + 4f, 60f, 22f), $"◊ {tierName}",
+                MkLabel(14, TextAnchor.MiddleLeft, FontStyle.Bold, tierColor));
+            GUI.Label(new Rect(x + 60f, y + 0f, barFullW, 14f), $"虚空 {corruption}",
+                MkLabel(11, TextAnchor.MiddleCenter, FontStyle.Normal,
+                    new Color(tierColor.r, tierColor.g, tierColor.b, 0.95f)));
         }
 
         // 武器 HUD（右下角）
