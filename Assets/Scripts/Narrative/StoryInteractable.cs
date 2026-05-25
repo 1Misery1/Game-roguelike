@@ -1,8 +1,10 @@
 using System.Collections.Generic;
+using Game.Combat;
 using Game.Core;
 using Game.Data;
 using Game.Dev;
 using Game.Player;
+using Game.Systems;
 using UnityEngine;
 
 namespace Game.Narrative
@@ -214,7 +216,7 @@ namespace Game.Narrative
             }
 
             foreach (var item in ch.grantStoryItems)
-                if (!string.IsNullOrEmpty(item)) gm?.Run?.AddStoryItem(item);
+                GrantStoryItemWithEffects(item);
 
             if (ch.addCorruption != 0) gm?.Run?.AddCorruption(ch.addCorruption);
             if (!string.IsNullOrEmpty(ch.bannerOverride))
@@ -282,13 +284,35 @@ namespace Game.Narrative
             }
 
             foreach (var item in d.grantStoryItems)
-                if (!string.IsNullOrEmpty(item)) gm?.Run?.AddStoryItem(item);
+                GrantStoryItemWithEffects(item);
 
             if (d.addCorruption != 0)
                 gm?.Run?.AddCorruption(d.addCorruption);
 
             if (!string.IsNullOrEmpty(d.bannerText))
                 GameBootstrap.PostBanner(d.bannerText);
+        }
+
+        /// 把道具加进 RunState；如果是首次获得且有战斗效果 → 应用到玩家并通知
+        private static void GrantStoryItemWithEffects(string item)
+        {
+            if (string.IsNullOrEmpty(item)) return;
+            var gm = GameManager.Instance;
+            bool isNew = gm?.Run != null && !gm.Run.HasStoryItem(item);
+            gm?.Run?.AddStoryItem(item);
+            if (!isNew) return;
+
+            // 找到玩家并应用 StatModifier
+            var player = Object.FindFirstObjectByType<PlayerController>();
+            var stats  = player != null ? player.GetComponent<CharacterStats>() : null;
+            bool applied = StoryItemDatabase.Apply(item, stats);
+
+            if (StoryItemDatabase.TryGet(item, out var def))
+                GameBootstrap.PostBanner(applied
+                    ? $"✦ 获得「{item}」 — {def.flavorTag}"
+                    : $"✦ 获得「{item}」  {def.flavorTag}");
+            else
+                GameBootstrap.PostBanner($"✦ 获得「{item}」");
         }
     }
 }
