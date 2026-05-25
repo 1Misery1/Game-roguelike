@@ -103,5 +103,6 @@ MonoBehaviour:
   truthAwards:
   - flag: truth_lake_witnessed
     requireHero: 
+    fallbackCount: 0
   grantStoryItems: []
   addCorruption: 2

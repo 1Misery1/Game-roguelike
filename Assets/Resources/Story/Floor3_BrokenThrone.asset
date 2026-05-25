@@ -106,5 +106,6 @@ MonoBehaviour:
   truthAwards:
   - flag: truth_kingdom_guilt
     requireHero: 
+    fallbackCount: 0
   grantStoryItems: []
   addCorruption: 0

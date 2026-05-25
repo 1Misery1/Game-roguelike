@@ -103,6 +103,7 @@ MonoBehaviour:
   truthAwards:
   - flag: truth_mirror_confronted
     requireHero: 
+    fallbackCount: 0
   grantStoryItems:
   - "\u865A\u7A7A\u8BB0\u5FC6\u788E\u7247"
   addCorruption: 4

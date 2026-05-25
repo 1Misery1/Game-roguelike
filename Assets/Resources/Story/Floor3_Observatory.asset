@@ -79,5 +79,6 @@ MonoBehaviour:
   truthAwards:
   - flag: truth_royal_rejected_stop
     requireHero: Mage
+    fallbackCount: 2
   grantStoryItems: []
   addCorruption: 0

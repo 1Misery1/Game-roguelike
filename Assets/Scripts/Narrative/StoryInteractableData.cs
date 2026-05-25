@@ -50,15 +50,21 @@ namespace Game.Narrative
         public List<StoryLineData> lines = new List<StoryLineData>();
     }
 
-    /// 跨周目真相旗奖励（可绑英雄）
+    /// 跨周目真相旗奖励（可绑英雄）。
+    /// 设计哲学：每个真相有一个「专属英雄」能在首次调查就立刻领悟；
+    /// 其他英雄通过反复探访（fallbackCount 次）也能逐步拼凑真相，
+    /// 从而保证单角色玩家也能解锁全部结局。
     [System.Serializable]
     public class TruthFlagAward
     {
         [Tooltip("真相旗 ID，写入 PersistentState.TruthFlags")]
         public string flag = "";
 
-        [Tooltip("仅当此英雄美术键触发时才记录；留空 = 任意英雄都记录")]
+        [Tooltip("专属英雄美术键。首次调查即解锁；留空 = 任意英雄首次即解锁")]
         public string requireHero = "";
+
+        [Tooltip("后备解锁次数（任意英雄调查 N 次后无视 requireHero 解锁）。0 = 不允许非专属英雄解锁。建议 2-3 给单角色玩家留通路")]
+        public int fallbackCount = 0;
     }
 
     /// 「剧情交互物」数据模板。

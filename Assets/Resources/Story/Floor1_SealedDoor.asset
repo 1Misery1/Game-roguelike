@@ -107,5 +107,6 @@ MonoBehaviour:
   truthAwards:
   - flag: truth_kingdom_sealed_door
     requireHero: Warrior
+    fallbackCount: 2
   grantStoryItems: []
   addCorruption: 0
