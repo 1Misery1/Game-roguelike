@@ -25,7 +25,7 @@ namespace Game.Dev
         [SerializeField] private int   nonBossRoomCount = 4;
         [SerializeField] private int   maxFloor        = 3;
 
-        private enum State { Playing, FloorComplete, Victory, Death }
+        private enum State { Playing, FloorComplete, EndingCutscene, Victory, Death }
 
         // Combat room weights (Shop inserted at a fixed position, Boss always last)
         private static readonly (string type, float weight)[] RoomPool =
@@ -157,17 +157,61 @@ namespace Game.Dev
         /// 真相结局触发阈值：跨周目累计真相旗 ≥ 此数 → 隐藏真相结局
         private const int TrueEndingTruthThreshold = 4;
 
-        private bool _isTrueEnding;
-        private int  _endingTruthCount;
+        // ── 周目结局过场动画（预留接入位置）─────────────────────────────────────
+        /// 普通结局占位动画时长（秒）。后续接入真实过场后可保留此字段作为兜底时长
+        public const float NormalEndingCutsceneDuration = 4.0f;
+        /// 真相结局占位动画时长（秒）。真相结局动画通常更长
+        public const float TrueEndingCutsceneDuration   = 6.5f;
+
+        /// 过场开始时触发的全局 hook：动画系统可订阅此事件按当前结局类型播放
+        /// (isTrueEnding, durationSeconds) -> 由订阅者使用
+        public static event System.Action<bool, float> OnEndingCutsceneStart;
+        /// 过场结束（自然完成或玩家跳过）时触发
+        public static event System.Action OnEndingCutsceneEnd;
+
+        private bool  _isTrueEnding;
+        private int   _endingTruthCount;
+        private float _cutsceneStartTime;
+        private float _cutsceneDuration;
 
         private void TriggerVictory()
         {
-            _state = State.Victory;
             _persistent.AddCurrency(clearReward);
             _persistent.RecordRunResult(CurrentFloor, true, _enemiesKilled, Mathf.RoundToInt(_totalDamageDealt));
             _endingTruthCount = _persistent.TruthFlags != null ? _persistent.TruthFlags.Count : 0;
             _isTrueEnding     = _endingTruthCount >= TrueEndingTruthThreshold;
+
+            // 先进入过场动画状态，结束后切到 Victory 结算画面
+            EnterEndingCutscene();
         }
+
+        private void EnterEndingCutscene()
+        {
+            _state             = State.EndingCutscene;
+            _cutsceneDuration  = _isTrueEnding ? TrueEndingCutsceneDuration : NormalEndingCutsceneDuration;
+            _cutsceneStartTime = Time.unscaledTime;
+            OnEndingCutsceneStart?.Invoke(_isTrueEnding, _cutsceneDuration);
+            StartCoroutine(EndingCutsceneRoutine());
+        }
+
+        private System.Collections.IEnumerator EndingCutsceneRoutine()
+        {
+            // unscaledTime 等待，便于过场期间任意调整 Time.timeScale（如 0 让世界冻结）
+            float endAt = Time.unscaledTime + _cutsceneDuration;
+            while (Time.unscaledTime < endAt && _state == State.EndingCutscene)
+                yield return null;
+            FinishEndingCutscene();
+        }
+
+        private void FinishEndingCutscene()
+        {
+            if (_state != State.EndingCutscene) return;
+            OnEndingCutsceneEnd?.Invoke();
+            _state = State.Victory;
+        }
+
+        /// 公共 API：动画系统主动结束过场（或玩家跳过键）
+        public void SkipEndingCutscene() => FinishEndingCutscene();
 
         private void TriggerFloorComplete()
         {
@@ -1905,10 +1949,11 @@ namespace Game.Dev
         {
             switch (_state)
             {
-                case State.Playing:       DrawHUD();                                                  break;
-                case State.FloorComplete: DrawFloorComplete();                                        break;
-                case State.Victory:       DrawVictoryScreen();                                        break;
-                case State.Death:         DrawEndScreen("阵亡",  new Color(1f, 0.3f,  0.3f), false); break;
+                case State.Playing:        DrawHUD();                                                  break;
+                case State.FloorComplete:  DrawFloorComplete();                                        break;
+                case State.EndingCutscene: DrawEndingCutscene();                                       break;
+                case State.Victory:        DrawVictoryScreen();                                        break;
+                case State.Death:          DrawEndScreen("阵亡",  new Color(1f, 0.3f,  0.3f), false); break;
             }
         }
 
@@ -2242,6 +2287,51 @@ namespace Game.Dev
         }
 
         // 结算/死亡画面
+        // 周目结局过场动画（占位画面）。
+        // 真实过场由订阅 OnEndingCutsceneStart 的动画系统接管；本占位仅用作开发期间
+        // 的可视化反馈与跳过 UI，确保流程能跑通。
+        private void DrawEndingCutscene()
+        {
+            // 全屏黑底
+            FillRect(new Rect(0, 0, Screen.width, Screen.height), Color.black);
+
+            float elapsed   = Mathf.Max(0f, Time.unscaledTime - _cutsceneStartTime);
+            float remaining = Mathf.Max(0f, _cutsceneDuration - elapsed);
+            float progress  = _cutsceneDuration > 0f ? Mathf.Clamp01(elapsed / _cutsceneDuration) : 1f;
+
+            // 占位文字：标题
+            string title = _isTrueEnding ? "—— 真相·余烬 ——" : "—— 周目结束 ——";
+            Color  tint  = _isTrueEnding ? new Color(0.92f, 0.78f, 1f, 1f) : new Color(1f, 0.92f, 0.5f, 1f);
+            GUI.Label(new Rect(0, Screen.height * 0.38f, Screen.width, 60), title,
+                MkLabel(36, TextAnchor.MiddleCenter, FontStyle.Bold, tint));
+
+            // 占位提示
+            GUI.Label(new Rect(0, Screen.height * 0.48f, Screen.width, 30),
+                $"〔 周目结局动画占位 · 预留 {_cutsceneDuration:0.0}s 〕",
+                MkLabel(18, TextAnchor.MiddleCenter, FontStyle.Italic, new Color(0.7f, 0.7f, 0.8f)));
+
+            // 进度条
+            float pbW = Screen.width * 0.35f;
+            float pbX = (Screen.width - pbW) * 0.5f;
+            float pbY = Screen.height * 0.58f;
+            FillRect(new Rect(pbX, pbY, pbW, 4f), new Color(1f, 1f, 1f, 0.15f));
+            FillRect(new Rect(pbX, pbY, pbW * progress, 4f), tint);
+
+            // 跳过提示与处理
+            GUI.Label(new Rect(0, Screen.height * 0.66f, Screen.width, 24),
+                $"剩余 {remaining:0.0}s   ·   按 空格 / 回车 / 鼠标左键 跳过",
+                MkLabel(14, TextAnchor.MiddleCenter, FontStyle.Normal, new Color(0.55f, 0.55f, 0.6f)));
+
+            // 跳过键（OnGUI 内监听 Event）
+            var e = Event.current;
+            bool skipReq =
+                (e.type == EventType.KeyDown && (e.keyCode == KeyCode.Space ||
+                                                  e.keyCode == KeyCode.Return ||
+                                                  e.keyCode == KeyCode.Escape)) ||
+                (e.type == EventType.MouseDown && e.button == 0);
+            if (skipReq) FinishEndingCutscene();
+        }
+
         // 真相结局画面：根据收集的真相旗数量分支文案与配色
         private void DrawVictoryScreen()
         {
