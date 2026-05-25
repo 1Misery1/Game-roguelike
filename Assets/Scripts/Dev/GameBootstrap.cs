@@ -276,21 +276,51 @@ namespace Game.Dev
                 case "ChaosRift":  BuildChaosRiftRoom();  break;
             }
 
-            // 阶段二垂直切片：第一层入口房放置剧情交互物「封死的升降门」
-            if (CurrentFloor == 1 && index == 0)
-                SpawnFloor1StoryDoor();
+            TrySpawnStoryForRoom(CurrentFloor, index);
         }
 
         // --------------------------------------------------------------------
-        //  剧情交互物（阶段二）
+        //  剧情交互物 —— (floor, index) -> Resources 路径 + 偏移
         // --------------------------------------------------------------------
 
-        /// 第一层「封死的升降门」——发现王国军从外侧封锁地牢
-        private void SpawnFloor1StoryDoor()
+        private struct StorySpawnEntry
         {
-            var data = Resources.Load<StoryInteractableData>("Story/Floor1_SealedDoor");
-            if (data == null) { Debug.LogWarning("[Story] 缺少 Resources/Story/Floor1_SealedDoor.asset"); return; }
-            SpawnStoryFromData(data, new Vector3(3.8f, 2.6f, 0f));
+            public int       Floor;
+            public int       RoomIndex;
+            public string    ResourcePath;          // 相对 Resources 的路径（不含扩展名）
+            public Vector3   OffsetFromPlayerSpawn; // 相对玩家出生点的位置
+        }
+
+        private static readonly StorySpawnEntry[] _storySpawnTable = new[]
+        {
+            // 第一层
+            new StorySpawnEntry { Floor = 1, RoomIndex = 0, ResourcePath = "Story/Floor1_SealedDoor",     OffsetFromPlayerSpawn = new Vector3( 3.8f,  2.6f, 0f) },
+            new StorySpawnEntry { Floor = 1, RoomIndex = 1, ResourcePath = "Story/Floor1_FurnaceConsole", OffsetFromPlayerSpawn = new Vector3(-3.5f,  1.5f, 0f) },
+            new StorySpawnEntry { Floor = 1, RoomIndex = 2, ResourcePath = "Story/Floor1_ArtisanCorpse",  OffsetFromPlayerSpawn = new Vector3( 3.0f, -2.0f, 0f) },
+            // 第二层
+            new StorySpawnEntry { Floor = 2, RoomIndex = 0, ResourcePath = "Story/Floor2_ScoutCamp",      OffsetFromPlayerSpawn = new Vector3( 3.8f,  2.6f, 0f) },
+            new StorySpawnEntry { Floor = 2, RoomIndex = 1, ResourcePath = "Story/Floor2_FrozenLake",     OffsetFromPlayerSpawn = new Vector3( 0.0f,  0.5f, 0f) },
+            new StorySpawnEntry { Floor = 2, RoomIndex = 2, ResourcePath = "Story/Floor2_FrostAltar",     OffsetFromPlayerSpawn = new Vector3(-3.5f,  2.0f, 0f) },
+            // 第三层
+            new StorySpawnEntry { Floor = 3, RoomIndex = 0, ResourcePath = "Story/Floor3_Observatory",    OffsetFromPlayerSpawn = new Vector3( 3.8f,  2.6f, 0f) },
+            new StorySpawnEntry { Floor = 3, RoomIndex = 1, ResourcePath = "Story/Floor3_PreyCorridor",   OffsetFromPlayerSpawn = new Vector3(-4.0f,  0.0f, 0f) },
+            new StorySpawnEntry { Floor = 3, RoomIndex = 2, ResourcePath = "Story/Floor3_BlackMirror",    OffsetFromPlayerSpawn = new Vector3( 3.0f, -2.0f, 0f) },
+            new StorySpawnEntry { Floor = 3, RoomIndex = 3, ResourcePath = "Story/Floor3_BrokenThrone",   OffsetFromPlayerSpawn = new Vector3( 0.0f,  3.0f, 0f) },
+        };
+
+        private void TrySpawnStoryForRoom(int floor, int index)
+        {
+            foreach (var e in _storySpawnTable)
+            {
+                if (e.Floor != floor || e.RoomIndex != index) continue;
+                var data = Resources.Load<StoryInteractableData>(e.ResourcePath);
+                if (data == null)
+                {
+                    Debug.LogWarning($"[Story] Missing Resources/{e.ResourcePath}.asset");
+                    continue;
+                }
+                SpawnStoryFromData(data, e.OffsetFromPlayerSpawn);
+            }
         }
 
         /// 通用：根据 StoryInteractableData 在当前房间生成一个剧情交互物。
