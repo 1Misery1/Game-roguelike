@@ -46,6 +46,9 @@ namespace Game.Narrative
             if (_data != null) ApplyData();
         }
 
+        // 最近一次 Interact 时的全局计数缓存（用于 fallback 真相旗解锁）
+        private int _lastGlobalCount;
+
         private void ApplyData()
         {
             if (_data == null) return;
@@ -60,8 +63,10 @@ namespace Game.Narrative
             if (box != null) box.size = _data.colliderSize;
 
             // 数据驱动的对话 / 奖励
-            BuildDialogue = (hero, count) => BuildLinesFromData(_data, hero, count);
-            OnResolved    = (hero, count) => ResolveFromData(_data, hero, count);
+            // 注意 count 参数现在是「本英雄的累计次数」（per-hero）
+            // 真相旗 fallback 用全局计数 → 通过 _lastGlobalCount 访问
+            BuildDialogue = (hero, heroCount) => BuildLinesFromData(_data, hero, heroCount);
+            OnResolved    = (hero, heroCount) => ResolveFromData(_data, hero, heroCount, _lastGlobalCount);
         }
 
         private void OnTriggerEnter2D(Collider2D other)
@@ -96,17 +101,23 @@ namespace Game.Narrative
             var gm   = GameManager.Instance;
             var hero = gm != null && gm.Run != null ? gm.Run.Hero : null;
 
-            int count = gm != null && gm.Persistent != null
+            // 全局计数（用于真相旗 fallback）
+            _lastGlobalCount = gm != null && gm.Persistent != null
                 ? gm.Persistent.RecordInvestigation(ObjectId)
                 : 1;
 
-            var lines = BuildDialogue != null ? BuildDialogue(hero, count) : null;
+            // 每英雄计数（用于分支匹配，保证换英雄重玩时仍能从 count=1 看起）
+            int heroCount = gm != null && gm.Persistent != null
+                ? gm.Persistent.RecordHeroInvestigation(ObjectId, hero != null ? hero.heroName : "")
+                : 1;
+
+            var lines = BuildDialogue != null ? BuildDialogue(hero, heroCount) : null;
             if (lines == null || lines.Count == 0) return;
 
             _busy = true;
             DialogueBox.Get().Play(lines, () =>
             {
-                OnResolved?.Invoke(hero, count);
+                OnResolved?.Invoke(hero, heroCount);
                 _busy = false;
             });
         }
@@ -151,7 +162,7 @@ namespace Game.Narrative
             return s.Replace("{hero}", heroName).Replace("{heroKey}", heroKey);
         }
 
-        private static void ResolveFromData(StoryInteractableData d, HeroData hero, int count)
+        private static void ResolveFromData(StoryInteractableData d, HeroData hero, int heroCount, int globalCount)
         {
             var gm = GameManager.Instance;
             string heroKey = hero != null ? hero.heroName : "";
@@ -164,7 +175,8 @@ namespace Game.Narrative
                 if (ta == null || string.IsNullOrEmpty(ta.flag)) continue;
 
                 bool isOwnHero  = string.IsNullOrEmpty(ta.requireHero) || ta.requireHero == heroKey;
-                bool isFallback = ta.fallbackCount > 0 && count >= ta.fallbackCount;
+                // fallback 现在按全局计数：任意英雄顺序累计 N 次都能解锁
+                bool isFallback = ta.fallbackCount > 0 && globalCount >= ta.fallbackCount;
                 if (!isOwnHero && !isFallback) continue;
 
                 gm?.Persistent?.AddTruthFlag(ta.flag);
