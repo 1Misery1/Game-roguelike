@@ -1,0 +1,70 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 193f66aaf2c6fcf45966fe657458c1e9, type: 3}
+  m_Name: Floor2_FrostAltar
+  m_EditorClassIdentifier: 
+  objectId: f2_frost_altar
+  bannerText: "\u3010\u8C03\u67E5\u3011\u971C\u7720\u796D\u575B"
+  tintColor: {r: 0.78, g: 0.82, b: 0.9, a: 1}
+  visualScale: {x: 1.6, y: 1}
+  colliderSize: {x: 1.6, y: 1}
+  branches:
+  - note: "\u9996\u6B21-\u65C1\u767D"
+    minCount: 1
+    maxCount: 1
+    requireHero: 
+    forbidHero: 
+    lines:
+    - speaker: "\u65C1\u767D"
+      portraitKey: 
+      text: "\u796D\u575B\u8986\u7740\u4E00\u5C42\u539A\u51B0\uFF0C\u51B0\u4E0B\u662F\u6559\u4F1A\u7559\u4E0B\u7684\u7977\u6587\u3002"
+  - note: "\u9996\u6B21-\u5965\u65AF\u6C40\u7977\u6587"
+    minCount: 1
+    maxCount: 1
+    requireHero: Paladin
+    forbidHero: 
+    lines:
+    - speaker: '{hero}'
+      portraitKey: '{heroKey}'
+      text: "\u300C\u613F\u51B0\u5C01\u90AA\u6076\u3002\u300D"
+    - speaker: '{hero}'
+      portraitKey: '{heroKey}'
+      text: "\u300C\u613F\u6C89\u9ED8\u8986\u76D6\u7F6A\u8005\u3002\u300D"
+    - speaker: '{hero}'
+      portraitKey: '{heroKey}'
+      text: "\u300C\u613F\u65E0\u4EBA\u518D\u63D0\u8D77\u5730\u4E0B\u4E4B\u540D\u3002\u300D"
+    - speaker: '{hero}'
+      portraitKey: '{heroKey}'
+      text: "\u2014\u2014\u8FD9\u4E0D\u662F\u5C01\u5370\u4EEA\u5F0F\u3002\u662F\u5C01\u53E3\u4EEA\u5F0F\u3002"
+  - note: "\u9996\u6B21-\u975E\u5965\u65AF\u6C40"
+    minCount: 1
+    maxCount: 1
+    requireHero: 
+    forbidHero: Paladin
+    lines:
+    - speaker: '{hero}'
+      portraitKey: '{heroKey}'
+      text: "\u523B\u5B57\u50CF\u7977\u8BCD\uFF0C\u4F46\u8BFB\u8D77\u6765\u66F4\u50CF\u5728\u7981\u6B62\u540E\u4EBA\u63D0\u8D77\u4EC0\u4E48\u3002"
+  - note: "\u591A\u6B21-\u5965\u65AF\u6C40"
+    minCount: 2
+    maxCount: 0
+    requireHero: Paladin
+    forbidHero: 
+    lines:
+    - speaker: '{hero}'
+      portraitKey: '{heroKey}'
+      text: "\u6559\u4F1A\u4E0D\u662F\u4E0D\u77E5\u9053\u3002\u4ED6\u4EEC\u9009\u62E9\u8BA9\u6B7B\u8005\u6C38\u8FDC\u6C89\u9ED8\u3002"
+  runStoryFlags:
+  - f2_altar_seen
+  truthAwards:
+  - flag: truth_church_silence
+    requireHero: Paladin

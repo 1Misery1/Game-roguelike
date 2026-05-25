@@ -1,0 +1,70 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 193f66aaf2c6fcf45966fe657458c1e9, type: 3}
+  m_Name: Floor1_FurnaceConsole
+  m_EditorClassIdentifier: 
+  objectId: f1_furnace_console
+  bannerText: "\u3010\u8C03\u67E5\u3011\u7194\u7089\u63A7\u5236\u53F0"
+  tintColor: {r: 0.55, g: 0.28, b: 0.18, a: 1}
+  visualScale: {x: 1.4, y: 1}
+  colliderSize: {x: 1.4, y: 1}
+  branches:
+  - note: "\u9996\u6B21-\u65C1\u767D"
+    minCount: 1
+    maxCount: 1
+    requireHero: 
+    forbidHero: 
+    lines:
+    - speaker: "\u65C1\u767D"
+      portraitKey: 
+      text: "\u9508\u8680\u7684\u673A\u68B0\u63A7\u5236\u53F0\u7ACB\u5728\u953B\u9020\u5927\u5385\u4E2D\u592E\u3002\u6307\u9488\u4ECD\u5361\u5728\u4E00\u7EC4\u523A\u773C\u7684\u6570\u5B57\u4E0A\u2014\u2014"
+    - speaker: "\u65C1\u767D"
+      portraitKey: 
+      text: "\u300C\u754C\u5FC3\u62BD\u53D6\u7387\uFF1A327%\u3002\u51B7\u5374\u7CFB\u7EDF\u8B66\u544A\u5DF2\u5FFD\u7565\u3002\u300D"
+  - note: "\u9996\u6B21-\u8D5B\u7433\u5A1C\u4E13\u5C5E"
+    minCount: 1
+    maxCount: 1
+    requireHero: Mage
+    forbidHero: 
+    lines:
+    - speaker: '{hero}'
+      portraitKey: '{heroKey}'
+      text: "\u8FD9\u53F0\u673A\u5668\u6CA1\u574F\u2014\u2014\u5B83\u662F\u88AB\u4EBA\u4E3B\u52A8\u903C\u5230\u6781\u9650\u7684\u3002"
+    - speaker: '{hero}'
+      portraitKey: '{heroKey}'
+      text: "\u300C\u7EE7\u7EED\u63D0\u70BC\uFF0C\u76F4\u5230\u738B\u90FD\u4E3B\u80FD\u6E90\u5854\u5B8C\u6210\u3002\u300D"
+    - speaker: '{hero}'
+      portraitKey: '{heroKey}'
+      text: "\u707E\u96BE\u4E0D\u662F\u610F\u5916\u3002\u662F\u738B\u56FD\u4E3A\u4E86\u80FD\u6E90\uFF0C\u5F3A\u884C\u8D85\u8F7D\u754C\u5FC3\u3002"
+  - note: "\u9996\u6B21-\u975E\u8D5B\u7433\u5A1C"
+    minCount: 1
+    maxCount: 1
+    requireHero: 
+    forbidHero: Mage
+    lines:
+    - speaker: '{hero}'
+      portraitKey: '{heroKey}'
+      text: "\u6211\u770B\u4E0D\u61C2\u8FD9\u4E9B\u8BFB\u6570\uFF0C\u4F46\u6BCF\u4E2A\u8868\u5934\u90FD\u9876\u8FDB\u4E86\u7EA2\u533A\u3002"
+  - note: "\u591A\u6B21-\u65C1\u767D"
+    minCount: 2
+    maxCount: 0
+    requireHero: 
+    forbidHero: 
+    lines:
+    - speaker: "\u65C1\u767D"
+      portraitKey: 
+      text: "\u4F60\u89E6\u78B0\u65AD\u88C2\u7684\u62C9\u6746\uFF0C\u63A7\u5236\u53F0\u77ED\u6682\u95EA\u70C1\uFF0C\u53C8\u518D\u6B21\u7184\u706D\u3002"
+  runStoryFlags:
+  - f1_furnace_seen
+  truthAwards:
+  - flag: truth_furnace_overload
+    requireHero: Mage

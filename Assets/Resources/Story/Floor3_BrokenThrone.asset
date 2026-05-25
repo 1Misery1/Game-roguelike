@@ -1,0 +1,91 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 193f66aaf2c6fcf45966fe657458c1e9, type: 3}
+  m_Name: Floor3_BrokenThrone
+  m_EditorClassIdentifier: 
+  objectId: f3_broken_throne
+  bannerText: "\u3010\u8C03\u67E5\u3011\u7834\u788E\u738B\u5EA7"
+  tintColor: {r: 0.42, g: 0.32, b: 0.12, a: 1}
+  visualScale: {x: 2, y: 2.4}
+  colliderSize: {x: 2, y: 2}
+  branches:
+  - note: "\u9996\u6B21-\u65C1\u767D"
+    minCount: 1
+    maxCount: 1
+    requireHero: 
+    forbidHero: 
+    lines:
+    - speaker: "\u65C1\u767D"
+      portraitKey: 
+      text: "\u65AD\u88C2\u7684\u738B\u5EA7\u6DF1\u57CB\u4E8E\u56DE\u5ECA\u5C3D\u5934\u3002\u9760\u80CC\u4E0A\uFF0C\u91D1\u5B57\u4ECD\u672A\u5B8C\u5168\u892A\u8272\u3002"
+  - note: "\u9996\u6B21-\u738B\u5EA7\u94ED\u6587"
+    minCount: 1
+    maxCount: 1
+    requireHero: 
+    forbidHero: 
+    lines:
+    - speaker: "\u738B\u5EA7\u94ED\u6587"
+      portraitKey: 
+      text: "\u300C\u82E5\u727A\u7272\u5730\u4E0B\u4E07\u4EBA\uFF0C\u53EF\u4FDD\u738B\u90FD\u767E\u5E74\u3002\u300D"
+    - speaker: "\u738B\u5EA7\u94ED\u6587"
+      portraitKey: 
+      text: "\u300C\u6B64\u4E3A\u738B\u56FD\u5FC5\u8981\u4E4B\u7F6A\u3002\u300D"
+  - note: "\u9996\u6B21-\u96F7\u6602"
+    minCount: 1
+    maxCount: 0
+    requireHero: Warrior
+    forbidHero: 
+    lines:
+    - speaker: '{hero}'
+      portraitKey: '{heroKey}'
+      text: "\u2026\u2026\u6211\u7956\u7236\u6267\u884C\u7684\uFF0C\u5C31\u662F\u8FD9\u9053\u547D\u4EE4\u3002"
+  - note: "\u9996\u6B21-\u827E\u8587\u62C9"
+    minCount: 1
+    maxCount: 0
+    requireHero: Ranger
+    forbidHero: 
+    lines:
+    - speaker: '{hero}'
+      portraitKey: '{heroKey}'
+      text: "\u6211\u7684\u961F\u53CB\u2014\u2014\u4E0D\u662F\u6B7B\u4E8E\u610F\u5916\u3002"
+  - note: "\u9996\u6B21-\u8D5B\u7433\u5A1C"
+    minCount: 1
+    maxCount: 0
+    requireHero: Mage
+    forbidHero: 
+    lines:
+    - speaker: '{hero}'
+      portraitKey: '{heroKey}'
+      text: "\u5B66\u9662\u7684\u6863\u6848\u2026\u2026\u5168\u662F\u7C89\u9970\u8FC7\u7684\u526F\u672C\u3002"
+  - note: "\u9996\u6B21-\u5965\u65AF\u6C40"
+    minCount: 1
+    maxCount: 0
+    requireHero: Paladin
+    forbidHero: 
+    lines:
+    - speaker: '{hero}'
+      portraitKey: '{heroKey}'
+      text: "\u6559\u4F1A\u7684\u7977\u6587\uFF0C\u662F\u66FF\u8FD9\u5757\u77F3\u5934\u5531\u7684\u5B89\u9B42\u66F2\u3002"
+  - note: "\u9996\u6B21-\u8BFA\u5170"
+    minCount: 1
+    maxCount: 0
+    requireHero: Hunter
+    forbidHero: 
+    lines:
+    - speaker: '{hero}'
+      portraitKey: '{heroKey}'
+      text: "\u6C61\u67D3\u4E0D\u662F\u4ECE\u5730\u91CC\u94BB\u51FA\u6765\u7684\u3002\u662F\u88AB\u4EBA\u653E\u51FA\u6765\u7684\u3002"
+  runStoryFlags:
+  - f3_throne_seen
+  truthAwards:
+  - flag: truth_kingdom_guilt
+    requireHero: 

@@ -1,0 +1,79 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 193f66aaf2c6fcf45966fe657458c1e9, type: 3}
+  m_Name: Floor2_ScoutCamp
+  m_EditorClassIdentifier: 
+  objectId: f2_scout_camp
+  bannerText: "\u3010\u8C03\u67E5\u3011\u51B0\u5C01\u4FA6\u5BDF\u961F\u8425\u5730"
+  tintColor: {r: 0.55, g: 0.75, b: 0.85, a: 1}
+  visualScale: {x: 1.7, y: 1.6}
+  colliderSize: {x: 1.7, y: 1.6}
+  branches:
+  - note: "\u9996\u6B21-\u65C1\u767D"
+    minCount: 1
+    maxCount: 1
+    requireHero: 
+    forbidHero: 
+    lines:
+    - speaker: "\u65C1\u767D"
+      portraitKey: 
+      text: "\u51E0\u9876\u51BB\u786C\u7684\u5E10\u7BF7\u56F4\u6210\u534A\u5708\uFF0C\u7BDD\u706B\u65E9\u5DF2\u7184\u706D\u3002\u4E00\u622A\u7BAD\u888B\u63D2\u5728\u96EA\u91CC\u3002"
+  - note: "\u9996\u6B21-\u827E\u8587\u62C9"
+    minCount: 1
+    maxCount: 1
+    requireHero: Ranger
+    forbidHero: 
+    lines:
+    - speaker: '{hero}'
+      portraitKey: '{heroKey}'
+      text: "\u8FD9\u4E9B\u7BAD\u7FBD\u2026\u2026\u662F\u6211\u4EEC\u961F\u7684\u6807\u8BB0\u3002"
+    - speaker: '{hero}'
+      portraitKey: '{heroKey}'
+      text: "\u4ED6\u4EEC\u4E00\u76F4\u90FD\u5728\u8FD9\u91CC\u3002\u4ECE\u6765\u6CA1\u4EBA\u6765\u63A5\u4ED6\u4EEC\u3002"
+  - note: "\u9996\u6B21-\u975E\u827E\u8587\u62C9"
+    minCount: 1
+    maxCount: 1
+    requireHero: 
+    forbidHero: Ranger
+    lines:
+    - speaker: '{hero}'
+      portraitKey: '{heroKey}'
+      text: "\u4E00\u652F\u6CA1\u80FD\u64A4\u56DE\u7684\u4FA6\u5BDF\u961F\u3002\u51B0\u628A\u4ED6\u4EEC\u7559\u5728\u539F\u5730\u3002"
+  - note: "\u4E8C\u6B21-\u827E\u8587\u62C9\u56DE\u5FC6"
+    minCount: 2
+    maxCount: 2
+    requireHero: Ranger
+    forbidHero: 
+    lines:
+    - speaker: "\u65C1\u767D"
+      portraitKey: 
+      text: "\u51B0\u91CC\u6D6E\u51FA\u6A21\u7CCA\u7684\u4EBA\u5F71\uFF0C\u50CF\u88AB\u51BB\u4F4F\u7684\u4E00\u6BB5\u5F55\u50CF\u3002"
+    - speaker: "\u51B0\u4E0B\u7684\u56DE\u58F0"
+      portraitKey: 
+      text: "\u300C\u827E\u8587\u62C9\u2014\u2014\u5F80\u4E0A\u8DD1\uFF0C\u4E0D\u8981\u56DE\u5934\uFF01\u300D"
+  - note: "\u4E09\u6B21-\u827E\u8587\u62C9\u771F\u76F8"
+    minCount: 3
+    maxCount: 0
+    requireHero: Ranger
+    forbidHero: 
+    lines:
+    - speaker: '{hero}'
+      portraitKey: '{heroKey}'
+      text: "\u2026\u2026\u6211\u7EC8\u4E8E\u60F3\u8D77\u6765\u4E86\u3002"
+    - speaker: '{hero}'
+      portraitKey: '{heroKey}'
+      text: "\u4E0D\u662F\u6211\u629B\u5F03\u4E86\u4ED6\u4EEC\u3002\u662F\u4ED6\u4EEC\u5173\u4E0A\u51B0\u95E8\uFF0C\u628A\u6211\u63A8\u4E86\u51FA\u53BB\u3002"
+  runStoryFlags:
+  - f2_scout_camp_seen
+  truthAwards:
+  - flag: truth_scout_sacrifice
+    requireHero: Ranger
