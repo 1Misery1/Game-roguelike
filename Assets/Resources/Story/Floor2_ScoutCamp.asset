@@ -73,7 +73,7 @@ MonoBehaviour:
       text: "\u300C\u827E\u8587\u62C9\u2014\u2014\u5F80\u4E0A\u8DD1\uFF0C\u4E0D\u8981\u56DE\u5934\uFF01\u300D"
   - note: "\u4E09\u6B21-\u827E\u8587\u62C9\u771F\u76F8"
     minCount: 3
-    maxCount: 0
+    maxCount: 3
     requireHero: Ranger
     forbidHero: 
     minRunCount: 0
@@ -85,6 +85,28 @@ MonoBehaviour:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
       text: "\u4E0D\u662F\u6211\u629B\u5F03\u4E86\u4ED6\u4EEC\u3002\u662F\u4ED6\u4EEC\u5173\u4E0A\u51B0\u95E8\uFF0C\u628A\u6211\u63A8\u4E86\u51FA\u53BB\u3002"
+  - note: "\u56DB\u6B21+-\u65C1\u767D\u6D88\u878D"
+    minCount: 4
+    maxCount: 0
+    requireHero: 
+    forbidHero: 
+    minRunCount: 0
+    maxRunCount: 0
+    lines:
+    - speaker: "\u65C1\u767D"
+      portraitKey: 
+      text: "\u8425\u5730\u7684\u96EA\u5F00\u59CB\u4E00\u70B9\u70B9\u878D\u5316\u3002\u51BB\u786C\u7684\u5E06\u5E03\u4E5F\u677E\u5F00\u4E86\u3002"
+  - note: "\u56DB\u6B21+-\u827E\u8587\u62C9\u544A\u522B"
+    minCount: 4
+    maxCount: 0
+    requireHero: Ranger
+    forbidHero: 
+    minRunCount: 0
+    maxRunCount: 0
+    lines:
+    - speaker: '{hero}'
+      portraitKey: '{heroKey}'
+      text: "\u8C22\u8C22\u4F60\u4EEC\u3002\u6211\u628A\u4F60\u4EEC\u7684\u540D\u5B57\u4E5F\u5E26\u51FA\u53BB\u4E86\u3002"
   runStoryFlags:
   - f2_scout_camp_seen
   truthAwards:

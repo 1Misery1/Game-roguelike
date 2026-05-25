@@ -89,7 +89,7 @@ MonoBehaviour:
       text: "\u300C\u730E\u4EBA\u548C\u730E\u7269\uFF0C\u53EA\u5DEE\u4E00\u6B21\u8F6C\u8EAB\u3002\u300D"
   - note: "\u591A\u6B21-\u65C1\u767D"
     minCount: 2
-    maxCount: 0
+    maxCount: 2
     requireHero: 
     forbidHero: 
     minRunCount: 0
@@ -98,6 +98,72 @@ MonoBehaviour:
     - speaker: "\u65C1\u767D"
       portraitKey: 
       text: "\u955C\u4E2D\u7684\u5F71\u5B50\u8FD8\u5728\u90A3\u91CC\u3002\u5B83\u5B66\u5F97\u8D8A\u6765\u8D8A\u50CF\u4F60\u3002"
+  - note: "\u4E09\u6B21-\u96F7\u6602\u548C\u89E3"
+    minCount: 3
+    maxCount: 3
+    requireHero: Warrior
+    forbidHero: 
+    minRunCount: 0
+    maxRunCount: 0
+    lines:
+    - speaker: "\u955C\u4E2D\u7684\u4F60"
+      portraitKey: '{heroKey}'
+      text: "\u300C\u2026\u2026\u6216\u8BB8\u4F60\u624D\u662F\u771F\u6B63\u7684\u5B88\u536B\u3002\u300D"
+  - note: "\u4E09\u6B21-\u827E\u8587\u62C9\u548C\u89E3"
+    minCount: 3
+    maxCount: 3
+    requireHero: Ranger
+    forbidHero: 
+    minRunCount: 0
+    maxRunCount: 0
+    lines:
+    - speaker: "\u955C\u4E2D\u7684\u4F60"
+      portraitKey: '{heroKey}'
+      text: "\u300C\u4F60\u9003\u51FA\u53BB\u8FC7\u4E00\u6B21\uFF0C\u8FD9\u4E00\u6B21\u7559\u4E0B\u6765\u3002\u4E5F\u7B97\u516C\u5E73\u3002\u300D"
+  - note: "\u4E09\u6B21-\u8D5B\u7433\u5A1C\u548C\u89E3"
+    minCount: 3
+    maxCount: 3
+    requireHero: Mage
+    forbidHero: 
+    minRunCount: 0
+    maxRunCount: 0
+    lines:
+    - speaker: "\u955C\u4E2D\u7684\u4F60"
+      portraitKey: '{heroKey}'
+      text: "\u300C\u7B54\u6848\u4E0E\u4EE3\u4EF7\u3002\u7EC8\u4E8E\u5206\u5F97\u6E05\u4E86\u3002\u300D"
+  - note: "\u4E09\u6B21-\u5965\u65AF\u6C40\u548C\u89E3"
+    minCount: 3
+    maxCount: 3
+    requireHero: Paladin
+    forbidHero: 
+    minRunCount: 0
+    maxRunCount: 0
+    lines:
+    - speaker: "\u955C\u4E2D\u7684\u4F60"
+      portraitKey: '{heroKey}'
+      text: "\u300C\u5723\u6D01\u4E0D\u662F\u88AB\u5B88\u4F4F\u7684\u3002\u662F\u88AB\u627F\u8BA4\u7684\u3002\u300D"
+  - note: "\u4E09\u6B21-\u8BFA\u5170\u548C\u89E3"
+    minCount: 3
+    maxCount: 3
+    requireHero: Hunter
+    forbidHero: 
+    minRunCount: 0
+    maxRunCount: 0
+    lines:
+    - speaker: "\u955C\u4E2D\u7684\u4F60"
+      portraitKey: '{heroKey}'
+      text: "\u300C\u8F6C\u8EAB\u3002\u8FD9\u4E00\u6B21\uFF0C\u4F60\u505A\u730E\u4EBA\u3002\u300D"
+  - note: "\u56DB\u6B21+-\u955C\u9762\u5316\u6C34"
+    minCount: 4
+    maxCount: 0
+    requireHero: 
+    forbidHero: 
+    minRunCount: 0
+    maxRunCount: 0
+    lines:
+    - speaker: "\u65C1\u767D"
+      portraitKey: 
+      text: "\u955C\u9762\u50CF\u6C34\u4E00\u6837\u5316\u5F00\u4E86\uFF0C\u8FDE\u540C\u90A3\u4E2A\u5B66\u4E86\u4F60\u592A\u4E45\u7684\u5F71\u5B50\u3002"
   runStoryFlags:
   - f3_mirror_seen
   truthAwards:

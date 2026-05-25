@@ -80,12 +80,42 @@ public static class CreateStoryData_SealedDoor
             }
         };
 
+        // 第 3 次：更深的层次——回声开始托付
+        var b4ThirdVisit = new StoryBranch {
+            note = "三次-门后托付", minCount = 3, maxCount = 3,
+            lines = new System.Collections.Generic.List<StoryLineData> {
+                new StoryLineData { speaker = "旁白", portraitKey = "",
+                    text = "门后这一次没有怒吼，只有更深的沉默——" },
+                new StoryLineData { speaker = "门后的回声", portraitKey = "",
+                    text = "「……如果你听得到，请替我们说。」" },
+            }
+        };
+        var b4Leon = new StoryBranch {
+            note = "三次-雷昂郑重承诺", minCount = 3, maxCount = 3, requireHero = "Warrior",
+            lines = new System.Collections.Generic.List<StoryLineData> {
+                new StoryLineData { speaker = "{hero}", portraitKey = "{heroKey}",
+                    text = "我会的。会替你们说，直到没有人能再装聋。" },
+            }
+        };
+
+        // 第 4 次起：告别
+        var b5FourthPlus = new StoryBranch {
+            note = "四次+-沉默告别", minCount = 4,
+            lines = new System.Collections.Generic.List<StoryLineData> {
+                new StoryLineData { speaker = "旁白", portraitKey = "",
+                    text = "你伸手按在铁门上。这一次没有任何声音回来——但你知道，他们听见了。" },
+            }
+        };
+
         data.branches.Add(b1);
         data.branches.Add(b1Leon);
         data.branches.Add(b1Other);
         data.branches.Add(b2);
         data.branches.Add(b2Leon);
         data.branches.Add(b3SecondRun);
+        data.branches.Add(b4ThirdVisit);
+        data.branches.Add(b4Leon);
+        data.branches.Add(b5FourthPlus);
 
         data.runStoryFlags.Add("f1_sealed_door_seen");
         data.truthAwards.Add(new TruthFlagAward {

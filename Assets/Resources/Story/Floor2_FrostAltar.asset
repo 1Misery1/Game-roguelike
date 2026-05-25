@@ -65,7 +65,7 @@ MonoBehaviour:
       text: "\u523B\u5B57\u50CF\u7977\u8BCD\uFF0C\u4F46\u8BFB\u8D77\u6765\u66F4\u50CF\u5728\u7981\u6B62\u540E\u4EBA\u63D0\u8D77\u4EC0\u4E48\u3002"
   - note: "\u591A\u6B21-\u5965\u65AF\u6C40"
     minCount: 2
-    maxCount: 0
+    maxCount: 2
     requireHero: Paladin
     forbidHero: 
     minRunCount: 0
@@ -74,6 +74,42 @@ MonoBehaviour:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
       text: "\u6559\u4F1A\u4E0D\u662F\u4E0D\u77E5\u9053\u3002\u4ED6\u4EEC\u9009\u62E9\u8BA9\u6B7B\u8005\u6C38\u8FDC\u6C89\u9ED8\u3002"
+  - note: "\u4E09\u6B21-\u65C1\u767D"
+    minCount: 3
+    maxCount: 3
+    requireHero: 
+    forbidHero: 
+    minRunCount: 0
+    maxRunCount: 0
+    lines:
+    - speaker: "\u65C1\u767D"
+      portraitKey: 
+      text: "\u7977\u6587\u7684\u7B14\u753B\u5F00\u59CB\u98CE\u5316\u3002\u51B0\u4E0B\u9732\u51FA\u66F4\u65E9\u7684\u4E00\u884C\u5B57\u2014\u2014"
+    - speaker: "\u65C1\u767D"
+      portraitKey: 
+      text: "\u300C\u8BB0\u4F4F\u4ED6\u4EEC\u3002\u300D"
+  - note: "\u4E09\u6B21-\u5965\u65AF\u6C40\u65B0\u8A93"
+    minCount: 3
+    maxCount: 3
+    requireHero: Paladin
+    forbidHero: 
+    minRunCount: 0
+    maxRunCount: 0
+    lines:
+    - speaker: '{hero}'
+      portraitKey: '{heroKey}'
+      text: "\u6211\u4EE5\u6668\u8A93\u6559\u4F1A\u4E4B\u540D\uFF0C\u66FF\u4ED6\u4EEC\u8865\u56DE\u771F\u540D\u3002"
+  - note: "\u56DB\u6B21+-\u7EB8\u7247"
+    minCount: 4
+    maxCount: 0
+    requireHero: 
+    forbidHero: 
+    minRunCount: 0
+    maxRunCount: 0
+    lines:
+    - speaker: "\u65C1\u767D"
+      portraitKey: 
+      text: "\u796D\u575B\u4E2D\u592E\u7559\u7740\u4E00\u7247\u70E7\u7126\u7684\u7EB8\u2014\u2014\u50CF\u662F\u6709\u4EBA\u5728\u4F60\u4E4B\u524D\u628A\u540D\u518C\u7684\u4E00\u9875\u653E\u4E86\u4E0A\u53BB\u3002"
   runStoryFlags:
   - f2_altar_seen
   truthAwards:
