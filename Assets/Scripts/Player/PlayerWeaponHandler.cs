@@ -295,59 +295,23 @@ namespace Game.Player
         private void RangedAttack(float damage, Vector2 dir, float range, DamageType type, bool isCrit)
         {
             if (dir == Vector2.zero) dir = Vector2.right;
-            // 视觉箭矢
-            VisualProjectile.Spawn(ProjectileType.Arrow, transform.position, dir,
-                14f, range, 0.28f, transform.parent);
-            var hits = Physics2D.RaycastAll(transform.position, dir, range);
-            foreach (var hit in hits)
-            {
-                if (hit.collider.gameObject == gameObject) continue;
-                if (hit.collider.gameObject.layer == 9) break; // 箭矢被墙阻挡
-                var d = hit.collider.GetComponent<IDamageable>();
-                if (d != null)
-                {
-                    d.TakeDamage(new DamageInfo { Amount = damage, Type = type, IsCrit = isCrit, Source = gameObject });
-                    break;
-                }
-            }
+            // 飞行至首个敌人碰撞或撞墙/超距时才结算伤害
+            var info = new DamageInfo { Amount = damage, Type = type, IsCrit = isCrit, Source = gameObject };
+            PlayerProjectile.Spawn(
+                ProjectileType.Arrow, transform.position, dir,
+                14f, range, 0.28f, transform.parent,
+                info, aoeRadius: 0f, source: gameObject);
         }
 
         private void MagicBlast(float damage, Vector2 dir, float range, float radius, DamageType type, bool isCrit)
         {
             if (dir == Vector2.zero) dir = Vector2.right;
-            Vector2 origin = transform.position;
-
-            // 沿 dir 方向 raycast 找到第一个敌人或墙，把爆炸落点放到那里
-            // 避免之前固定 min(range,6) 落点导致近战距离敌人不在爆炸半径内
-            Vector2 target = origin + dir * range;
-            float   travel = range;
-            var hits = Physics2D.RaycastAll(origin, dir, range);
-            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
-            foreach (var hit in hits)
-            {
-                if (hit.collider.gameObject == gameObject) continue;
-                bool isWall      = hit.collider.gameObject.layer == 9;
-                bool isDamageable = hit.collider.GetComponent<IDamageable>() != null;
-                if (isWall || isDamageable)
-                {
-                    target = hit.point;
-                    travel = hit.distance;
-                    break;
-                }
-            }
-
-            VisualProjectile.Spawn(ProjectileType.MagicOrb, origin, dir,
-                10f, travel, 0.32f, transform.parent);
-
-            var cols = Physics2D.OverlapCircleAll(target, radius, NonWallMask);
-            foreach (var col in cols)
-            {
-                if (col.gameObject == gameObject) continue;
-                col.GetComponent<IDamageable>()?.TakeDamage(new DamageInfo
-                {
-                    Amount = damage, Type = type, IsCrit = isCrit, Source = gameObject
-                });
-            }
+            // 法球飞行至敌人/墙体或最大射程后，在落点 OverlapCircle 触发 AOE
+            var info = new DamageInfo { Amount = damage, Type = type, IsCrit = isCrit, Source = gameObject };
+            PlayerProjectile.Spawn(
+                ProjectileType.MagicOrb, transform.position, dir,
+                10f, range, 0.32f, transform.parent,
+                info, aoeRadius: radius, source: gameObject);
         }
 
         private float RawSkillCooldown
