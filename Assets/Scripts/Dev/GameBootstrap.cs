@@ -1744,7 +1744,7 @@ namespace Game.Dev
 
             var go = new GameObject("AltarPedestal");
             go.transform.SetParent(_currentRoomRoot.transform, true);
-            go.transform.position   = new Vector3(-6f, 2.8f, 0f);
+            go.transform.position   = FindSafeAltarPosition();
             go.transform.localScale = new Vector3(0.8f, 0.8f, 1f);
 
             var sr = go.AddComponent<SpriteRenderer>();
@@ -1759,6 +1759,51 @@ namespace Game.Dev
             var mystery = go.AddComponent<MysteryPedestal>();
             mystery.OnResolved += HandleAltar;
             ShowBanner("神秘祭坛出现！（可选择互动）");
+        }
+
+        // 找一格 "可走且无地形危险" 的世界坐标作为祭坛位置
+        // 优先一组靠墙的候选点；候选点都不行时，从首选点向外螺旋扫描
+        private Vector3 FindSafeAltarPosition()
+        {
+            Vector3[] candidates =
+            {
+                new Vector3(-6f,  2.8f, 0f),
+                new Vector3(-6f, -2.8f, 0f),
+                new Vector3( 6f,  2.8f, 0f),
+                new Vector3( 6f, -2.8f, 0f),
+                new Vector3(-4f,  0f,   0f),
+                new Vector3( 4f,  0f,   0f),
+                new Vector3( 0f,  3.5f, 0f),
+                new Vector3( 0f, -3.5f, 0f),
+            };
+            foreach (var p in candidates)
+            {
+                var cell = Game.AI.NavGrid.WorldToCell(p);
+                if (Game.AI.NavGrid.IsWalkable(cell.x, cell.y)
+                    && Game.AI.NavGrid.HazardAt(cell.x, cell.y) == 0)
+                {
+                    Vector2 w = Game.AI.NavGrid.CellToWorld(cell);
+                    return new Vector3(w.x, w.y, 0f);
+                }
+            }
+
+            // 兜底：以首选点为圆心向外螺旋扫描，最多 10 格
+            var start = Game.AI.NavGrid.WorldToCell(new Vector2(-6f, 2.8f));
+            for (int rad = 1; rad < 10; rad++)
+            {
+                for (int dy = -rad; dy <= rad; dy++)
+                for (int dx = -rad; dx <= rad; dx++)
+                {
+                    if (Mathf.Abs(dx) != rad && Mathf.Abs(dy) != rad) continue;
+                    int c = start.x + dx, r = start.y + dy;
+                    if (Game.AI.NavGrid.IsWalkable(c, r) && Game.AI.NavGrid.HazardAt(c, r) == 0)
+                    {
+                        Vector2 w = Game.AI.NavGrid.CellToWorld(new Vector2Int(c, r));
+                        return new Vector3(w.x, w.y, 0f);
+                    }
+                }
+            }
+            return new Vector3(-6f, 2.8f, 0f);
         }
 
         private void HandleAltar(MysteryOutcome outcome)
@@ -1905,6 +1950,10 @@ namespace Game.Dev
             var (slot0, slot1) = WeaponLibrary.GetStarterWeapons(hero.heroName);
             weaponHandler.EquipWeapon(slot0, 0);
             weaponHandler.EquipWeapon(slot1, 1);
+
+            // 武器 HP 加成会在 Health 之后才提高 MaxHP，导致 _current 卡在基础上限
+            // 装备完起手武器后强制顶满 Current
+            _playerHealth.Heal(_playerHealth.Max);
         }
 
         private void SpawnWeaponPedestal(Vector3 pos, WeaponInstance weapon)
