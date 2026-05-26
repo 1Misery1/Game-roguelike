@@ -80,9 +80,16 @@ namespace Game.Player
         public void EquipWeapon(WeaponInstance weapon, int slot)
         {
             if (slot < 0 || slot >= Slots.Length) return;
+            float maxBefore = _stats != null ? _stats.Get(StatType.MaxHP) : 0f;
+
             _stats?.RemoveModifiersFrom(_weaponHPSources[slot]);
             Slots[slot] = weapon;
             ApplyWeaponHPBonus(slot);
+
+            float maxAfter = _stats != null ? _stats.Get(StatType.MaxHP) : 0f;
+            float delta = maxAfter - maxBefore;
+            if (Mathf.Abs(delta) > 0.001f) _health?.AdjustCurrentByMaxDelta(delta);
+
             if (slot == ActiveSlotIndex) _holder?.SetWeapon(weapon?.Data);
         }
 
@@ -99,8 +106,12 @@ namespace Game.Player
         public void RefreshWeaponHPBonus(int slot)
         {
             if (slot < 0 || slot >= Slots.Length) return;
+            float maxBefore = _stats != null ? _stats.Get(StatType.MaxHP) : 0f;
             _stats?.RemoveModifiersFrom(_weaponHPSources[slot]);
             ApplyWeaponHPBonus(slot);
+            float maxAfter = _stats != null ? _stats.Get(StatType.MaxHP) : 0f;
+            float delta = maxAfter - maxBefore;
+            if (Mathf.Abs(delta) > 0.001f) _health?.AdjustCurrentByMaxDelta(delta);
         }
 
         // 普通攻击

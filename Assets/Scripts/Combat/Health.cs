@@ -63,6 +63,16 @@ namespace Game.Combat
             _current = Mathf.Min(Max, _current + amount);
         }
 
+        // 当 MaxHP 因装备/升级等变化时，按差值同步调整 Current
+        // 正差：Current 增加但不超过新 Max
+        // 负差：Current 减少但最低保留 1（避免装备变动直接致死）
+        public void AdjustCurrentByMaxDelta(float delta)
+        {
+            if (_current <= 0f) return;            // 已死亡不复活
+            _current = Mathf.Max(1f, _current + delta);
+            _current = Mathf.Min(_current, Max);
+        }
+
         private void ClampToMax()
         {
             _current = Mathf.Min(_current, Max);
