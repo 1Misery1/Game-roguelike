@@ -118,3 +118,5 @@ MonoBehaviour:
     fallbackCount: 2
   grantStoryItems: []
   addCorruption: -3
+  choices: []
+  choiceTitle: 
