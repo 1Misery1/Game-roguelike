@@ -315,11 +315,30 @@ namespace Game.Player
         private void MagicBlast(float damage, Vector2 dir, float range, float radius, DamageType type, bool isCrit)
         {
             if (dir == Vector2.zero) dir = Vector2.right;
-            float travelDist = Mathf.Min(range, 6f);
-            // 视觉魔法球
-            VisualProjectile.Spawn(ProjectileType.MagicOrb, transform.position, dir,
-                10f, travelDist, 0.32f, transform.parent);
-            Vector2 target = (Vector2)transform.position + dir * travelDist;
+            Vector2 origin = transform.position;
+
+            // 沿 dir 方向 raycast 找到第一个敌人或墙，把爆炸落点放到那里
+            // 避免之前固定 min(range,6) 落点导致近战距离敌人不在爆炸半径内
+            Vector2 target = origin + dir * range;
+            float   travel = range;
+            var hits = Physics2D.RaycastAll(origin, dir, range);
+            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+            foreach (var hit in hits)
+            {
+                if (hit.collider.gameObject == gameObject) continue;
+                bool isWall      = hit.collider.gameObject.layer == 9;
+                bool isDamageable = hit.collider.GetComponent<IDamageable>() != null;
+                if (isWall || isDamageable)
+                {
+                    target = hit.point;
+                    travel = hit.distance;
+                    break;
+                }
+            }
+
+            VisualProjectile.Spawn(ProjectileType.MagicOrb, origin, dir,
+                10f, travel, 0.32f, transform.parent);
+
             var cols = Physics2D.OverlapCircleAll(target, radius, NonWallMask);
             foreach (var col in cols)
             {
