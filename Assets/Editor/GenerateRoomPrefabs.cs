@@ -132,7 +132,8 @@ public static class GenerateRoomPrefabs
                         tmFloor.SetTile(cell, floorTile);
                         break;
                     case 'l':
-                        tmFloor.SetTile(cell, hazardTile); // 岩浆/冰/虚空直接在地板层
+                        // 小熔岩危险格已废弃：当作普通地板（大危险由运行时 FlamePillar 等提供）
+                        tmFloor.SetTile(cell, floorTile);
                         break;
                     case 'd':
                         tmFloor.SetTile(cell, floorTile);

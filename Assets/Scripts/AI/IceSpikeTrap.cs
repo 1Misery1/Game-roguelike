@@ -16,7 +16,8 @@ namespace Game.AI
         public float damage       = 28f;
         public float slowAmount   = 0.50f;
         public float slowDuration = 2.0f;
-        public float radius       = 0.7f;
+        // 本地半径 0.5 → 世界半径 = 0.5×localScale，内切缩放后方块视觉，伤害不超出可见
+        public float radius       = 0.5f;
 
         private enum Phase { Idle, Warning, Active }
         private Phase _phase = Phase.Idle;

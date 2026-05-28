@@ -29,8 +29,8 @@ namespace Game.AI
                 {
                     char ch = row[c];
                     _w[c, r] = ch == '.' || ch == 'd' || ch == 't' || ch == 'l' || ch == 'x';
-                    // 'l' 岩浆 / 't' 陷阱 → 仍可走（防卡死）但代价极高
-                    _hazard[c, r] = (ch == 't' || ch == 'l') ? StaticHazardPenalty : 0;
+                    // 't' 陷阱 → 仍可走（防卡死）但代价极高；'l' 小熔岩已废弃，按普通地板处理
+                    _hazard[c, r] = (ch == 't') ? StaticHazardPenalty : 0;
                 }
             }
         }

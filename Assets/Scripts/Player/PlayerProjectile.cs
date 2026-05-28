@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Game.AI;
 using Game.Combat;
 using Game.Data;
@@ -11,6 +12,7 @@ namespace Game.Player
     // AOE模式 (aoeRadius>0)：碰到敌人/墙或飞完射程时，在落点 OverlapCircleAll 群体伤害
     public class PlayerProjectile : MonoBehaviour
     {
+        private ProjectileType _type;
         private Vector2    _dir;
         private float      _speed;
         private float      _maxRangeSq;
@@ -19,6 +21,21 @@ namespace Game.Player
         private float      _aoeRadius;
         private GameObject _source;
         private bool       _detonated;
+
+        // 真贴图视觉预制体缓存（缺失则回退到程序化精灵）
+        private static readonly Dictionary<ProjectileType, GameObject> _visualCache =
+            new Dictionary<ProjectileType, GameObject>();
+
+        private static GameObject LoadVisual(ProjectileType t)
+        {
+            if (_visualCache.TryGetValue(t, out var p)) return p;
+            string path = t == ProjectileType.Arrow    ? "FX/Arrow/Arrow"
+                        : t == ProjectileType.MagicOrb  ? "FX/MagicOrb/MagicOrb"
+                        : null;
+            p = path != null ? Resources.Load<GameObject>(path) : null;
+            _visualCache[t] = p;
+            return p;
+        }
 
         public static PlayerProjectile Spawn(
             ProjectileType type, Vector3 startPos, Vector2 dir,
@@ -34,10 +51,21 @@ namespace Game.Player
             go.transform.localScale = Vector3.one * size;
             go.transform.rotation   = Quaternion.Euler(0f, 0f, Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg);
 
-            var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite       = SkillSprites.GetProjectile(type);
-            sr.color        = Color.white;
-            sr.sortingOrder = 7;
+            var visual = LoadVisual(type);
+            if (visual != null)
+            {
+                var v = Instantiate(visual, go.transform);
+                v.transform.localPosition = Vector3.zero;
+                v.transform.localRotation = Quaternion.identity;
+                v.transform.localScale    = Vector3.one;
+            }
+            else
+            {
+                var sr = go.AddComponent<SpriteRenderer>();
+                sr.sprite       = SkillSprites.GetProjectile(type);
+                sr.color        = Color.white;
+                sr.sortingOrder = 7;
+            }
 
             var rb = go.AddComponent<Rigidbody2D>();
             rb.bodyType       = RigidbodyType2D.Kinematic;
@@ -48,6 +76,7 @@ namespace Game.Player
             col.isTrigger = true;
 
             var proj = go.AddComponent<PlayerProjectile>();
+            proj._type       = type;
             proj._dir        = dir;
             proj._speed      = speed;
             proj._maxRangeSq = maxRange * maxRange;
@@ -58,10 +87,25 @@ namespace Game.Player
             return proj;
         }
 
+        private const float HitRadius = 0.25f;  // 命中敌人的轮询半径
+
         private void Update()
         {
             if (_detonated) return;
             transform.position += (Vector3)(_dir * _speed * Time.deltaTime);
+
+            // 命中敌人：用 OverlapCircle 轮询，避免 kinematic-kinematic 刚体间
+            // 默认不触发 OnTriggerEnter2D 导致投射物“穿怪不掉血”
+            var cols = Physics2D.OverlapCircleAll(transform.position, HitRadius);
+            foreach (var c in cols)
+            {
+                if (c.gameObject == _source) continue;
+                if (c.GetComponent<EnemyTag>() == null) continue;
+                if (_aoeRadius > 0f) { Detonate(); return; }
+                c.GetComponent<IDamageable>()?.TakeDamage(_damage);
+                Destroy(gameObject);
+                return;
+            }
 
             // 达到最大射程：单体直接销毁，AOE 在最终位置爆开
             if (((Vector2)transform.position - _startPos).sqrMagnitude >= _maxRangeSq)
@@ -79,29 +123,14 @@ namespace Game.Player
             }
         }
 
-        private void OnTriggerEnter2D(Collider2D other)
-        {
-            if (_detonated) return;
-            if (other.gameObject == _source) return;
-
-            // 玩家投射物只关心带 EnemyTag 的敌人；忽略其他触发器/拾取物
-            if (other.GetComponent<EnemyTag>() == null) return;
-
-            if (_aoeRadius > 0f)
-            {
-                Detonate();
-            }
-            else
-            {
-                other.GetComponent<IDamageable>()?.TakeDamage(_damage);
-                Destroy(gameObject);
-            }
-        }
-
         private void Detonate()
         {
             if (_detonated) return;
             _detonated = true;
+
+            // 爆炸视觉：外缘半径 = 实际伤害半径(_aoeRadius)
+            if (_type == ProjectileType.MagicOrb)
+                MagicBlastFX.Spawn(transform.position, _aoeRadius, transform.parent);
 
             var mask = ~(1 << 9); // 排除墙体层
             var cols = Physics2D.OverlapCircleAll(transform.position, _aoeRadius, mask);

@@ -12,8 +12,8 @@ namespace Game.AI
     public class LavaVent : MonoBehaviour
     {
         [SerializeField] float _damagePerSecond  = 6f;
-        // 伤害半径限定在单个熔岩陷阱格内（瓦片为 1×1 世界单位，半径 0.5 恰好内切）
-        [SerializeField] float _eruptionRadius   = 0.5f;
+        // 伤害半径贴合可见 ember 视觉（精灵 glow 仅到 ~0.4 格并更早淡出），避免伤害超出可见
+        [SerializeField] float _eruptionRadius   = 0.4f;
         [SerializeField] float _idleDuration     = 3.5f;
         [SerializeField] float _warningDuration  = 1.2f;
         [SerializeField] float _eruptionDuration = 0.9f;

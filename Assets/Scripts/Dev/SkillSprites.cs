@@ -32,7 +32,6 @@ namespace Game.Dev
         HolyAura,       // 神圣之光
         ShadowBlur,     // 影步残影
         ArrowImpact,    // 箭雨落点闪光
-        MeleeSlash,     // 近战挥砍弧光（通用）
     }
 
     // 程序化生成 32×32 技能/投掷物像素精灵
@@ -96,7 +95,6 @@ namespace Game.Dev
                 case SkillEffectType.HolyAura:     DrawHolyAura(px, SZ);     break;
                 case SkillEffectType.ShadowBlur:   DrawShadowBlur(px, SZ);   break;
                 case SkillEffectType.ArrowImpact:  DrawArrowImpact(px, SZ);  break;
-                case SkillEffectType.MeleeSlash:   DrawMeleeSlash(px, SZ);   break;
             }
             return MakeSprite(px, SZ);
         }
@@ -698,38 +696,5 @@ namespace Game.Dev
             Circle(px, sz, 16, 16, 2, white);
         }
 
-        // 近战挥砍弧光：朝右扇形弧，使用时由调用方旋转到攻击方向
-        static void DrawMeleeSlash(Color32[] px, int sz)
-        {
-            int cx = sz / 2, cy = sz / 2;
-            // 绘制右侧扇形弧（±50° 范围，r=4~14，峰值 r=9）
-            for (int y = 0; y < sz; y++)
-            for (int x = 0; x < sz; x++)
-            {
-                int dx = x - cx, dy = y - cy;
-                if (dx <= 0) continue;
-                // 限制在 ±50° 锥形内：|dy| <= dx * 1.19（tan50°≈1.19）
-                int adx = dx < 0 ? -dx : dx;
-                int ady = dy < 0 ? -dy : dy;
-                if (ady * 5 > adx * 6) continue;
-                int d2 = dx * dx + dy * dy;
-                if (d2 < 16 || d2 > 196) continue;  // r ∈ [4, 14]
-                float d  = Mathf.Sqrt(d2);
-                float t  = 1f - Mathf.Abs(d - 9f) / 5f;
-                if (t <= 0f) continue;
-                byte a = (byte)(230 * t);
-                byte r = 255;
-                byte g = (byte)(200 + 55 * t);
-                byte b = (byte)(60 * (1f - t));
-                px[y * sz + x] = new Color32(r, g, b, a);
-            }
-            // 中心刀光主线（粗亮线）
-            Line(px, sz, cx - 1, cy, cx + 14, cy, C(255, 255, 230, 245), 3);
-            // 弧顶尖端光晕
-            Circle(px, sz, cx + 14, cy, 2, C(255, 255, 255, 200));
-            // 拖尾余光短线（上下各一道，体现扫掠感）
-            Line(px, sz, cx + 2, cy + 4, cx + 12, cy + 7, C(255, 220, 80, 160), 2);
-            Line(px, sz, cx + 2, cy - 4, cx + 12, cy - 7, C(255, 220, 80, 160), 2);
-        }
     }
 }

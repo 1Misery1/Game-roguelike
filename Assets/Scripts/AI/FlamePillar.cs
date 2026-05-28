@@ -14,7 +14,9 @@ namespace Game.AI
         public float warningTime = 1.5f;
         public float activeTime  = 2.5f;
         public float damage      = 9f;    // 激活期每秒伤害
-        public float radius      = 0.9f;
+        // 碰撞体本地半径 0.5 → 世界半径 = 0.5×localScale，正好内切于缩放后的方块视觉，
+        // 避免被 transform 放大后伤害超出可见熔岩范围
+        public float radius      = 0.5f;
 
         private enum Phase { Idle, Warning, Active }
         private Phase _phase = Phase.Idle;
