@@ -10,7 +10,7 @@ namespace Game.Dev
         float           _duration;
         float           _elapsed;
         SkillEffectType _type;
-        float           _baseAngle;     // MeleeSlash 等方向型特效的基础角度
+        float           _baseAngle;     // PhantomSlash 等方向型特效的基础角度
 
         public static SkillEffect Spawn(
             SkillEffectType type, Vector3 pos, float radius,
@@ -60,7 +60,7 @@ namespace Game.Dev
             if (_elapsed >= _duration) Destroy(gameObject);
         }
 
-        // 扫动型（MeleeSlash / PhantomSlash / DragonWave）：快速旋转弧扫 + 淡出
+        // 扫动型（PhantomSlash / DragonWave）：快速旋转弧扫 + 淡出
         void UpdateSweep(float t)
         {
             float sweepRange = SweepRange(_type);
@@ -101,7 +101,6 @@ namespace Game.Dev
         }
 
         static bool IsSweepType(SkillEffectType t) =>
-            t == SkillEffectType.MeleeSlash  ||
             t == SkillEffectType.PhantomSlash ||
             t == SkillEffectType.DragonWave;
 
@@ -110,7 +109,6 @@ namespace Game.Dev
         {
             switch (t)
             {
-                case SkillEffectType.MeleeSlash:  return  45f;
                 case SkillEffectType.PhantomSlash: return  55f;
                 case SkillEffectType.DragonWave:  return  30f;
                 default:                          return  40f;
@@ -122,7 +120,6 @@ namespace Game.Dev
         {
             switch (t)
             {
-                case SkillEffectType.MeleeSlash:  return -45f;
                 case SkillEffectType.PhantomSlash: return -55f;
                 case SkillEffectType.DragonWave:  return -30f;
                 default:                          return -40f;

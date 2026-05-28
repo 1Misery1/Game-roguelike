@@ -313,8 +313,8 @@ namespace Game.Dev
                             SpawnTrap(pos, fi, trapSpr, parent);
                             break;
                         case 'l':
+                            // 小熔岩格已废弃：只生成普通地板，不再放 LavaVent
                             SpawnFloor(pos, fi, r, c, parent);
-                            SpawnLavaVent(pos, parent);
                             break;
                         case 'x':
                             SpawnFloor(pos, fi, r, c, parent);
@@ -383,16 +383,6 @@ namespace Game.Dev
                     go.AddComponent<Game.AI.NavHazardRegistrar>().radius = 1.4f;
                     break;
             }
-        }
-
-        // ── 熔岩喷发格（第1层，周期性爆发伤害）────────────────────────────
-        // LavaVent 在 Awake 中自己生成程序化精灵和 CircleCollider2D
-        static void SpawnLavaVent(Vector3 pos, Transform parent)
-        {
-            var go = new GameObject("LavaVent");
-            go.transform.SetParent(parent, true);
-            go.transform.position = pos;
-            go.AddComponent<LavaVent>();
         }
 
         // ── 装饰道具（Kenney 素材，有主题着色）──────────────────────────────

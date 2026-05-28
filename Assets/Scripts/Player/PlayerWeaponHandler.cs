@@ -259,7 +259,7 @@ namespace Game.Player
                 case WeaponCategory.Dagger:
                 case WeaponCategory.Longsword:
                 case WeaponCategory.Greatsword:
-                    MeleeAttack(damage, weapon.Data.attackRange, type, isCrit, aimDir, canBackstab);
+                    MeleeAttack(damage, weapon.Data.attackRange, type, isCrit, aimDir, weapon.Data.category, canBackstab);
                     break;
                 case WeaponCategory.Bow:
                     RangedAttack(damage, aimDir, weapon.Data.attackRange, type, isCrit);
@@ -278,7 +278,7 @@ namespace Game.Player
         private static readonly int NonWallMask = ~(1 << 9);
 
         private void MeleeAttack(float damage, float range, DamageType type, bool isCrit, Vector2 aimDir,
-            bool canBackstab = false)
+            WeaponCategory category, bool canBackstab = false)
         {
             var cols = Physics2D.OverlapCircleAll(transform.position, range, NonWallMask);
             foreach (var col in cols)
@@ -296,11 +296,11 @@ namespace Game.Player
                     Amount = finalDmg, Type = type, IsCrit = isCrit, Source = gameObject
                 });
             }
-            // 近战刀光特效：在攻击方向生成扇形弧光
+            // 近战刀光特效：实例化可视化编辑的劈砍预制体（Sprite 逐帧动画）
             if (aimDir == Vector2.zero) aimDir = Vector2.right;
             float angle = Mathf.Atan2(aimDir.y, aimDir.x) * Mathf.Rad2Deg;
             var fxPos = transform.position + (Vector3)(aimDir.normalized * range * 0.45f);
-            SkillEffect.Spawn(SkillEffectType.MeleeSlash, fxPos, range * 0.8f, 0.28f, null, angle);
+            MeleeSlashFX.Spawn(category, fxPos, angle, range, transform.parent);
         }
 
         private void RangedAttack(float damage, Vector2 dir, float range, DamageType type, bool isCrit)

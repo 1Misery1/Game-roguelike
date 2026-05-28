@@ -525,7 +525,7 @@ namespace Game.Dev
                 float x  = -3f + i * 3f;
                 var go   = new GameObject("WeaponChoice_" + weapon.Data.weaponName);
                 go.transform.SetParent(_currentRoomRoot.transform, true);
-                go.transform.position   = new Vector3(x, -1.5f, 0f);
+                go.transform.position   = NearestWalkableWorld(new Vector3(x, -1.5f, 0f));
                 go.transform.localScale = new Vector3(0.65f, 0.65f, 1f);
 
                 var sr = go.AddComponent<SpriteRenderer>();
@@ -649,7 +649,7 @@ namespace Game.Dev
                 pickups.Add(SpawnTalentOrb(talent, def.color));
             }
             for (int i = 0; i < pickups.Count; i++)
-                pickups[i].transform.position = new Vector3(-3.5f + 3.5f * i, 0f, 0f);
+                pickups[i].transform.position = NearestWalkableWorld(new Vector3(-3.5f + 3.5f * i, 0f, 0f));
 
             var snapshot = new List<TalentPickup>(pickups);
             foreach (var p in snapshot)
@@ -1512,6 +1512,9 @@ namespace Game.Dev
 
         // ── 地形杀生成 ────────────────────────────────────────────────────
 
+        // 当前房间祭坛位置（无祭坛时为 null），供地形杀避让，避免压在祭坛上
+        private Vector3? _altarPos;
+
         // 按楼层在当前房间生成地形危险区域（随房间 root 销毁）
         private void SpawnFloorHazards()
         {
@@ -1522,6 +1525,41 @@ namespace Game.Dev
                 case 2: SpawnIceSpikeTraps();  break;
                 case 3: SpawnVoidRifts();      break;
             }
+        }
+
+        // 地形杀候选点是否可放置：必须可走地板、非静态危险格('l'/'t')、且不压祭坛
+        private bool IsHazardSpotValid(Vector2 p)
+        {
+            var cell = Game.AI.NavGrid.WorldToCell(p);
+            if (!Game.AI.NavGrid.IsWalkable(cell.x, cell.y)) return false;
+            if (Game.AI.NavGrid.HazardAt(cell.x, cell.y) != 0) return false;
+            if (_altarPos.HasValue && Vector2.Distance(p, (Vector2)_altarPos.Value) < 1.2f) return false;
+            return true;
+        }
+
+        // 把一个期望坐标吸附到最近的可走格（墙/石柱不可走）。
+        // 用于奖励球等必须可被玩家走到的物体，避免生成在中央墙体里领不到。
+        private Vector3 NearestWalkableWorld(Vector3 desired)
+        {
+            var cell = Game.AI.NavGrid.WorldToCell(desired);
+            if (Game.AI.NavGrid.IsWalkable(cell.x, cell.y))
+            {
+                var w0 = Game.AI.NavGrid.CellToWorld(cell);
+                return new Vector3(w0.x, w0.y, 0f);
+            }
+            for (int rad = 1; rad < 12; rad++)
+            for (int dy = -rad; dy <= rad; dy++)
+            for (int dx = -rad; dx <= rad; dx++)
+            {
+                if (Mathf.Abs(dx) != rad && Mathf.Abs(dy) != rad) continue;
+                int c = cell.x + dx, r = cell.y + dy;
+                if (Game.AI.NavGrid.IsWalkable(c, r))
+                {
+                    var w = Game.AI.NavGrid.CellToWorld(new Vector2Int(c, r));
+                    return new Vector3(w.x, w.y, 0f);
+                }
+            }
+            return desired;
         }
 
         // 第1层：四角炼狱火柱（周期性喷火，预警橙色闪烁）
@@ -1535,6 +1573,7 @@ namespace Game.Dev
             };
             foreach (var p in positions)
             {
+                if (!IsHazardSpotValid(p)) continue;   // 跳过墙体/静态危险格/祭坛
                 var go = new GameObject("FlamePillar");
                 go.transform.SetParent(root, true);
                 go.transform.position   = new Vector3(p.x, p.y, 0f);
@@ -1567,8 +1606,11 @@ namespace Game.Dev
                 int j = Random.Range(0, i + 1);
                 var tmp = candidates[i]; candidates[i] = candidates[j]; candidates[j] = tmp;
             }
-            for (int i = 0; i < count; i++)
+            int placed = 0;
+            for (int i = 0; i < candidates.Length && placed < count; i++)
             {
+                if (!IsHazardSpotValid(candidates[i])) continue;   // 跳过墙体/静态危险格/祭坛
+                placed++;
                 var go = new GameObject("IceSpikeTrap");
                 go.transform.SetParent(root, true);
                 go.transform.position   = new Vector3(candidates[i].x, candidates[i].y, 0f);
@@ -1594,8 +1636,11 @@ namespace Game.Dev
                 new Vector2( 0.5f, 2.5f), new Vector2(5.0f,  1.5f),
             };
             int count = Random.Range(1, 3);
-            for (int i = 0; i < count; i++)
+            int placed = 0;
+            for (int i = 0; i < candidates.Length && placed < count; i++)
             {
+                if (!IsHazardSpotValid(candidates[i])) continue;   // 跳过墙体/静态危险格/祭坛
+                placed++;
                 var go = new GameObject("VoidRift");
                 go.transform.SetParent(root, true);
                 go.transform.position   = new Vector3(candidates[i].x, candidates[i].y, 0f);
@@ -1740,12 +1785,14 @@ namespace Game.Dev
         // 15% 概率在当前房间生成神秘祭坛（可选互动）
         private void MaybeAddAltar()
         {
+            _altarPos = null;   // 每房重置；下方地形杀据此避让
             if (Random.value >= 0.15f) return;
 
             var go = new GameObject("AltarPedestal");
             go.transform.SetParent(_currentRoomRoot.transform, true);
             go.transform.position   = FindSafeAltarPosition();
             go.transform.localScale = new Vector3(0.8f, 0.8f, 1f);
+            _altarPos = go.transform.position;
 
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sprite       = MakeUnitSquareSprite();

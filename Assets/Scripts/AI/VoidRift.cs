@@ -10,7 +10,7 @@ namespace Game.AI
     {
         public float slowRadius    = 5.5f;  // 减速区半径
         public float slowAmount    = 0.22f; // 移速减缓幅度（22%）
-        public float coreRadius    = 1.4f;  // 核心伤害半径
+        public float coreRadius    = 0.6f;  // 核心伤害半径（贴合 1.2 缩放核心方块视觉，避免伤害超出可见）
         public float damagePerSec  = 8f;    // 核心区每秒真实伤害
         public float pulseInterval = 6.5f;  // 脉冲间隔（秒）
         public float pulseDuration = 2.5f;  // 脉冲持续时间
