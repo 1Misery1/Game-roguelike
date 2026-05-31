@@ -1,8 +1,8 @@
 using UnityEngine;
 using UnityEditor;
-using Game.Dev;
 using Game.AI;
-
+using Game.Art;
+using Game.Data;
 /// Builds a flat 2D preview grid of all 20 characters.
 /// All procedural sprites are 32×32 px, PPU=16 → 2 world-units square at scale 1.
 /// Row spacing is set to 10 units so rows never overlap even at max scale.

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: KingdomGuilt
   m_EditorClassIdentifier: 
   bossId: kingdom_guilt
-  displayName: "\u738B\u56FD\u4E4B\u7F6A"
+  displayName: "Kingdom's Guilt"
   maxHp: 1750
   attack: 88
   defense: 18

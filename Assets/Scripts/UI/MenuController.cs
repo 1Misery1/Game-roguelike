@@ -1,8 +1,7 @@
 using Game.Core;
 using Game.Data;
-using Game.Dev;
 using UnityEngine;
-
+using Game.Art;
 namespace Game.UI
 {
     /// Main menu / start lobby — tabs: 英雄选择 | 战绩 | 操控说明 | 设置
@@ -26,65 +25,8 @@ namespace Game.UI
 
         private void BuildHeroPool()
         {
-            _heroes = new[]
-            {
-                MakeHero("Warrior", "雷昂·铁誓",
-                    "战士 · 边境守卫世家出身，沉稳直接。在熔岩深处直面祖辈的罪责。",
-                    100f, 14f, 5f, 5.5f, 1.0f, 0,   new Color(0.4f, 0.85f, 1f),
-                    HeroSkillType.WarCry,         10f, "战吼",
-                    HeroPassiveType.BattlefieldWill,   "战场意志"),
-
-                MakeHero("Ranger", "艾薇拉·风痕",
-                    "游侠 · 冷静独立的独行者，侦察队唯一的生还者。被遗忘的记忆等待解封。",
-                    70f,  12f, 0f, 8.0f, 1.4f, 30,  new Color(0.8f, 1f,   0.5f),
-                    HeroSkillType.ShadowStep,     6f,  "暗影步",
-                    HeroPassiveType.ComboStrike,       "连击之道"),
-
-                MakeHero("Mage", "赛琳娜·星烬",
-                    "法师 · 王国学院法师，理性而执着于知识。为追查导师的界心研究而来。",
-                    55f,  22f, 0f, 5.0f, 0.8f, 60,  new Color(1f,   0.6f, 1f),
-                    HeroSkillType.ArcaneSurge,    8f,  "奥术涌动",
-                    HeroPassiveType.ManaAmplification, "法力增幅"),
-
-                MakeHero("Paladin", "奥斯汀·晨誓",
-                    "圣骑士 · 虔诚正直的晨誓教会骑士，将亲手揭开教会掩盖的真相。",
-                    110f, 11f, 6f, 5.0f, 0.9f, 100, new Color(1f,   0.9f, 0.4f),
-                    HeroSkillType.HolyLight,      12f, "圣光术",
-                    HeroPassiveType.SacredOath,        "神圣誓约"),
-
-                MakeHero("Hunter", "诺兰·灰羽",
-                    "猎手 · 沉默敏锐的荒野猎人，信兽多于信人。循着虚空污染的痕迹而来。",
-                    65f,  16f, 0f, 7.0f, 1.2f, 150, new Color(1f,   0.55f, 0.3f),
-                    HeroSkillType.PrecisionShot,  7f,  "精准射击",
-                    HeroPassiveType.EagleEye,          "鹰眼"),
-            };
-        }
-
-        private static HeroData MakeHero(
-            string name, string displayName, string desc,
-            float hp, float atk, float def, float ms, float asp,
-            int cost, Color tint,
-            HeroSkillType skillType, float skillCd, string skillName,
-            HeroPassiveType passiveType, string passiveName)
-        {
-            var h = ScriptableObject.CreateInstance<HeroData>();
-            h.heroName          = name;
-            h.displayName       = displayName;
-            h.description       = desc;
-            h.baseMaxHP         = hp;
-            h.baseAttack        = atk;
-            h.baseDefense       = def;
-            h.baseMoveSpeed     = ms;
-            h.baseAttackSpeed   = asp;
-            h.unlockCost        = cost;
-            h.tintColor         = tint;
-            h.unlockedByDefault = cost == 0;
-            h.heroSkillType     = skillType;
-            h.heroSkillCooldown = skillCd;
-            h.heroSkillName     = skillName;
-            h.heroPassiveType   = passiveType;
-            h.heroPassiveName   = passiveName;
-            return h;
+            var db = Resources.Load<HeroDatabase>("Heroes/HeroDatabase");
+            _heroes = db != null && db.heroes != null ? db.heroes : new HeroData[0];
         }
 
         private void EnsureStarterUnlocked()
@@ -110,7 +52,7 @@ namespace Game.UI
 
         private void OnGUI()
         {
-            Game.Dev.UIFonts.ApplyToSkin();   // 全局 IMGUI 字体统一为方舟像素体
+            UIFonts.ApplyToSkin();   // 全局 IMGUI 字体统一为方舟像素体
             // 背景
             FillRect(new Rect(0, 0, Screen.width, Screen.height), new Color(0.07f, 0.07f, 0.11f));
             FillRect(new Rect(0, 0, Screen.width, 3), new Color(0.55f, 0.45f, 0.15f));
@@ -134,11 +76,11 @@ namespace Game.UI
 
         private void DrawHeader()
         {
-            GUI.Label(new Rect(0, 10, Screen.width, 52), "三界余烬",
+            GUI.Label(new Rect(0, 10, Screen.width, 52), "Embers of Three Realms",
                 MkLabel(44, TextAnchor.MiddleCenter, FontStyle.Bold, new Color(0.98f, 0.9f, 0.35f)));
-            GUI.Label(new Rect(0, 58, Screen.width, 18), "Embers of Three Realms  ·  深入三层地牢，找回界心碎片",
+            GUI.Label(new Rect(0, 58, Screen.width, 18), "Descend three floors of the dungeon and recover the Realmcore shards",
                 MkLabel(12, TextAnchor.MiddleCenter, FontStyle.Normal, new Color(0.5f, 0.5f, 0.58f)));
-            GUI.Label(new Rect(0, 80, Screen.width, 20), $"◈  解锁货币: {_persistent.UnlockCurrency}",
+            GUI.Label(new Rect(0, 80, Screen.width, 20), $"◈  Unlock Currency: {_persistent.UnlockCurrency}",
                 MkLabel(14, TextAnchor.MiddleCenter, FontStyle.Normal, new Color(1f, 0.88f, 0.22f)));
         }
 
@@ -154,7 +96,7 @@ namespace Game.UI
             float totalW = tabCount * tabW + (tabCount - 1) * tabGap;
             float startX = (Screen.width - totalW) * 0.5f;
 
-            string[] labels = { "英雄选择", "战  绩", "操控说明", "设  置" };
+            string[] labels = { "Heroes", "Records", "Controls", "Settings" };
             Tab[]    values = { Tab.HeroSelect, Tab.Records, Tab.Controls, Tab.Settings };
 
             FillRect(new Rect(0, tabY + tabH - 1, Screen.width, 1), new Color(0.22f, 0.22f, 0.32f));
@@ -253,7 +195,7 @@ namespace Game.UI
                 if (!unlocked)
                 {
                     GUI.Label(new Rect(rect.x + 8, iy + 120, cardW - 16, 18),
-                        $"🔒 需 {h.unlockCost} ◈ 解锁",
+                        $"🔒 Unlock for {h.unlockCost} ◈",
                         MkLabel(10, TextAnchor.MiddleCenter, FontStyle.Normal, new Color(0.75f, 0.65f, 0.4f)));
                 }
 
@@ -264,7 +206,7 @@ namespace Game.UI
                     FillRect(btnRect, selected ? new Color(0.18f, 0.38f, 0.7f) : new Color(0.15f, 0.15f, 0.22f));
                     if (GUI.Button(btnRect, GUIContent.none, GUIStyle.none))
                         _selectedHeroIndex = i;
-                    GUI.Label(btnRect, selected ? "✓  已选择" : "选  择",
+                    GUI.Label(btnRect, selected ? "✓  Selected" : "Select",
                         MkLabel(13, TextAnchor.MiddleCenter, FontStyle.Bold,
                             selected ? new Color(0.5f, 0.8f, 1f) : new Color(0.68f, 0.68f, 0.75f)));
                 }
@@ -275,7 +217,7 @@ namespace Game.UI
                     GUI.enabled = canAfford;
                     if (GUI.Button(btnRect, GUIContent.none, GUIStyle.none))
                         _persistent.TryUnlockHero(h.heroName, h.unlockCost);
-                    GUI.Label(btnRect, $"解锁  {h.unlockCost} ◈",
+                    GUI.Label(btnRect, $"Unlock  {h.unlockCost} ◈",
                         MkLabel(12, TextAnchor.MiddleCenter, FontStyle.Bold,
                             canAfford ? new Color(1f, 0.85f, 0.3f) : new Color(0.45f, 0.38f, 0.3f)));
                     GUI.enabled = true;
@@ -295,21 +237,21 @@ namespace Game.UI
             FillRect(new Rect(panX, panY, panW, panH), new Color(0.1f, 0.1f, 0.16f));
             FillRect(new Rect(panX, panY, panW, 2), new Color(0.45f, 0.75f, 1f, 0.4f));
 
-            GUI.Label(new Rect(panX, panY + 8, panW, 28), "历  史  战  绩",
+            GUI.Label(new Rect(panX, panY + 8, panW, 28), "Run History",
                 MkLabel(20, TextAnchor.MiddleCenter, FontStyle.Bold, new Color(0.98f, 0.9f, 0.35f)));
 
             FillRect(new Rect(panX + 20, panY + 42, panW - 40, 1), new Color(0.28f, 0.28f, 0.38f));
 
             var stats = new (string label, string value)[]
             {
-                ("总出战次数",    _persistent.TotalRuns.ToString()),
-                ("通关次数",      _persistent.TotalVictories.ToString()),
-                ("胜  率",        _persistent.TotalRuns > 0
+                ("Total Runs",      _persistent.TotalRuns.ToString()),
+                ("Victories",       _persistent.TotalVictories.ToString()),
+                ("Win Rate",        _persistent.TotalRuns > 0
                                       ? $"{100f * _persistent.TotalVictories / _persistent.TotalRuns:0.0}%"
                                       : "—"),
-                ("到达最深层",    _persistent.BestFloor > 0 ? $"第 {_persistent.BestFloor} 层" : "—"),
-                ("累计击杀数",    $"{_persistent.TotalKills:N0}"),
-                ("累计造成伤害",  $"{_persistent.TotalDamage:N0}"),
+                ("Deepest Floor",   _persistent.BestFloor > 0 ? $"Floor {_persistent.BestFloor}" : "—"),
+                ("Total Kills",     $"{_persistent.TotalKills:N0}"),
+                ("Total Damage",    $"{_persistent.TotalDamage:N0}"),
             };
 
             float rowH = 40f;
@@ -329,8 +271,8 @@ namespace Game.UI
             float msgY = gy + stats.Length * rowH + 16f;
             FillRect(new Rect(panX + 20, msgY - 4, panW - 40, 1), new Color(0.25f, 0.25f, 0.35f));
             string msg = _persistent.TotalVictories == 0
-                ? "尚无通关记录——深渊正等待着你的挑战。"
-                : $"已完成 {_persistent.TotalVictories} 次通关，深渊的秘密正逐渐向你揭示。";
+                ? "No victories yet — the abyss awaits your challenge."
+                : $"{_persistent.TotalVictories} run(s) cleared. The secrets of the abyss are unfolding before you.";
             var msgS = MkLabel(12, TextAnchor.MiddleCenter, FontStyle.Italic, new Color(0.52f, 0.52f, 0.58f));
             msgS.wordWrap = true;
             GUI.Label(new Rect(panX + 20, msgY + 4, panW - 40, 30), msg, msgS);
@@ -348,20 +290,20 @@ namespace Game.UI
             FillRect(new Rect(panX, panY, panW, panH), new Color(0.1f, 0.1f, 0.16f));
             FillRect(new Rect(panX, panY, panW, 2), new Color(0.45f, 0.75f, 1f, 0.4f));
 
-            GUI.Label(new Rect(panX, panY + 8, panW, 28), "操  控  说  明",
+            GUI.Label(new Rect(panX, panY + 8, panW, 28), "Controls",
                 MkLabel(20, TextAnchor.MiddleCenter, FontStyle.Bold, new Color(0.98f, 0.9f, 0.35f)));
 
             FillRect(new Rect(panX + 20, panY + 42, panW - 40, 1), new Color(0.28f, 0.28f, 0.38f));
 
             var bindings = new (string key, string action)[]
             {
-                ("WASD",    "移动角色"),
-                ("鼠标左键", "普通攻击（弓可蓄力，最长 1.5s，伤害 ×1 ~ ×2.5）"),
-                ("Q",       "切换武器槽位（共 2 个槽位）"),
-                ("R",       "武器主动技能（蓝 / 紫稀有度解锁）"),
-                ("F",       "英雄主动技能"),
-                ("鼠标滚轮", "缩放视角"),
-                ("ESC",     "返回主菜单"),
+                ("WASD",      "Move"),
+                ("Mouse L",   "Basic attack (bow can charge up to 1.5s, ×1 ~ ×2.5 damage)"),
+                ("Q",         "Swap weapon slot (2 slots)"),
+                ("R",         "Weapon active skill (unlocked on Blue / Purple rarity)"),
+                ("F",         "Hero active skill"),
+                ("Mouse Wheel","Zoom camera"),
+                ("ESC",       "Return to main menu"),
             };
 
             float rowH = 36f;
@@ -386,15 +328,15 @@ namespace Game.UI
             // 游戏技巧
             float tipY = gy + bindings.Length * rowH + 12f;
             FillRect(new Rect(panX + 20, tipY, panW - 40, 1), new Color(0.28f, 0.28f, 0.38f));
-            GUI.Label(new Rect(panX + 28, tipY + 6, panW - 56, 20), "游戏技巧",
+            GUI.Label(new Rect(panX + 28, tipY + 6, panW - 56, 20), "Tips",
                 MkLabel(12, TextAnchor.MiddleLeft, FontStyle.Bold, new Color(0.98f, 0.9f, 0.35f)));
 
             var tips = new[]
             {
-                "· 重复拾取同一武器可自动升级，满级后转化为附魔加成",
-                "· 精英敌人（第二波起出现）掉落更丰厚的奖励",
-                "· 蓝/紫武器带有武器技能（R 键），合理利用可大幅提升效率",
-                "· 每层通关额外获得 50 解锁货币，可在大厅解锁新英雄",
+                "· Picking up the same weapon again upgrades it; once maxed, it converts to an enchant bonus",
+                "· Elite enemies (from the 2nd wave on) drop richer rewards",
+                "· Blue/Purple weapons carry a weapon skill (R); using it well greatly boosts efficiency",
+                "· Each cleared floor grants +50 unlock currency to unlock new heroes in the lobby",
             };
             var tipS = MkLabel(11, TextAnchor.UpperLeft, FontStyle.Normal, new Color(0.65f, 0.65f, 0.7f));
             tipS.wordWrap = true;
@@ -418,7 +360,7 @@ namespace Game.UI
             FillRect(new Rect(panX, panY, panW, panH), new Color(0.1f, 0.1f, 0.16f));
             FillRect(new Rect(panX, panY, panW, 2), new Color(0.45f, 0.75f, 1f, 0.4f));
 
-            GUI.Label(new Rect(panX, panY + 8, panW, 28), "设  置",
+            GUI.Label(new Rect(panX, panY + 8, panW, 28), "Settings",
                 MkLabel(20, TextAnchor.MiddleCenter, FontStyle.Bold, new Color(0.98f, 0.9f, 0.35f)));
 
             FillRect(new Rect(panX + 20, panY + 42, panW - 40, 1), new Color(0.28f, 0.28f, 0.38f));
@@ -426,7 +368,7 @@ namespace Game.UI
             float fy = panY + 54f;
 
             // 主音量
-            GUI.Label(new Rect(panX + 28, fy, 160, 28), "主音量",
+            GUI.Label(new Rect(panX + 28, fy, 160, 28), "Master Volume",
                 MkLabel(13, TextAnchor.MiddleLeft, FontStyle.Normal, new Color(0.8f, 0.8f, 0.86f)));
             float vol    = AudioListener.volume;
             float newVol = GUI.HorizontalSlider(
@@ -438,18 +380,18 @@ namespace Game.UI
             fy += 38f;
 
             // 全屏模式
-            GUI.Label(new Rect(panX + 28, fy, 160, 28), "全屏模式",
+            GUI.Label(new Rect(panX + 28, fy, 160, 28), "Fullscreen",
                 MkLabel(13, TextAnchor.MiddleLeft, FontStyle.Normal, new Color(0.8f, 0.8f, 0.86f)));
             bool fs    = Screen.fullScreen;
             bool newFs = GUI.Toggle(new Rect(panX + 192, fy + 5, 18, 18), fs, "");
             if (newFs != fs) Screen.fullScreen = newFs;
-            GUI.Label(new Rect(panX + 216, fy, 100, 28), fs ? "开启" : "关闭",
+            GUI.Label(new Rect(panX + 216, fy, 100, 28), fs ? "On" : "Off",
                 MkLabel(12, TextAnchor.MiddleLeft, FontStyle.Normal, new Color(0.6f, 0.6f, 0.65f)));
 
             fy += 38f;
 
             // 分辨率（只读信息）
-            GUI.Label(new Rect(panX + 28, fy, 160, 28), "当前分辨率",
+            GUI.Label(new Rect(panX + 28, fy, 160, 28), "Resolution",
                 MkLabel(13, TextAnchor.MiddleLeft, FontStyle.Normal, new Color(0.8f, 0.8f, 0.86f)));
             GUI.Label(new Rect(panX + 192, fy, panW - 220, 28), $"{Screen.width} × {Screen.height}",
                 MkLabel(12, TextAnchor.MiddleLeft, FontStyle.Normal, new Color(0.6f, 0.6f, 0.65f)));
@@ -459,7 +401,7 @@ namespace Game.UI
             fy += 12f;
 
             // 存档路径
-            GUI.Label(new Rect(panX + 28, fy, panW - 56, 18), "存档路径",
+            GUI.Label(new Rect(panX + 28, fy, panW - 56, 18), "Save Path",
                 MkLabel(11, TextAnchor.MiddleLeft, FontStyle.Bold, new Color(0.55f, 0.55f, 0.62f)));
             var pathS = MkLabel(9, TextAnchor.UpperLeft, FontStyle.Normal, new Color(0.4f, 0.4f, 0.46f));
             pathS.wordWrap = true;
@@ -480,7 +422,7 @@ namespace Game.UI
                 _persistent.Save();
                 EnsureStarterUnlocked();
             }
-            GUI.Label(new Rect(resetX, fy, resetW, 30), "重置存档（清空所有进度）",
+            GUI.Label(new Rect(resetX, fy, resetW, 30), "Reset Save (clear all progress)",
                 MkLabel(11, TextAnchor.MiddleCenter, FontStyle.Normal, new Color(1f, 0.55f, 0.5f)));
         }
 
@@ -509,7 +451,7 @@ namespace Game.UI
             if (GUI.Button(new Rect(btnX, btnY, btnW, btnH), GUIContent.none, GUIStyle.none) && heroReady)
                 StartRun();
 
-            string label = heroReady ? "▶  开始冒险" : "前往「英雄选择」选择角色";
+            string label = heroReady ? "▶  Start Adventure" : "Go to \"Heroes\" and pick a character";
             GUI.Label(new Rect(btnX, btnY, btnW, btnH), label,
                 MkLabel(heroReady ? 18 : 12, TextAnchor.MiddleCenter, FontStyle.Bold,
                     heroReady ? Color.white : new Color(0.4f, 0.4f, 0.46f)));

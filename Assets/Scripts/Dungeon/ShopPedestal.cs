@@ -2,7 +2,7 @@ using Game.Data;
 using Game.Player;
 using UnityEngine;
 using UnityEngine.InputSystem;
-
+using Game.UI;
 namespace Game.Dungeon
 {
     [RequireComponent(typeof(Collider2D))]
@@ -70,7 +70,7 @@ namespace Game.Dungeon
         {
             if (_purchased || talent == null) return;
             if (Camera.main == null) return;
-            Game.Dev.UIFonts.ApplyToSkin();
+            UIFonts.ApplyToSkin();
 
             Vector3 screen = Camera.main.WorldToScreenPoint(transform.position + Vector3.up * 0.9f);
             if (screen.z < 0) return;

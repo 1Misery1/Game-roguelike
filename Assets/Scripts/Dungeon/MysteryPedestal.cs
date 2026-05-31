@@ -1,7 +1,6 @@
-using Game.Dev;
 using Game.Player;
 using UnityEngine;
-
+using Game.Core;
 namespace Game.Dungeon
 {
     public enum MysteryOutcome
@@ -47,7 +46,7 @@ namespace Game.Dungeon
 
         private void TryResolve()
         {
-            if (_resolved || GameBootstrap.CombatInProgress) return;
+            if (_resolved || GameSignals.CombatInProgress) return;
             _resolved = true;
             int count = System.Enum.GetValues(typeof(MysteryOutcome)).Length;
             var outcome = (MysteryOutcome)Random.Range(0, count);

@@ -1,0 +1,20 @@
+{
+    "name": "Game.Dungeon",
+    "rootNamespace": "Game.Dungeon",
+    "references": [
+        "Game.Data",
+        "Game.Core",
+        "Game.Actors",
+        "Game.UI",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

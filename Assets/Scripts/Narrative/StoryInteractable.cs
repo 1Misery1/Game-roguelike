@@ -2,11 +2,9 @@ using System.Collections.Generic;
 using Game.Combat;
 using Game.Core;
 using Game.Data;
-using Game.Dev;
 using Game.Player;
 using Game.Systems;
 using UnityEngine;
-
 namespace Game.Narrative
 {
     /// 剧情交互物：玩家进入触发器时，按当前英雄与累计调查次数播放对话。
@@ -74,7 +72,7 @@ namespace Game.Narrative
         private void OnTriggerEnter2D(Collider2D other)
         {
             if (other.GetComponent<PlayerController>() == null) return;
-            if (GameBootstrap.CombatInProgress) _awaitingCombatEnd = true;
+            if (GameSignals.CombatInProgress) _awaitingCombatEnd = true;
             else                                TryInteract();
         }
 
@@ -85,7 +83,7 @@ namespace Game.Narrative
 
         private void Update()
         {
-            if (_awaitingCombatEnd && !GameBootstrap.CombatInProgress)
+            if (_awaitingCombatEnd && !GameSignals.CombatInProgress)
             {
                 _awaitingCombatEnd = false;
                 TryInteract();
@@ -138,7 +136,7 @@ namespace Game.Narrative
                 {
                     string title = !string.IsNullOrEmpty(_data.choiceTitle) ? _data.choiceTitle
                                   : !string.IsNullOrEmpty(_data.bannerText) ? _data.bannerText
-                                  : "选择";
+                                  : "Choose";
                     var labels = new List<string>();
                     var descs  = new List<string>();
                     foreach (var c in _data.choices)
@@ -174,7 +172,7 @@ namespace Game.Narrative
             var followLines = new List<DialogueLine>();
             string heroKey  = hero != null ? hero.heroName : "";
             string heroName = hero != null && !string.IsNullOrEmpty(hero.displayName)
-                                  ? hero.displayName : "冒险者";
+                                  ? hero.displayName : "Adventurer";
             if (ch.followLines != null)
             {
                 foreach (var ln in ch.followLines)
@@ -220,7 +218,7 @@ namespace Game.Narrative
 
             if (ch.addCorruption != 0) gm?.Run?.AddCorruption(ch.addCorruption);
             if (!string.IsNullOrEmpty(ch.bannerOverride))
-                GameBootstrap.PostBanner(ch.bannerOverride);
+                GameSignals.PostBanner(ch.bannerOverride);
         }
 
         // ── 数据驱动求值 ─────────────────────────────────────────────────────
@@ -229,7 +227,7 @@ namespace Game.Narrative
         {
             string heroKey  = hero != null ? hero.heroName : "";
             string heroName = hero != null && !string.IsNullOrEmpty(hero.displayName)
-                                  ? hero.displayName : "冒险者";
+                                  ? hero.displayName : "Adventurer";
             int runs = GameManager.Instance != null && GameManager.Instance.Persistent != null
                           ? GameManager.Instance.Persistent.TotalVictories : 0;
 
@@ -290,7 +288,7 @@ namespace Game.Narrative
                 gm?.Run?.AddCorruption(d.addCorruption);
 
             if (!string.IsNullOrEmpty(d.bannerText))
-                GameBootstrap.PostBanner(d.bannerText);
+                GameSignals.PostBanner(d.bannerText);
         }
 
         /// 把道具加进 RunState；如果是首次获得且有战斗效果 → 应用到玩家并通知
@@ -308,16 +306,16 @@ namespace Game.Narrative
             bool applied = StoryItemDatabase.Apply(item, stats);
 
             if (StoryItemDatabase.TryGet(item, out var def))
-                GameBootstrap.PostBanner(applied
-                    ? $"✦ 获得「{item}」 — {def.flavorTag}"
-                    : $"✦ 获得「{item}」  {def.flavorTag}");
+                GameSignals.PostBanner(applied
+                    ? $"✦ Obtained {item} — {def.flavorTag}"
+                    : $"✦ Obtained {item}  {def.flavorTag}");
             else
-                GameBootstrap.PostBanner($"✦ 获得「{item}」");
+                GameSignals.PostBanner($"✦ Obtained {item}");
 
             // 检查协同：如果新道具满足任意协同条件，立即叠加加成 + banner 通知
             var activated = StoryItemSynergyDatabase.CheckAndActivate(gm?.Run, stats);
             foreach (var s in activated)
-                GameBootstrap.PostBanner($"★ 协同激活：{s.displayName}  ·  {s.flavor}");
+                GameSignals.PostBanner($"★ Synergy activated: {s.displayName}  ·  {s.flavor}");
         }
     }
 }

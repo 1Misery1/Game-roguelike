@@ -97,4 +97,62 @@ namespace Game.Data
         SacredOath,         // 神圣誓约  (圣骑士) 击杀敌人回复5HP
         EagleEye,           // 鹰眼      (猎人)  永久暴击率+20%、暴击伤害+30%
     }
+
+    // 敌人类型（数据分类，供 AI / 精灵加载 / 工厂 共用）
+    public enum EnemyType
+    {
+        // ── 普通小怪 ──────────────────────────────────────────────
+        Skeleton,       // 骷髅怪      — 基础追击
+        Soldier,        // 腐败小兵    — 均衡近战
+        Archer,         // 腐败弓箭手  — 远程射击
+        Bat,            // 飞天蝙蝠    — 环绕冲刺
+        ShieldGuard,    // 腐败盾士    — 盾牌减伤
+        PoisonSpider,   // 毒蜘蛛      — 接触毒素DoT，死后留毒池
+        ShadowAssassin, // 暗影刺客    — 瞬移爆发
+        ExplosiveDemon, // 爆炎恶魔    — 近身/死亡爆炸
+
+        // ── 精英 ──────────────────────────────────────────────────
+        Commander,      // 腐败士官    — AOE + 战斗光环（联动盾卫/小兵）
+        Witch,          // 女巫        — 法术AOE + 召唤蝙蝠
+        PoisonShaman,   // 毒蛇祭司    — 毒素光线 + 强化毒蜘蛛
+        Necromancer,    // 死灵术士    — 灵魂汲取回血 + 召唤骷髅
+
+        // ── Boss ──────────────────────────────────────────────────
+        HellGiant,      // 地狱巨人    — 第一层Boss
+        FrostLich,      // 霜魂巫妖    — 第二层Boss
+        ChaosLord,      // 混沌领主    — 第三层Boss
+    }
+
+    // 投掷物类型（数据分类，供 AI / 精灵加载 共用）
+    public enum ProjectileType
+    {
+        Arrow,          // 普通箭矢（弓系基础攻击、Archer）
+        PoisonBolt,     // 毒素飞弹（PoisonShaman）
+        MagicOrb,       // 魔法法球（法杖基础攻击、Witch）
+        SoulOrb,        // 灵魂汲取（Necromancer）
+        IceMissile,     // 冰霜飞弹（FrostLich 基础攻击）
+        IceSpike,       // 冰锥（FrostLich 冰锥齐射）
+        FrostSpear,     // 冰枪（FrostThrust 技能）
+        ThunderArrow,   // 落雷箭（ThunderShot 技能）
+        PiercingArrow,  // 穿云箭（PiercingArrow 技能）
+        RainArrow,      // 箭雨（RainOfArrows 技能）
+    }
+
+    // 技能特效类型（数据分类，供 AI / 精灵加载 / VFX 共用）
+    public enum SkillEffectType
+    {
+        VenomCloud,     // 毒液喷射
+        HolyFlash,      // 圣光斩
+        DragonWave,     // 龙渊斩波
+        EarthCrack,     // 大地震荡
+        DoomColumn,     // 毁灭天降
+        FrostBurst,     // 冰霜新星 / 冰枪突刺
+        ChaosBlast,     // 混沌爆发
+        PhantomSlash,   // 幻影连斩
+        WarCryRing,     // 战吼 / 落雷冲击
+        ArcaneBurst,    // 奥术迸发
+        HolyAura,       // 神圣之光
+        ShadowBlur,     // 影步残影
+        ArrowImpact,    // 箭雨落点闪光
+    }
 }

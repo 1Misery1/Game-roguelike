@@ -1,6 +1,5 @@
-using Game.Dev;
 using UnityEngine;
-
+using Game.Data;
 namespace Game.Dungeon
 {
     /// Attached to every Room Prefab. Tells GameBootstrap where to spawn the player,
@@ -19,9 +18,9 @@ namespace Game.Dungeon
         public Transform[] enemySpawnPoints;
 
         /// Converts to the MapInfo struct that GameBootstrap currently uses.
-        public MapBuilder.MapInfo ToMapInfo()
+        public MapInfo ToMapInfo()
         {
-            return new MapBuilder.MapInfo
+            return new MapInfo
             {
                 HalfW       = halfW,
                 HalfH       = halfH,

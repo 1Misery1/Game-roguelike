@@ -24,9 +24,9 @@ namespace Game.Systems
             // 「燃烧的王冠」 = 怒火残响 + 王座余威 → 双污染叠攻
             new SynergyDef {
                 id            = "burning_crown",
-                displayName   = "燃烧的王冠",
-                flavor        = "怒火坐稳王座  ·  攻击+25%  攻速+0.20",
-                requiredItems = new[] { "怒火残响", "王座余威" },
+                displayName   = "Burning Crown",
+                flavor        = "Fury seizes the throne  ·  ATK +25%  ATK SPD +0.20",
+                requiredItems = new[] { "Echo of Fury", "Throne's Lingering Might" },
                 effects = new[] {
                     Eff(StatType.Attack,      ModifierOp.PercentAdd, 0.25f),
                     Eff(StatType.AttackSpeed, ModifierOp.Flat,       0.20f),
@@ -35,9 +35,9 @@ namespace Game.Systems
             // 「冰封誓言」 = 寒镜碎片 + 记忆契约 → 双净化叠肉
             new SynergyDef {
                 id            = "ice_oath",
-                displayName   = "冰封誓言",
-                flavor        = "看清的真相成为庄严的契约  ·  防御+12  HP+30",
-                requiredItems = new[] { "寒镜碎片", "记忆契约" },
+                displayName   = "Frozen Oath",
+                flavor        = "The truth seen becomes a solemn pact  ·  DEF +12  HP +30",
+                requiredItems = new[] { "Frost Mirror Shard", "Memory Pact" },
                 effects = new[] {
                     Eff(StatType.Defense, ModifierOp.Flat, 12f),
                     Eff(StatType.MaxHP,   ModifierOp.Flat, 30f),
@@ -46,9 +46,9 @@ namespace Game.Systems
             // 「破坏者的复仇」 = 推翻的勇气 + 怒火残响 → 净化+污染叠暴击
             new SynergyDef {
                 id            = "breaker_vengeance",
-                displayName   = "破坏者的复仇",
-                flavor        = "推翻一切的力量  ·  暴击率+15%  暴伤+30%",
-                requiredItems = new[] { "推翻的勇气", "怒火残响" },
+                displayName   = "Destroyer's Revenge",
+                flavor        = "The power to overthrow all  ·  Crit +15%  Crit DMG +30%",
+                requiredItems = new[] { "Courage to Overthrow", "Echo of Fury" },
                 effects = new[] {
                     Eff(StatType.CritRate,   ModifierOp.Flat,       0.15f),
                     Eff(StatType.CritDamage, ModifierOp.PercentAdd, 0.30f),
@@ -57,9 +57,9 @@ namespace Game.Systems
             // 「克制的对峙」 = 克制 + 对峙记忆 → 净化+污染叠技能
             new SynergyDef {
                 id            = "measured_confrontation",
-                displayName   = "克制的对峙",
-                flavor        = "不动如山的对手  ·  技能+25%  暴击+8%",
-                requiredItems = new[] { "克制", "对峙记忆" },
+                displayName   = "Restrained Standoff",
+                flavor        = "An opponent unmoved as a mountain  ·  Skill +25%  Crit +8%",
+                requiredItems = new[] { "Restraint", "Memory of Confrontation" },
                 effects = new[] {
                     Eff(StatType.SkillPower, ModifierOp.PercentAdd, 0.25f),
                     Eff(StatType.CritRate,   ModifierOp.Flat,       0.08f),
@@ -68,9 +68,9 @@ namespace Game.Systems
             // 「双重虚空」 = 湖底遗物 + 虚空记忆碎片 → 深陷虚空
             new SynergyDef {
                 id            = "twin_void",
-                displayName   = "双重虚空",
-                flavor        = "深渊中拿走了更多  ·  攻击+15%  HP+40",
-                requiredItems = new[] { "湖底遗物", "虚空记忆碎片" },
+                displayName   = "Double Void",
+                flavor        = "Took more from the abyss  ·  ATK +15%  HP +40",
+                requiredItems = new[] { "Lakebed Relic", "Void Memory Shard" },
                 effects = new[] {
                     Eff(StatType.Attack, ModifierOp.PercentAdd, 0.15f),
                     Eff(StatType.MaxHP,  ModifierOp.Flat,       40f  ),

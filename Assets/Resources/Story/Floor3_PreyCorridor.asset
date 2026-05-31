@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Floor3_PreyCorridor
   m_EditorClassIdentifier: 
   objectId: f3_prey_corridor
-  bannerText: "\u3010\u8C03\u67E5\u3011\u730E\u7269\u8D70\u5ECA"
+  bannerText: "[Investigate] Prey Corridor"
   spawnFloor: 3
   spawnRoomIndex: 1
   spawnOffset: {x: -4, y: 0, z: 0}
@@ -29,9 +29,9 @@ MonoBehaviour:
     minRunCount: 0
     maxRunCount: 0
     lines:
-    - speaker: "\u65C1\u767D"
+    - speaker: "Narrator"
       portraitKey: 
-      text: "\u5899\u4E0A\u3001\u5730\u4E0A\u3001\u751A\u81F3\u5929\u82B1\u677F\uFF0C\u5230\u5904\u662F\u5947\u5F62\u602A\u72B6\u7684\u8DB3\u8FF9\u3002"
+      text: "On the walls, the floor, even the ceiling \u2014 strange footprints everywhere."
   - note: "\u9996\u6B21-\u8BFA\u5170"
     minCount: 1
     maxCount: 1
@@ -42,7 +42,7 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u50CF\u72FC\uFF0C\u53C8\u50CF\u4EBA\u3002\u6DF1\u5EA6\u4E5F\u4E0D\u5BF9\u2014\u2014\u5B83\u8D70\u5F97\u592A\u8F7B\u4E86\u3002"
+      text: "Like a wolf, yet like a man. The depth is wrong too \u2014 it treads too lightly."
   - note: "\u9996\u6B21-\u975E\u8BFA\u5170"
     minCount: 1
     maxCount: 1
@@ -53,7 +53,7 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u6570\u91CF\u592A\u591A\uFF0C\u65B9\u5411\u592A\u4E71\u3002\u50CF\u662F\u6709\u4EBA\u5728\u6F14\u7EC3\u67D0\u79CD\u4E1C\u897F\u3002"
+      text: "Too many, too scattered in direction. As if someone were rehearsing something."
   - note: "\u4E8C\u6B21-\u8BFA\u5170"
     minCount: 2
     maxCount: 2
@@ -62,12 +62,12 @@ MonoBehaviour:
     minRunCount: 0
     maxRunCount: 0
     lines:
-    - speaker: "\u65C1\u767D"
+    - speaker: "Narrator"
       portraitKey: 
-      text: "\u4F60\u56DE\u8FC7\u5934\u2014\u2014\u8EAB\u540E\u7684\u5C18\u571F\u91CC\uFF0C\u591A\u51FA\u4E00\u4E32\u8DB3\u8FF9\u3002"
+      text: "You glance back \u2014 in the dust behind you, a new trail of prints has appeared."
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u521A\u624D\u90A3\u91CC\u6CA1\u6709\u8FD9\u4E1C\u897F\u3002"
+      text: "That wasn't there a moment ago."
   - note: "\u4E09\u6B21-\u8BFA\u5170"
     minCount: 3
     maxCount: 3
@@ -78,10 +78,10 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u5B83\u4E00\u76F4\u5728\u6211\u80CC\u540E\u3002"
+      text: "It's been behind me the whole time."
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u865A\u7A7A\u4E0D\u662F\u730E\u7269\u3002\u5B83\u5728\u5B66\u600E\u4E48\u5F53\u730E\u4EBA\u3002"
+      text: "The Void is not prey. It's learning how to be the hunter."
   - note: "\u56DB\u6B21+-\u65C1\u767D"
     minCount: 4
     maxCount: 0
@@ -90,9 +90,9 @@ MonoBehaviour:
     minRunCount: 0
     maxRunCount: 0
     lines:
-    - speaker: "\u65C1\u767D"
+    - speaker: "Narrator"
       portraitKey: 
-      text: "\u8DB3\u8FF9\u6BD4\u4E4B\u524D\u6D45\u4E86\u4E00\u622A\u3002\u50CF\u662F\u5B83\u4E5F\u5F00\u59CB\u72B9\u8C6B\uFF0C\u662F\u5426\u8FD8\u8981\u7EE7\u7EED\u8FFD\u3002"
+      text: "The prints are shallower than before. As if it, too, has begun to hesitate whether to keep chasing."
   - note: "\u56DB\u6B21+-\u8BFA\u5170\u653E\u4E0B"
     minCount: 4
     maxCount: 0
@@ -103,7 +103,7 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u4F60\u8DDF\u7740\u6211\u592A\u4E45\u4E86\u3002\u8BE5\u8F6E\u5230\u6211\u5B66\u7740\u2014\u2014\u4E0D\u518D\u8FFD\u4E86\u3002"
+      text: "You've followed me too long. It's my turn to learn \u2014 to stop chasing."
   runStoryFlags:
   - f3_prey_seen
   truthAwards:

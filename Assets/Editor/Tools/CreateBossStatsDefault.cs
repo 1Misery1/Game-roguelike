@@ -1,8 +1,7 @@
 using System.IO;
-using Game.Dev;
 using UnityEditor;
 using UnityEngine;
-
+using Game.Data;
 public static class CreateBossStatsDefault
 {
     public static void Execute()
@@ -26,7 +25,7 @@ public static class CreateBossStatsDefault
              scale: 1.4f, color: new Color(0.50f, 0.10f, 0.70f, 1f));
 
         // 隐藏 Boss — 王国之罪 (原 ChaosLord × 2.5 → 直接固化 hp/atk；scale=ChaosLord×1.6=2.24)
-        Make(dir + "/KingdomGuilt.asset", "kingdom_guilt", "王国之罪",
+        Make(dir + "/KingdomGuilt.asset", "kingdom_guilt", "Kingdom's Guilt",
              hp: 1750f, atk: 88f, def: 18f, spd: 3.0f,
              scale: 2.24f, color: new Color(0.92f, 0.78f, 0.30f, 1f));
 

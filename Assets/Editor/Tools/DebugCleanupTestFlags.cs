@@ -1,9 +1,8 @@
 using System.Reflection;
 using Game.Core;
-using Game.Dev;
 using UnityEditor;
 using UnityEngine;
-
+using Game.Bootstrap;
 /// 撤销 DebugForceTrueEnding 注入的测试真相旗，并保存
 public static class DebugCleanupTestFlags
 {

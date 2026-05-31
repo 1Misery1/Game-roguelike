@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Floor3_Observatory
   m_EditorClassIdentifier: 
   objectId: f3_observatory
-  bannerText: "\u3010\u8C03\u67E5\u3011\u65E0\u5149\u89C2\u6D4B\u53F0"
+  bannerText: "[Investigate] Lightless Observatory"
   spawnFloor: 3
   spawnRoomIndex: 0
   spawnOffset: {x: 3.8, y: 2.6, z: 0}
@@ -29,9 +29,9 @@ MonoBehaviour:
     minRunCount: 0
     maxRunCount: 0
     lines:
-    - speaker: "\u65C1\u767D"
+    - speaker: "Narrator"
       portraitKey: 
-      text: "\u7834\u788E\u7684\u661F\u56FE\u4E0E\u89C2\u6D4B\u4EEA\u5668\u3002\u4E00\u672C\u65E5\u5FD7\u8FD8\u644A\u5F00\u5728\u53F0\u9762\u4E0A\u3002"
+      text: "Shattered star charts and observation instruments. A journal still lies open on the desk."
   - note: "\u9996\u6B21-\u8D5B\u7433\u5A1C"
     minCount: 1
     maxCount: 1
@@ -42,13 +42,13 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u5BFC\u5E08\u6700\u540E\u7684\u8BB0\u5F55\u2014\u2014"
+      text: "My mentor's final entry \u2014"
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u300C\u865A\u7A7A\u4E0D\u662F\u7A7A\u65E0\u3002\u5B83\u5728\u770B\u7740\u6211\u4EEC\u3002\u300D"
+      text: "The Void is not emptiness. It is watching us."
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u300C\u5B83\u5B66\u4F1A\u4E86\u6211\u4EEC\u7684\u8BED\u8A00\u3001\u6050\u60E7\u548C\u6B32\u671B\u3002\u300D"
+      text: "It has learned our language, our fears, and our desires."
   - note: "\u9996\u6B21-\u975E\u8D5B\u7433\u5A1C"
     minCount: 1
     maxCount: 1
@@ -59,7 +59,7 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u7B26\u6587\u4E0E\u661F\u56FE\u3002\u6211\u770B\u4E0D\u61C2\uFF0C\u4F46\u5199\u6EE1\u4E86\u60CA\u6050\u3002"
+      text: "Runes and star charts. I can't read them, but they're filled with terror."
   - note: "\u4E8C\u6B21-\u8D5B\u7433\u5A1C"
     minCount: 2
     maxCount: 2
@@ -70,10 +70,10 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u65E5\u5FD7\u80CC\u9762\u8FD8\u6709\u4E00\u884C\u2014\u2014"
+      text: "On the back of the journal is one more line \u2014"
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u300C\u505C\u6B62\u5B9E\u9A8C\u7684\u8BF7\u6C42\u5DF2\u88AB\u738B\u5BA4\u9A73\u56DE\u3002\u7406\u7531\uFF1A\u738B\u56FD\u9700\u8981\u6C38\u6052\u80FD\u6E90\u3002\u300D"
+      text: "The request to halt the experiment was denied by the crown. Reason: the kingdom needs eternal energy."
   - note: "\u4E09\u6B21-\u65C1\u767D"
     minCount: 3
     maxCount: 3
@@ -82,9 +82,9 @@ MonoBehaviour:
     minRunCount: 0
     maxRunCount: 0
     lines:
-    - speaker: "\u65C1\u767D"
+    - speaker: "Narrator"
       portraitKey: 
-      text: "\u7834\u788E\u7684\u4EEA\u5668\u6700\u540E\u95EA\u4E86\u4E00\u4E0B\u3002\u661F\u56FE\u4E0A\u7A7A\u767D\u7684\u4E00\u683C\u2014\u2014\u7ADF\u4EAE\u4E86\u4E00\u79D2\u3002"
+      text: "The broken instruments flash one last time. A blank cell on the star chart \u2014 lights up for a second."
   - note: "\u4E09\u6B21-\u8D5B\u7433\u5A1C\u6289\u62E9"
     minCount: 3
     maxCount: 3
@@ -95,7 +95,7 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u6211\u4F1A\u628A\u8FD9\u4E9B\u8BB0\u5F55\u516C\u5F00\u3002\u8BA9\u77E5\u8BC6\u4E0D\u518D\u4E3A\u738B\u5EA7\u52A0\u5195\u3002"
+      text: "I'll make these records public. Let knowledge no longer crown the throne."
   - note: "\u56DB\u6B21+-\u6C89\u5BC2"
     minCount: 4
     maxCount: 0
@@ -104,9 +104,9 @@ MonoBehaviour:
     minRunCount: 0
     maxRunCount: 0
     lines:
-    - speaker: "\u65C1\u767D"
+    - speaker: "Narrator"
       portraitKey: 
-      text: "\u89C2\u6D4B\u53F0\u518D\u4E5F\u6CA1\u6709\u53CD\u5E94\u3002\u4F46\u4F60\u5DF2\u7ECF\u77E5\u9053\u5B83\u8BF4\u8FC7\u4EC0\u4E48\u3002"
+      text: "The observatory never responds again. But you already know what it said."
   runStoryFlags:
   - f3_observatory_seen
   truthAwards:

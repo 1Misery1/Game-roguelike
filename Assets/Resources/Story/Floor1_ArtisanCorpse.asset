@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Floor1_ArtisanCorpse
   m_EditorClassIdentifier: 
   objectId: f1_artisan_corpse
-  bannerText: "\u3010\u8C03\u67E5\u3011\u7070\u70EC\u5DE5\u5320\u5C38\u4F53"
+  bannerText: "[Investigate] Ashen Artisan's Corpse"
   spawnFloor: 1
   spawnRoomIndex: 2
   spawnOffset: {x: 3, y: -2, z: 0}
@@ -29,9 +29,9 @@ MonoBehaviour:
     minRunCount: 0
     maxRunCount: 0
     lines:
-    - speaker: "\u65C1\u767D"
+    - speaker: "Narrator"
       portraitKey: 
-      text: "\u4E00\u5177\u534A\u8DEA\u7684\u7126\u9ED1\u5C38\u4F53\u3002\u53CC\u624B\u8737\u66F2\uFF0C\u6307\u5C16\u4F38\u5411\u90A3\u6247\u88AB\u5C01\u6B7B\u7684\u94C1\u95E8\u3002"
+      text: "A charred corpse, half-kneeling. Its hands are curled, fingertips reaching toward the sealed iron door."
   - note: "\u9996\u6B21-\u5965\u65AF\u6C40\u7948\u7977"
     minCount: 1
     maxCount: 1
@@ -42,16 +42,16 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u300C\u613F\u4F60\u5728\u66F4\u4EAE\u7684\u5730\u65B9\u5B89\u606F\u3002\u300D"
-    - speaker: "\u4EA1\u9B42\u6B8B\u5F71"
+      text: "May you rest in a brighter place."
+    - speaker: "Wraith Remnant"
       portraitKey: 
-      text: "\u300C\u6211\u4EEC\u4E0D\u662F\u6B7B\u5728\u706B\u91CC\u3002\u300D"
-    - speaker: "\u4EA1\u9B42\u6B8B\u5F71"
+      text: "We did not die in the fire."
+    - speaker: "Wraith Remnant"
       portraitKey: 
-      text: "\u300C\u6211\u4EEC\u6B7B\u5728\u90A3\u6247\u4E0D\u5F00\u7684\u95E8\u524D\u3002\u300D"
+      text: "We died before the door that would not open."
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u4ED6\u8896\u53E3\u7684\u540D\u518C\u4FDD\u4F4F\u4E86\u2014\u2014\u4E0A\u9762\u662F\u7B2C\u4E00\u5C42\u5168\u90E8\u727A\u7272\u8005\u7684\u540D\u5B57\u3002"
+      text: "The register in his sleeve survived \u2014 it bears the names of every victim on the first floor."
   - note: "\u9996\u6B21-\u975E\u5965\u65AF\u6C40"
     minCount: 1
     maxCount: 1
@@ -62,7 +62,7 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u4ED6\u6CA1\u6B7B\u5728\u706B\u91CC\u3002\u4ED6\u6B7B\u5728\u4E86\u90A3\u6247\u95E8\u524D\u3002"
+      text: "He did not die in the fire. He died before that door."
   - note: "\u591A\u6B21-\u65C1\u767D"
     minCount: 2
     maxCount: 2
@@ -71,9 +71,9 @@ MonoBehaviour:
     minRunCount: 0
     maxRunCount: 0
     lines:
-    - speaker: "\u65C1\u767D"
+    - speaker: "Narrator"
       portraitKey: 
-      text: "\u7126\u9ED1\u7684\u624B\u6307\u4ECD\u6307\u7740\u90A3\u6247\u95E8\u3002\u4EFF\u4F5B\u8981\u628A\u8FD9\u4EF6\u4E8B\u518D\u8BF4\u4E00\u904D\u3002"
+      text: "The charred fingers still point at the door. As if to say it once more."
   - note: "\u4E09\u6B21-\u65C1\u767D"
     minCount: 3
     maxCount: 3
@@ -82,9 +82,9 @@ MonoBehaviour:
     minRunCount: 0
     maxRunCount: 0
     lines:
-    - speaker: "\u65C1\u767D"
+    - speaker: "Narrator"
       portraitKey: 
-      text: "\u7126\u9ED1\u7684\u624B\u6307\u8F7B\u8F7B\u98A4\u4E86\u4E00\u4E0B\u3002\u4E00\u7247\u7070\u4ECE\u6307\u8282\u843D\u4E0B\u2014\u2014\u7ADF\u6CA1\u6709\u7ACB\u523B\u6563\u53BB\u3002"
+      text: "The charred fingers tremble faintly. A flake of ash falls from a knuckle \u2014 and does not scatter at once."
   - note: "\u4E09\u6B21-\u5965\u65AF\u6C40\u627F\u8BFA"
     minCount: 3
     maxCount: 3
@@ -95,7 +95,7 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u6211\u4F1A\u628A\u540D\u518C\u91CC\u7684\u540D\u5B57\uFF0C\u4E00\u4E2A\u4E00\u4E2A\u5FF5\u51FA\u6765\u3002"
+      text: "I will read out the names in the register, one by one."
   - note: "\u56DB\u6B21+-\u6DE1\u51FA"
     minCount: 4
     maxCount: 0
@@ -104,9 +104,9 @@ MonoBehaviour:
     minRunCount: 0
     maxRunCount: 0
     lines:
-    - speaker: "\u65C1\u767D"
+    - speaker: "Narrator"
       portraitKey: 
-      text: "\u5DE5\u5320\u7684\u8F6E\u5ED3\u6BD4\u4E0A\u6B21\u66F4\u6D45\u4E86\u4E00\u4E9B\u3002\u4EFF\u4F5B\u7EC8\u4E8E\u53EF\u4EE5\u8D70\u4E86\u3002"
+      text: "The artisan's outline is fainter than last time. As if he can finally leave."
   runStoryFlags:
   - f1_artisan_seen
   truthAwards:
@@ -114,7 +114,7 @@ MonoBehaviour:
     requireHero: Paladin
     fallbackCount: 2
   grantStoryItems:
-  - "\u70E7\u7126\u7684\u5DE5\u5320\u540D\u518C"
+  - "Charred Artisan Register"
   addCorruption: 0
   choices: []
   choiceTitle: 

@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9e7bb43e183157f448ca97539737589c, type: 3}
+  m_Name: Hero_Ranger
+  m_EditorClassIdentifier: 
+  heroName: Ranger
+  displayName: Elvira Windtrace
+  description: "Ranger \xB7 A calm, self-reliant loner \u2014 the sole survivor of
+    the scout party. Forgotten memories await release."
+  portrait: {fileID: 0}
+  prefab: {fileID: 0}
+  tintColor: {r: 0.8, g: 1, b: 0.5, a: 1}
+  baseMaxHP: 70
+  baseAttack: 12
+  baseDefense: 0
+  baseMoveSpeed: 8
+  baseAttackSpeed: 1.4
+  activeSkill: {fileID: 0}
+  passiveTalent: {fileID: 0}
+  heroSkillType: 2
+  heroSkillCooldown: 6
+  heroSkillName: Shadow Step
+  heroPassiveType: 2
+  heroPassiveName: Combo Strike
+  unlockedByDefault: 0
+  unlockCost: 30
+  requiredTruthFlag: truth_scout_sacrifice
+  lockedStoryLine: "残魂在台前游移，却认不出自己的名字——她是斥候队唯一的幸存者。去冰原的斥候营地，弄清同伴们最后为何而死，她才会想起自己是谁。"

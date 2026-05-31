@@ -1,0 +1,19 @@
+{
+    "name": "Game.Factories",
+    "rootNamespace": "Game.Factories",
+    "references": [
+        "Game.Data",
+        "Game.Combat",
+        "Game.Actors",
+        "Game.Art"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

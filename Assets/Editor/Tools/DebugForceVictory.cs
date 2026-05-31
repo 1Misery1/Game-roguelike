@@ -1,9 +1,8 @@
 using System.Linq;
 using System.Reflection;
-using Game.Dev;
 using UnityEditor;
 using UnityEngine;
-
+using Game.Bootstrap;
 /// MCP 联调用：在 PlayMode 中直接调用 GameBootstrap.TriggerVictory()
 /// 跳过房间推进，立即进入过场 → 结算流程。
 public static class DebugForceVictory

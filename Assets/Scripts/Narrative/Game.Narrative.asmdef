@@ -1,0 +1,23 @@
+{
+    "name": "Game.Narrative",
+    "rootNamespace": "Game.Narrative",
+    "references": [
+        "Game.Data",
+        "Game.Core",
+        "Game.Combat",
+        "Game.Actors",
+        "Game.Art",
+        "Game.UI",
+        "Game.Systems",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

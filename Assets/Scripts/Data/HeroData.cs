@@ -30,6 +30,13 @@ namespace Game.Data
 
         [Header("Meta Progression")]
         public bool unlockedByDefault = false;
-        public int unlockCost = 100;
+        public int unlockCost = 100;            // 旧货币解锁(已弃用，保留存档兼容)
+
+        [Header("Story Unlock 剧情解锁")]
+        [Tooltip("解锁所需的真相旗标 id；留空 = 开局即可用(主角)。在地底揭开该真相后，这缕残魂便会觉醒。")]
+        public string requiredTruthFlag;
+        [TextArea]
+        [Tooltip("尚未觉醒时，靠近台座显示的剧情台词(暗示去哪揭开他/她的真相)。")]
+        public string lockedStoryLine;
     }
 }

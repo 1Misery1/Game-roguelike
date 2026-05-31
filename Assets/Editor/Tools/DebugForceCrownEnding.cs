@@ -1,9 +1,8 @@
 using System.Reflection;
 using Game.Core;
-using Game.Dev;
 using UnityEditor;
 using UnityEngine;
-
+using Game.Bootstrap;
 /// 注入 4 个隐藏 Boss 真相旗 + truth_final_boss_defeated → 验证王冠结局三档分支
 public static class DebugForceCrownEnding
 {

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Floor2_FrozenLake
   m_EditorClassIdentifier: 
   objectId: f2_frozen_lake
-  bannerText: "\u3010\u8C03\u67E5\u3011\u51BB\u7ED3\u6E56\u9762"
+  bannerText: "[Investigate] Frozen Lake"
   spawnFloor: 2
   spawnRoomIndex: 1
   spawnOffset: {x: 0, y: 0.5, z: 0}
@@ -29,9 +29,9 @@ MonoBehaviour:
     minRunCount: 0
     maxRunCount: 0
     lines:
-    - speaker: "\u65C1\u767D"
+    - speaker: "Narrator"
       portraitKey: 
-      text: "\u811A\u4E0B\u7684\u9ED1\u8272\u51B0\u9762\uFF0C\u6620\u51FA\u4E00\u6BB5\u4F60\u4E0D\u613F\u9762\u5BF9\u7684\u753B\u9762\u3002"
+      text: "The black ice underfoot reflects a scene you'd rather not face."
   - note: "\u9996\u6B21-\u96F7\u6602"
     minCount: 1
     maxCount: 1
@@ -42,7 +42,7 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u2026\u2026\u662F\u7956\u7236\u3002\u4ED6\u5728\u7194\u5CA9\u95E8\u5916\uFF0C\u628A\u5C01\u9501\u4EE4\u9012\u7ED9\u526F\u5B98\u3002"
+      text: "\u2026it's grandfather. Outside the lava gate, handing the lockdown order to his adjutant."
   - note: "\u9996\u6B21-\u827E\u8587\u62C9"
     minCount: 1
     maxCount: 1
@@ -53,7 +53,7 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u6211\u51B2\u51FA\u51B0\u95E8\uFF0C\u8F6C\u8EAB\u2014\u2014\u8EAB\u540E\u7684\u4EBA\u6CA1\u8DDF\u4E0A\u6765\u3002"
+      text: "I rushed out the ice gate and turned \u2014 no one behind me followed."
   - note: "\u9996\u6B21-\u8D5B\u7433\u5A1C"
     minCount: 1
     maxCount: 1
@@ -64,7 +64,7 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u5BFC\u5E08\u8FD8\u5728\u7FFB\u5B9E\u9A8C\u8BB0\u5F55\u3002\u4ED6\u770B\u5230\u4E86\u8B66\u544A\uFF0C\u4F46\u6CA1\u6709\u505C\u624B\u3002"
+      text: "My mentor was still leafing through the records. He saw the warning, but did not stop."
   - note: "\u9996\u6B21-\u5965\u65AF\u6C40"
     minCount: 1
     maxCount: 1
@@ -75,7 +75,7 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u6559\u4F1A\u7684\u706B\u76C6\u2014\u2014\u4ED6\u4EEC\u711A\u70E7\u7684\u662F\u5199\u6EE1\u540D\u5B57\u7684\u518C\u5B50\u3002"
+      text: "The church braziers \u2014 what they burned were ledgers filled with names."
   - note: "\u9996\u6B21-\u8BFA\u5170"
     minCount: 1
     maxCount: 1
@@ -86,7 +86,7 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u4E00\u53EA\u91CE\u517D\uFF0C\u773C\u91CC\u6709\u5149\u3002\u5B83\u7B2C\u4E00\u6B21\u300C\u8BA4\u8BC6\u300D\u4EBA\u7C7B\u3002"
+      text: "A beast, with light in its eyes. For the first time, it 'recognized' humans."
   - note: "\u591A\u6B21-\u65C1\u767D"
     minCount: 2
     maxCount: 2
@@ -95,9 +95,9 @@ MonoBehaviour:
     minRunCount: 0
     maxRunCount: 0
     lines:
-    - speaker: "\u65C1\u767D"
+    - speaker: "Narrator"
       portraitKey: 
-      text: "\u4F60\u518D\u6B21\u671B\u5411\u6E56\u9762\u3002\u8FD9\u6B21\uFF0C\u753B\u9762\u53EA\u662F\u7F13\u6162\u5730\u8361\u5F00\u3002"
+      text: "You gaze at the lake again. This time the image only slowly ripples away."
   - note: "\u4E09\u6B21-\u96F7\u6602"
     minCount: 3
     maxCount: 3
@@ -108,7 +108,7 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u955C\u4E2D\u7684\u6211\u5DF2\u7ECF\u653E\u4E0B\u4E86\u5BB6\u5FBD\u3002\u6BD4\u60F3\u8C61\u4E2D\u8F7B\u3002"
+      text: "The me in the reflection has set down the family crest. Lighter than I imagined."
   - note: "\u4E09\u6B21-\u827E\u8587\u62C9"
     minCount: 3
     maxCount: 3
@@ -119,7 +119,7 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u6211\u6CA1\u6709\u518D\u56DE\u5934\u3002\u4F46\u6BCF\u4E00\u6B65\uFF0C\u90FD\u5E26\u7740\u4ED6\u4EEC\u8D70\u3002"
+      text: "I never looked back again. But with every step, I carry them with me."
   - note: "\u4E09\u6B21-\u8D5B\u7433\u5A1C"
     minCount: 3
     maxCount: 3
@@ -130,7 +130,7 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u77E5\u8BC6\u4E0D\u662F\u4E3A\u4E86\u80DC\u8FC7\u522B\u4EBA\u3002\u662F\u4E3A\u4E86\u4E0D\u8BA9\u707E\u96BE\u518D\u6765\u4E00\u6B21\u3002"
+      text: "Knowledge isn't for surpassing others. It's to keep the disaster from ever happening again."
   - note: "\u4E09\u6B21-\u5965\u65AF\u6C40"
     minCount: 3
     maxCount: 3
@@ -141,7 +141,7 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u5723\u6D01\u4E0D\u5728\u796D\u575B\u4E0A\u2014\u2014\u5728\u88AB\u5FD8\u8BB0\u7684\u540D\u5B57\u91CC\u3002"
+      text: "Holiness is not on the altar \u2014 it's in the forgotten names."
   - note: "\u4E09\u6B21-\u8BFA\u5170"
     minCount: 3
     maxCount: 3
@@ -152,7 +152,7 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u6211\u4E0D\u518D\u8FFD\u51FB\u4EC0\u4E48\u3002\u6211\u5B66\u4F1A\u4E86\u503E\u542C\u3002"
+      text: "I no longer hunt anything. I've learned to listen."
   - note: "\u56DB\u6B21+-\u65C1\u767D"
     minCount: 4
     maxCount: 0
@@ -161,9 +161,9 @@ MonoBehaviour:
     minRunCount: 0
     maxRunCount: 0
     lines:
-    - speaker: "\u65C1\u767D"
+    - speaker: "Narrator"
       portraitKey: 
-      text: "\u6E56\u9762\u7EC8\u4E8E\u5E73\u4E86\u3002\u518D\u4E5F\u6CA1\u6709\u6620\u51FA\u4EFB\u4F55\u4E1C\u897F\u2014\u2014\u53EA\u662F\u4E00\u9762\u6DF1\u5904\u7684\u9ED1\u3002"
+      text: "The lake finally stills. It reflects nothing anymore \u2014 only a depthless black."
   runStoryFlags:
   - f2_lake_seen
   truthAwards:
@@ -173,36 +173,36 @@ MonoBehaviour:
   grantStoryItems: []
   addCorruption: 2
   choices:
-  - label: "\u76F4\u89C6\u6E56\u9762"
-    description: "\u770B\u5B8C\u6240\u6709\u4E0D\u613F\u9762\u5BF9\u7684\u753B\u9762\u2014\u2014\u627F\u62C5\u5B83"
+  - label: "Gaze into the Lake"
+    description: "Watch every scene you dread to the end \u2014 and bear it"
     followLines:
-    - speaker: "\u65C1\u767D"
+    - speaker: "Narrator"
       portraitKey: 
-      text: "\u4F60\u5F3A\u8FEB\u81EA\u5DF1\u770B\u5230\u6700\u540E\u3002\u80F8\u53E3\u88AB\u67D0\u79CD\u51B0\u51B7\u7684\u4E1C\u897F\u8F7B\u8F7B\u523A\u7A7F\u3002"
+      text: "You force yourself to watch to the end. Something cold gently pierces your chest."
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u770B\u6E05\u4E86\uFF0C\u5C31\u4E0D\u5FC5\u518D\u56DE\u5934\u3002"
+      text: "Once you see clearly, there's no need to look back."
     runStoryFlags:
     - f2_lake_witnessed_directly
     truthAwards: []
     grantStoryItems:
-    - "\u5BD2\u955C\u788E\u7247"
+    - "Frost Mirror Shard"
     addCorruption: 0
-    bannerOverride: "\u3010\u6289\u62E9\u3011\u4F60\u76F4\u89C6\u4E86\u6E56\u9762"
-  - label: "\u6253\u788E\u6E56\u9762"
-    description: "\u62D2\u7EDD\u518D\u770B\u4E0B\u53BB\u2014\u2014\u4ECE\u788E\u7247\u4E0B\u53D6\u8D70\u67D0\u7269\uFF08\u6C61\u67D3\u52A0\u91CD\uFF09"
+    bannerOverride: "[Choice] You gazed into the lake"
+  - label: "Shatter the Lake"
+    description: "Refuse to watch further \u2014 take something from beneath the shards (corruption rises)"
     followLines:
-    - speaker: "\u65C1\u767D"
+    - speaker: "Narrator"
       portraitKey: 
-      text: "\u73BB\u7483\u822C\u7684\u88C2\u58F0\u54CD\u8D77\u3002\u6E56\u5E95\u6D6E\u8D77\u4E00\u4EF6\u51C9\u5230\u9AA8\u5B50\u7684\u9057\u7269\u2014\u2014\u4F60\u4E0D\u77E5\u9053\u90A3\u539F\u672C\u5C5E\u4E8E\u8C01\u3002"
+      text: "A glassy crack rings out. From the lakebed rises a relic cold to the bone \u2014 you don't know whom it once belonged to."
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u6211\u4E0D\u60F3\u770B\u4E86\u3002\u8FD9\u4E00\u6B21\u5148\u8FD9\u6837\u3002"
+      text: "I don't want to look anymore. This time, let it be."
     runStoryFlags:
     - f2_lake_shattered
     truthAwards: []
     grantStoryItems:
-    - "\u6E56\u5E95\u9057\u7269"
+    - "Lakebed Relic"
     addCorruption: 5
-    bannerOverride: "\u3010\u6289\u62E9\u3011\u4F60\u6253\u788E\u4E86\u6E56\u9762"
-  choiceTitle: "\u4F60\u600E\u4E48\u9762\u5BF9\u8FD9\u9762\u6E56\uFF1F"
+    bannerOverride: "[Choice] You shattered the lake"
+  choiceTitle: "How will you face this lake?"

@@ -62,10 +62,10 @@ namespace Game.Data
         {
             switch (r)
             {
-                case WeaponRarity.White:  return "[白]";
-                case WeaponRarity.Green:  return "[绿]";
-                case WeaponRarity.Blue:   return "[蓝]";
-                case WeaponRarity.Purple: return "[紫]";
+                case WeaponRarity.White:  return "[W]";
+                case WeaponRarity.Green:  return "[G]";
+                case WeaponRarity.Blue:   return "[B]";
+                case WeaponRarity.Purple: return "[P]";
                 default: return "";
             }
         }

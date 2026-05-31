@@ -1,9 +1,8 @@
 using System.Reflection;
 using Game.Core;
-using Game.Dev;
 using UnityEditor;
 using UnityEngine;
-
+using Game.Bootstrap;
 /// 强制注入 ≥4 个真相旗到 PersistentState，然后触发胜利路径以验证真相结局分支
 public static class DebugForceTrueEnding
 {
