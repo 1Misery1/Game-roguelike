@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9e7bb43e183157f448ca97539737589c, type: 3}
+  m_Name: Hero_Paladin
+  m_EditorClassIdentifier: 
+  heroName: Paladin
+  displayName: Austin Dawnvow
+  description: "Paladin \xB7 A devout, upright knight of the Dawnvow Church, set
+    to uncover the truth the church has buried."
+  portrait: {fileID: 0}
+  prefab: {fileID: 0}
+  tintColor: {r: 1, g: 0.9, b: 0.4, a: 1}
+  baseMaxHP: 110
+  baseAttack: 11
+  baseDefense: 6
+  baseMoveSpeed: 5
+  baseAttackSpeed: 0.9
+  activeSkill: {fileID: 0}
+  passiveTalent: {fileID: 0}
+  heroSkillType: 4
+  heroSkillCooldown: 12
+  heroSkillName: Holy Light
+  heroPassiveType: 4
+  heroPassiveName: Sacred Oath
+  unlockedByDefault: 0
+  unlockCost: 100
+  requiredTruthFlag: truth_church_silence
+  lockedStoryLine: "一道沉默的虚影静立台前。黎明誓约者一生只信誓言。去揭开教会缄口掩埋的真相，他才肯应召归来。"

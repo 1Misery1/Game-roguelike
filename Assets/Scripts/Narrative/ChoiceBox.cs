@@ -1,9 +1,8 @@
 using System;
 using System.Collections.Generic;
-using Game.Dev;
 using UnityEngine;
 using UnityEngine.InputSystem;
-
+using Game.UI;
 namespace Game.Narrative
 {
     /// 通用二/多选弹窗（IMGUI 单例）。
@@ -140,7 +139,7 @@ namespace Game.Narrative
             }
 
             GUI.Label(new Rect(panelX, panelY + panelH - 22f, panelW, 18f),
-                "鼠标点击 / 按 1-9 数字键选择",
+                "Click / press 1-9 to choose",
                 Style(11, TextAnchor.MiddleCenter, FontStyle.Italic,
                       new Color(0.55f, 0.55f, 0.62f)));
         }

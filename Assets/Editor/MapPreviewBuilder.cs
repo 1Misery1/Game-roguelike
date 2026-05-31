@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEditor;
-using Game.Dev;
-
+using Game.Bootstrap;
+using Game.Data;
 /// Editor-only: builds a 2D visual preview grid of all 9 maps (3 floors × 3 variants).
 /// Each tile is a colour-coded square — see BuildLegend() for the colour key.
 /// Positioned below CharacterPreview / WeaponPreview in the same scene.
@@ -13,8 +13,8 @@ public class MapPreviewBuilder
     const float MapGapY  = 2.5f;    // vertical gap between map rows
     const float YStart   = -30f;    // Y of the top-left corner of the F1 row
 
-    static int   MapW       => MapBuilder.TileW;              // 32
-    static int   MapH       => MapBuilder.TileH;              // 20
+    static int   MapW       => MapDims.TileW;              // 32
+    static int   MapH       => MapDims.TileH;              // 20
     static float MapPixelW  => MapW * TileSize;               // 14.4 wu
     static float MapPixelH  => (MapH - 1) * TileSize;         // 8.55 wu
     static float StepX      => MapPixelW + MapGapX;           // 16.2 wu per column

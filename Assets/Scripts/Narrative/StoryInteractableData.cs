@@ -10,7 +10,7 @@ namespace Game.Narrative
     public class StoryLineData
     {
         [Tooltip("说话者显示名。可写「旁白」、「门后的回声」等自由文本，或使用 {hero}")]
-        public string speaker = "旁白";
+        public string speaker = "Narrator";
 
         [Tooltip("头像键。留空 = 无头像（旁白）；写 {hero} 或 {heroKey} 自动取当前英雄头像")]
         public string portraitKey = "";
@@ -55,7 +55,7 @@ namespace Game.Narrative
     public class StoryChoice
     {
         [Tooltip("按钮显示的选项标题（如「直视湖面」「打碎湖面」）")]
-        public string label = "选项";
+        public string label = "Option";
 
         [TextArea(1, 3)]
         [Tooltip("按钮下方描述行（简短说明此选项后果，可空）")]

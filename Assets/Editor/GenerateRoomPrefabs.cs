@@ -1,10 +1,10 @@
 using System.IO;
-using Game.Dev;
 using Game.Dungeon;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Tilemaps;
-
+using Game.Bootstrap;
+using Game.Data;
 /// Editor utility: generates 9 Room Prefabs (Floor1-3 × A-C) from MapBuilder map data.
 /// Run via Tools > Generate Room Prefabs.
 public static class GenerateRoomPrefabs
@@ -103,18 +103,18 @@ public static class GenerateRoomPrefabs
 
         // ── 扫描地图字符并绘制瓦片 ──────────────────────────────────────────
         Vector3Int doorCell   = Vector3Int.zero;
-        Vector3Int playerCell = new Vector3Int(-MapBuilder.TileW / 2 + 2, -1, 0); // 默认 c=2, 中行
+        Vector3Int playerCell = new Vector3Int(-MapDims.TileW / 2 + 2, -1, 0); // 默认 c=2, 中行
 
-        for (int r = 0; r < MapBuilder.TileH; r++)
+        for (int r = 0; r < MapDims.TileH; r++)
         {
-            string row = r < rows.Length ? rows[r] : new string('#', MapBuilder.TileW);
-            if (row.Length < MapBuilder.TileW) row = row.PadRight(MapBuilder.TileW, '#');
+            string row = r < rows.Length ? rows[r] : new string('#', MapDims.TileW);
+            if (row.Length < MapDims.TileW) row = row.PadRight(MapDims.TileW, '#');
 
-            for (int c = 0; c < MapBuilder.TileW; c++)
+            for (int c = 0; c < MapDims.TileW; c++)
             {
                 char ch = row[c];
                 // Tilemap cell coords: col offset by -TileW/2, row flipped from top-down to bottom-up
-                var cell = new Vector3Int(c - MapBuilder.TileW / 2, MapBuilder.TileH - 1 - r - MapBuilder.TileH / 2, 0);
+                var cell = new Vector3Int(c - MapDims.TileW / 2, MapDims.TileH - 1 - r - MapDims.TileH / 2, 0);
 
                 switch (ch)
                 {
@@ -142,15 +142,15 @@ public static class GenerateRoomPrefabs
                 }
 
                 // 检测玩家出生点（列 2，与旧程序化系统 x=-13.5 对齐，远离左侧碰撞墙）
-                if (ch == '.' && c == 2 && r >= MapBuilder.TileH / 2 - 1 && r <= MapBuilder.TileH / 2 + 1)
+                if (ch == '.' && c == 2 && r >= MapDims.TileH / 2 - 1 && r <= MapDims.TileH / 2 + 1)
                     playerCell = cell;
             }
         }
 
         // ── RoomMetadata ────────────────────────────────────────────────────
         var meta = root.AddComponent<RoomMetadata>();
-        meta.halfW = MapBuilder.TileW * 0.5f;
-        meta.halfH = MapBuilder.TileH * 0.5f;
+        meta.halfW = MapDims.TileW * 0.5f;
+        meta.halfH = MapDims.TileH * 0.5f;
 
         // 出生点：以 child Transform 记录（world position 由 cell 换算）
         meta.playerSpawn = MakeSpawnTransform(root, "PlayerSpawn",
@@ -206,14 +206,14 @@ public static class GenerateRoomPrefabs
 
         int count = 0;
         // 均匀网格采样：每 6 列、5 行采一个空地格，最多 8 个
-        for (int r = 2; r < MapBuilder.TileH - 2 && count < 8; r += 5)
+        for (int r = 2; r < MapDims.TileH - 2 && count < 8; r += 5)
         {
-            for (int c = 3; c < MapBuilder.TileW - 3 && count < 8; c += 6)
+            for (int c = 3; c < MapDims.TileW - 3 && count < 8; c += 6)
             {
                 char ch = (r < rows.Length && c < rows[r].Length) ? rows[r][c] : '#';
                 if (ch != '.' && ch != 't' && ch != 'x') continue;
 
-                var cell = new Vector3Int(c - MapBuilder.TileW / 2, MapBuilder.TileH - 1 - r - MapBuilder.TileH / 2, 0);
+                var cell = new Vector3Int(c - MapDims.TileW / 2, MapDims.TileH - 1 - r - MapDims.TileH / 2, 0);
                 var t = new GameObject($"Spawn_{count}").transform;
                 t.SetParent(parent.transform, false);
                 t.localPosition = CellToWorld(cell);

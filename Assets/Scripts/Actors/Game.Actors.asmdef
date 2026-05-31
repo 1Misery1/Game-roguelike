@@ -1,0 +1,21 @@
+{
+    "name": "Game.Actors",
+    "rootNamespace": "",
+    "references": [
+        "Game.Data",
+        "Game.Combat",
+        "Game.Core",
+        "Game.Art",
+        "Game.VFX",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

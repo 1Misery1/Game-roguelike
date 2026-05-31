@@ -1,9 +1,8 @@
 using System.Collections.Generic;
 using System.IO;
-using Game.Dev;
 using UnityEditor;
 using UnityEngine;
-
+using Game.Data;
 /// 生成 Assets/Resources/Shop/Default.asset —— 与原程序化样式 1:1 对齐
 public static class CreateShopDecorDefault
 {

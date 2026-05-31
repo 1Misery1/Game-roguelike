@@ -11,7 +11,7 @@ namespace Game.Core
         public RunState       Run        { get; private set; } = new RunState();
         public PersistentState Persistent { get; private set; }
 
-        [SerializeField] private string menuSceneName    = "MainMenu";
+        [SerializeField] private string menuSceneName    = "Hub";
         [SerializeField] private string dungeonSceneName = "Test";
 
         private void Awake()

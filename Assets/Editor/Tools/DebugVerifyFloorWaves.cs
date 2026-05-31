@@ -1,7 +1,6 @@
-using Game.Dev;
 using UnityEditor;
 using UnityEngine;
-
+using Game.Data;
 /// 离线检查：3 个楼层 SO 是否带齐波次数据
 public static class DebugVerifyFloorWaves
 {

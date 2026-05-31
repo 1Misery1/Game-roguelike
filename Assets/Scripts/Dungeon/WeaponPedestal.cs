@@ -2,7 +2,7 @@ using Game.Data;
 using Game.Player;
 using UnityEngine;
 using UnityEngine.InputSystem;
-
+using Game.UI;
 namespace Game.Dungeon
 {
     [RequireComponent(typeof(Collider2D))]
@@ -44,7 +44,7 @@ namespace Game.Dungeon
         private void OnGUI()
         {
             if (_taken || Weapon?.Data == null || Camera.main == null) return;
-            Game.Dev.UIFonts.ApplyToSkin();
+            UIFonts.ApplyToSkin();
             var data = Weapon.Data;
 
             Vector3 screen = Camera.main.WorldToScreenPoint(transform.position + Vector3.up * 0.95f);
@@ -75,7 +75,7 @@ namespace Game.Dungeon
                     fontSize = 11, alignment = TextAnchor.MiddleCenter,
                     normal   = { textColor = new Color(0.65f, 0.85f, 1f) }
                 };
-                GUI.Label(new Rect(x, y + 37f, 200, 16), $"技能: {data.skill.skillName}", skStyle);
+                GUI.Label(new Rect(x, y + 37f, 200, 16), $"Skill: {data.skill.skillName}", skStyle);
             }
 
             if (_inRange)
@@ -86,7 +86,7 @@ namespace Game.Dungeon
                     fontSize = 12, alignment = TextAnchor.MiddleCenter,
                     normal   = { textColor = Color.white }
                 };
-                GUI.Label(new Rect(x, hintY, 200, 18), "[E] 装备到当前槽", hint);
+                GUI.Label(new Rect(x, hintY, 200, 18), "[E] Equip to current slot", hint);
             }
         }
     }

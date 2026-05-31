@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Floor1_FurnaceConsole
   m_EditorClassIdentifier: 
   objectId: f1_furnace_console
-  bannerText: "\u3010\u8C03\u67E5\u3011\u7194\u7089\u63A7\u5236\u53F0"
+  bannerText: "[Investigate] Forge Console"
   spawnFloor: 1
   spawnRoomIndex: 1
   spawnOffset: {x: -3.5, y: 1.5, z: 0}
@@ -29,12 +29,12 @@ MonoBehaviour:
     minRunCount: 0
     maxRunCount: 0
     lines:
-    - speaker: "\u65C1\u767D"
+    - speaker: "Narrator"
       portraitKey: 
-      text: "\u9508\u8680\u7684\u673A\u68B0\u63A7\u5236\u53F0\u7ACB\u5728\u953B\u9020\u5927\u5385\u4E2D\u592E\u3002\u6307\u9488\u4ECD\u5361\u5728\u4E00\u7EC4\u523A\u773C\u7684\u6570\u5B57\u4E0A\u2014\u2014"
-    - speaker: "\u65C1\u767D"
+      text: "A rusted mechanical console stands at the center of the forge hall. Its needle is still stuck on a set of glaring numbers \u2014"
+    - speaker: "Narrator"
       portraitKey: 
-      text: "\u300C\u754C\u5FC3\u62BD\u53D6\u7387\uFF1A327%\u3002\u51B7\u5374\u7CFB\u7EDF\u8B66\u544A\u5DF2\u5FFD\u7565\u3002\u300D"
+      text: "Worldcore extraction rate: 327%. Cooling-system warning ignored."
   - note: "\u9996\u6B21-\u8D5B\u7433\u5A1C\u4E13\u5C5E"
     minCount: 1
     maxCount: 1
@@ -45,13 +45,13 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u8FD9\u53F0\u673A\u5668\u6CA1\u574F\u2014\u2014\u5B83\u662F\u88AB\u4EBA\u4E3B\u52A8\u903C\u5230\u6781\u9650\u7684\u3002"
+      text: "This machine isn't broken \u2014 someone deliberately drove it past its limit."
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u300C\u7EE7\u7EED\u63D0\u70BC\uFF0C\u76F4\u5230\u738B\u90FD\u4E3B\u80FD\u6E90\u5854\u5B8C\u6210\u3002\u300D"
+      text: "Keep refining, until the capital's main energy tower is complete."
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u707E\u96BE\u4E0D\u662F\u610F\u5916\u3002\u662F\u738B\u56FD\u4E3A\u4E86\u80FD\u6E90\uFF0C\u5F3A\u884C\u8D85\u8F7D\u754C\u5FC3\u3002"
+      text: "The disaster was no accident. The kingdom forcibly overloaded the worldcore for energy."
   - note: "\u9996\u6B21-\u975E\u8D5B\u7433\u5A1C"
     minCount: 1
     maxCount: 1
@@ -62,7 +62,7 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u6211\u770B\u4E0D\u61C2\u8FD9\u4E9B\u8BFB\u6570\uFF0C\u4F46\u6BCF\u4E2A\u8868\u5934\u90FD\u9876\u8FDB\u4E86\u7EA2\u533A\u3002"
+      text: "I can't read these gauges, but every dial is buried in the red."
   - note: "\u591A\u6B21-\u65C1\u767D"
     minCount: 2
     maxCount: 2
@@ -71,9 +71,9 @@ MonoBehaviour:
     minRunCount: 0
     maxRunCount: 0
     lines:
-    - speaker: "\u65C1\u767D"
+    - speaker: "Narrator"
       portraitKey: 
-      text: "\u4F60\u89E6\u78B0\u65AD\u88C2\u7684\u62C9\u6746\uFF0C\u63A7\u5236\u53F0\u77ED\u6682\u95EA\u70C1\uFF0C\u53C8\u518D\u6B21\u7184\u706D\u3002"
+      text: "You touch the broken lever; the console flickers briefly, then goes dark again."
   - note: "\u4E09\u6B21-\u65C1\u767D"
     minCount: 3
     maxCount: 3
@@ -82,12 +82,12 @@ MonoBehaviour:
     minRunCount: 0
     maxRunCount: 0
     lines:
-    - speaker: "\u65C1\u767D"
+    - speaker: "Narrator"
       portraitKey: 
-      text: "\u63A7\u5236\u53F0\u77ED\u6682\u4EAE\u8D77\uFF0C\u4E00\u884C\u5B57\u4E00\u95EA\u800C\u8FC7\u2014\u2014"
-    - speaker: "\u65C1\u767D"
+      text: "The console lights up for a moment, a single line flashing past \u2014"
+    - speaker: "Narrator"
       portraitKey: 
-      text: "\u300C\u2026\u2026\u8BF7\u5173\u505C\u3002\u300D"
+      text: "\u2026please shut it down."
   - note: "\u4E09\u6B21-\u8D5B\u7433\u5A1C\u6289\u62E9"
     minCount: 3
     maxCount: 3
@@ -98,7 +98,7 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u6211\u770B\u89C1\u4E86\u3002\u6211\u4E0D\u4F1A\u518D\u4E3A'\u5FC5\u8981'\u8BA9\u6B65\u3002"
+      text: "I've seen it. I will never again yield to 'necessity'."
   - note: "\u56DB\u6B21+-\u7070\u70EC"
     minCount: 4
     maxCount: 0
@@ -107,9 +107,9 @@ MonoBehaviour:
     minRunCount: 0
     maxRunCount: 0
     lines:
-    - speaker: "\u65C1\u767D"
+    - speaker: "Narrator"
       portraitKey: 
-      text: "\u63A7\u5236\u53F0\u5F7B\u5E95\u6C89\u9ED8\u3002\u6307\u9488\u788E\u6210\u4E24\u6BB5\uFF0C\u50CF\u88AB\u4EBA\u8F7B\u8F7B\u6309\u4E86\u4E0B\u53BB\u3002"
+      text: "The console falls utterly silent. The needle snaps in two, as if gently pressed down."
   runStoryFlags:
   - f1_furnace_seen
   truthAwards:

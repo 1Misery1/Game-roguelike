@@ -16,10 +16,10 @@ public static class DebugVerifySynergies
             Debug.Log($"[Synergy]   · {s.displayName}  需 {need}  → {s.flavor}");
         }
 
-        Test("纯净化路线", "寒镜碎片", "记忆契约", "推翻的勇气", "克制");
-        Test("纯污染路线", "湖底遗物", "对峙记忆", "怒火残响", "王座余威", "虚空记忆碎片");
-        Test("混合路线",   "寒镜碎片", "怒火残响", "对峙记忆", "克制", "推翻的勇气");
-        Test("少量道具",   "寒镜碎片", "克制");
+        Test("纯净化路线", "Frost Mirror Shard", "Memory Pact", "Courage to Overthrow", "Restraint");
+        Test("纯污染路线", "Lakebed Relic", "Memory of Confrontation", "Echo of Fury", "Throne's Lingering Might", "Void Memory Shard");
+        Test("混合路线",   "Frost Mirror Shard", "Echo of Fury", "Memory of Confrontation", "Restraint", "Courage to Overthrow");
+        Test("少量道具",   "Frost Mirror Shard", "Restraint");
     }
 
     static void Test(string label, params string[] items)

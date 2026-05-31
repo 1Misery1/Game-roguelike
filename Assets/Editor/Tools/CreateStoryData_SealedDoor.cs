@@ -14,7 +14,7 @@ public static class CreateStoryData_SealedDoor
 
         var data = ScriptableObject.CreateInstance<StoryInteractableData>();
         data.objectId    = "f1_sealed_door";
-        data.bannerText  = "【调查】封死的升降门";
+        data.bannerText  = "[Investigate] The Sealed Lift Door";
         data.tintColor   = new Color(0.40f, 0.39f, 0.46f, 1f);
         data.visualScale = new Vector2(1.5f, 2.7f);
         data.colliderSize = new Vector2(1.5f, 1.25f);
@@ -27,45 +27,45 @@ public static class CreateStoryData_SealedDoor
             note     = "首次-旁白",
             minCount = 1, maxCount = 1,
             lines = new System.Collections.Generic.List<StoryLineData> {
-                new StoryLineData { speaker = "旁白", portraitKey = "",
-                    text = "一扇巨大的铁门横在升降井前，门上烙着王国的封印。" },
-                new StoryLineData { speaker = "旁白", portraitKey = "",
-                    text = "铁门从外侧被锁死——门缝里，凝固着一只烧焦的手印。" },
+                new StoryLineData { speaker = "Narrator", portraitKey = "",
+                    text = "A massive iron door blocks the lift shaft, branded with the kingdom's seal." },
+                new StoryLineData { speaker = "Narrator", portraitKey = "",
+                    text = "The door was locked from the outside — in the gap, a charred handprint is frozen in place." },
             }
         };
         var b1Leon = new StoryBranch {
             note = "首次-雷昂专属", minCount = 1, maxCount = 1, requireHero = "Warrior",
             lines = new System.Collections.Generic.List<StoryLineData> {
                 new StoryLineData { speaker = "{hero}", portraitKey = "{heroKey}",
-                    text = "这封印……是王国守卫军的封门术。" },
+                    text = "This seal… it is the royal guard's door-sealing craft." },
                 new StoryLineData { speaker = "{hero}", portraitKey = "{heroKey}",
-                    text = "只有军官才有权下令使用。当年困住下面那些人的不是怪物——是我们的人，从外面锁死了门。" },
+                    text = "Only an officer had the authority to order it. What trapped the people below was no monster — it was our own men, locking the door from outside." },
             }
         };
         var b1Other = new StoryBranch {
             note = "首次-非雷昂", minCount = 1, maxCount = 1, forbidHero = "Warrior",
             lines = new System.Collections.Generic.List<StoryLineData> {
                 new StoryLineData { speaker = "{hero}", portraitKey = "{heroKey}",
-                    text = "门是从外面锁上的。里面的人，根本逃不出来。" },
+                    text = "The door was locked from outside. The people within could never escape." },
             }
         };
         // 重复调查
         var b2 = new StoryBranch {
             note = "重复-旁白+回声", minCount = 2,
             lines = new System.Collections.Generic.List<StoryLineData> {
-                new StoryLineData { speaker = "旁白", portraitKey = "",
-                    text = "你再次贴近冰冷的铁门。门后，仿佛有声音穿过岁月渗了出来——" },
-                new StoryLineData { speaker = "门后的回声", portraitKey = "",
-                    text = "「开门！下面还有活人！」" },
-                new StoryLineData { speaker = "门后的回声", portraitKey = "",
-                    text = "「命令是封锁。不准开启。」" },
+                new StoryLineData { speaker = "Narrator", portraitKey = "",
+                    text = "You lean close to the cold iron again. From behind it, voices seem to seep through the years —" },
+                new StoryLineData { speaker = "Echo Behind the Door", portraitKey = "",
+                    text = "Open the door! There are still people alive down here!" },
+                new StoryLineData { speaker = "Echo Behind the Door", portraitKey = "",
+                    text = "The order is to seal it. Opening is forbidden." },
             }
         };
         var b2Leon = new StoryBranch {
             note = "重复-雷昂感叹", minCount = 2, requireHero = "Warrior",
             lines = new System.Collections.Generic.List<StoryLineData> {
                 new StoryLineData { speaker = "{hero}", portraitKey = "{heroKey}",
-                    text = "……这道命令，究竟是谁下的。" },
+                    text = "…who, exactly, gave this order." },
             }
         };
 
@@ -73,10 +73,10 @@ public static class CreateStoryData_SealedDoor
         var b3SecondRun = new StoryBranch {
             note = "二周目-门后增段", minCount = 1, minRunCount = 1,
             lines = new System.Collections.Generic.List<StoryLineData> {
-                new StoryLineData { speaker = "门后的回声", portraitKey = "",
-                    text = "「……还有人吗？」" },
-                new StoryLineData { speaker = "门后的回声", portraitKey = "",
-                    text = "「请记住我们的名字——」" },
+                new StoryLineData { speaker = "Echo Behind the Door", portraitKey = "",
+                    text = "…is anyone still there?" },
+                new StoryLineData { speaker = "Echo Behind the Door", portraitKey = "",
+                    text = "Please remember our names —" },
             }
         };
 
@@ -84,17 +84,17 @@ public static class CreateStoryData_SealedDoor
         var b4ThirdVisit = new StoryBranch {
             note = "三次-门后托付", minCount = 3, maxCount = 3,
             lines = new System.Collections.Generic.List<StoryLineData> {
-                new StoryLineData { speaker = "旁白", portraitKey = "",
-                    text = "门后这一次没有怒吼，只有更深的沉默——" },
-                new StoryLineData { speaker = "门后的回声", portraitKey = "",
-                    text = "「……如果你听得到，请替我们说。」" },
+                new StoryLineData { speaker = "Narrator", portraitKey = "",
+                    text = "This time there is no roar behind the door, only a deeper silence —" },
+                new StoryLineData { speaker = "Echo Behind the Door", portraitKey = "",
+                    text = "…if you can hear us, speak for us." },
             }
         };
         var b4Leon = new StoryBranch {
             note = "三次-雷昂郑重承诺", minCount = 3, maxCount = 3, requireHero = "Warrior",
             lines = new System.Collections.Generic.List<StoryLineData> {
                 new StoryLineData { speaker = "{hero}", portraitKey = "{heroKey}",
-                    text = "我会的。会替你们说，直到没有人能再装聋。" },
+                    text = "I will. I will speak for you, until no one can feign deafness again." },
             }
         };
 
@@ -102,8 +102,8 @@ public static class CreateStoryData_SealedDoor
         var b5FourthPlus = new StoryBranch {
             note = "四次+-沉默告别", minCount = 4,
             lines = new System.Collections.Generic.List<StoryLineData> {
-                new StoryLineData { speaker = "旁白", portraitKey = "",
-                    text = "你伸手按在铁门上。这一次没有任何声音回来——但你知道，他们听见了。" },
+                new StoryLineData { speaker = "Narrator", portraitKey = "",
+                    text = "You press your hand to the iron door. No voice answers this time — but you know they heard you." },
             }
         };
 
@@ -125,34 +125,34 @@ public static class CreateStoryData_SealedDoor
         });
 
         // 抉择：砸开 vs 静默离开
-        data.choiceTitle = "你怎么面对这扇门？";
+        data.choiceTitle = "How will you face this door?";
         data.choices.Add(new StoryChoice {
-            label       = "砸开它",
-            description = "用蛮力宣泄怒火（封印纹丝不动，但你留下回响）",
+            label       = "Break It Open",
+            description = "Vent your rage by force (the seal holds firm, but you leave an echo)",
             followLines = new System.Collections.Generic.List<StoryLineData> {
-                new StoryLineData { speaker = "旁白", portraitKey = "",
-                    text = "你砸了一下、两下、十下。门只是把你的怒火原样弹回来。" },
+                new StoryLineData { speaker = "Narrator", portraitKey = "",
+                    text = "You strike once, twice, ten times. The door only hurls your rage back at you." },
                 new StoryLineData { speaker = "{hero}", portraitKey = "{heroKey}",
-                    text = "可恶。可恶。" },
+                    text = "Damn it. Damn it." },
             },
-            grantStoryItems = new System.Collections.Generic.List<string> { "怒火残响" },
+            grantStoryItems = new System.Collections.Generic.List<string> { "Echo of Fury" },
             runStoryFlags   = new System.Collections.Generic.List<string> { "f1_door_struck" },
             addCorruption   = 3,
-            bannerOverride  = "【抉择】你砸向了铁门",
+            bannerOverride  = "[Choice] You struck the iron door",
         });
         data.choices.Add(new StoryChoice {
-            label       = "静默离开",
-            description = "把「记得」作为承诺（少量净化）",
+            label       = "Leave in Silence",
+            description = "Make remembrance a vow (minor purification)",
             followLines = new System.Collections.Generic.List<StoryLineData> {
-                new StoryLineData { speaker = "旁白", portraitKey = "",
-                    text = "你把手从冰冷的铁面上松开，没有回头。你会记得。" },
+                new StoryLineData { speaker = "Narrator", portraitKey = "",
+                    text = "You release your hand from the cold iron and do not look back. You will remember." },
                 new StoryLineData { speaker = "{hero}", portraitKey = "{heroKey}",
-                    text = "我会替你们说。先从今天开始。" },
+                    text = "I will speak for you. Starting today." },
             },
-            grantStoryItems = new System.Collections.Generic.List<string> { "记忆契约" },
+            grantStoryItems = new System.Collections.Generic.List<string> { "Memory Pact" },
             runStoryFlags   = new System.Collections.Generic.List<string> { "f1_door_oath" },
             addCorruption   = -2,
-            bannerOverride  = "【抉择】你许下了沉默的承诺",
+            bannerOverride  = "[Choice] You made a silent vow",
         });
 
         AssetDatabase.CreateAsset(data, path);

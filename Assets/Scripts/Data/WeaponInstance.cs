@@ -56,11 +56,11 @@ namespace Game.Data
             {
                 switch (Data.category)
                 {
-                    case WeaponCategory.Dagger:     return "匕首";
-                    case WeaponCategory.Longsword:  return "长剑";
-                    case WeaponCategory.Greatsword: return "双手剑";
-                    case WeaponCategory.Bow:        return "弓";
-                    case WeaponCategory.Staff:      return "法杖";
+                    case WeaponCategory.Dagger:     return "Dagger";
+                    case WeaponCategory.Longsword:  return "Sword";
+                    case WeaponCategory.Greatsword: return "Greatsword";
+                    case WeaponCategory.Bow:        return "Bow";
+                    case WeaponCategory.Staff:      return "Staff";
                     default: return "";
                 }
             }

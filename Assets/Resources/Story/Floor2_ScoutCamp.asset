@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Floor2_ScoutCamp
   m_EditorClassIdentifier: 
   objectId: f2_scout_camp
-  bannerText: "\u3010\u8C03\u67E5\u3011\u51B0\u5C01\u4FA6\u5BDF\u961F\u8425\u5730"
+  bannerText: "[Investigate] Frozen Scout Camp"
   spawnFloor: 2
   spawnRoomIndex: 0
   spawnOffset: {x: 3.8, y: 2.6, z: 0}
@@ -29,9 +29,9 @@ MonoBehaviour:
     minRunCount: 0
     maxRunCount: 0
     lines:
-    - speaker: "\u65C1\u767D"
+    - speaker: "Narrator"
       portraitKey: 
-      text: "\u51E0\u9876\u51BB\u786C\u7684\u5E10\u7BF7\u56F4\u6210\u534A\u5708\uFF0C\u7BDD\u706B\u65E9\u5DF2\u7184\u706D\u3002\u4E00\u622A\u7BAD\u888B\u63D2\u5728\u96EA\u91CC\u3002"
+      text: "A few frozen-stiff tents form a half-circle; the campfire long dead. A quiver juts from the snow."
   - note: "\u9996\u6B21-\u827E\u8587\u62C9"
     minCount: 1
     maxCount: 1
@@ -42,10 +42,10 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u8FD9\u4E9B\u7BAD\u7FBD\u2026\u2026\u662F\u6211\u4EEC\u961F\u7684\u6807\u8BB0\u3002"
+      text: "These fletchings\u2026 they're our squad's mark."
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u4ED6\u4EEC\u4E00\u76F4\u90FD\u5728\u8FD9\u91CC\u3002\u4ECE\u6765\u6CA1\u4EBA\u6765\u63A5\u4ED6\u4EEC\u3002"
+      text: "They were here all along. No one ever came back for them."
   - note: "\u9996\u6B21-\u975E\u827E\u8587\u62C9"
     minCount: 1
     maxCount: 1
@@ -56,7 +56,7 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u4E00\u652F\u6CA1\u80FD\u64A4\u56DE\u7684\u4FA6\u5BDF\u961F\u3002\u51B0\u628A\u4ED6\u4EEC\u7559\u5728\u539F\u5730\u3002"
+      text: "A scouting party that never made it back. The ice kept them where they fell."
   - note: "\u4E8C\u6B21-\u827E\u8587\u62C9\u56DE\u5FC6"
     minCount: 2
     maxCount: 2
@@ -65,12 +65,12 @@ MonoBehaviour:
     minRunCount: 0
     maxRunCount: 0
     lines:
-    - speaker: "\u65C1\u767D"
+    - speaker: "Narrator"
       portraitKey: 
-      text: "\u51B0\u91CC\u6D6E\u51FA\u6A21\u7CCA\u7684\u4EBA\u5F71\uFF0C\u50CF\u88AB\u51BB\u4F4F\u7684\u4E00\u6BB5\u5F55\u50CF\u3002"
-    - speaker: "\u51B0\u4E0B\u7684\u56DE\u58F0"
+      text: "Blurred figures surface within the ice, like a frozen strip of film."
+    - speaker: "Echo Beneath the Ice"
       portraitKey: 
-      text: "\u300C\u827E\u8587\u62C9\u2014\u2014\u5F80\u4E0A\u8DD1\uFF0C\u4E0D\u8981\u56DE\u5934\uFF01\u300D"
+      text: "Elvira \u2014 run, don't look back!"
   - note: "\u4E09\u6B21-\u827E\u8587\u62C9\u771F\u76F8"
     minCount: 3
     maxCount: 3
@@ -81,10 +81,10 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u2026\u2026\u6211\u7EC8\u4E8E\u60F3\u8D77\u6765\u4E86\u3002"
+      text: "\u2026I finally remember."
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u4E0D\u662F\u6211\u629B\u5F03\u4E86\u4ED6\u4EEC\u3002\u662F\u4ED6\u4EEC\u5173\u4E0A\u51B0\u95E8\uFF0C\u628A\u6211\u63A8\u4E86\u51FA\u53BB\u3002"
+      text: "I didn't abandon them. They closed the ice gate and pushed me out."
   - note: "\u56DB\u6B21+-\u65C1\u767D\u6D88\u878D"
     minCount: 4
     maxCount: 0
@@ -93,9 +93,9 @@ MonoBehaviour:
     minRunCount: 0
     maxRunCount: 0
     lines:
-    - speaker: "\u65C1\u767D"
+    - speaker: "Narrator"
       portraitKey: 
-      text: "\u8425\u5730\u7684\u96EA\u5F00\u59CB\u4E00\u70B9\u70B9\u878D\u5316\u3002\u51BB\u786C\u7684\u5E06\u5E03\u4E5F\u677E\u5F00\u4E86\u3002"
+      text: "The camp's snow begins to melt, little by little. The frozen canvas loosens too."
   - note: "\u56DB\u6B21+-\u827E\u8587\u62C9\u544A\u522B"
     minCount: 4
     maxCount: 0
@@ -106,7 +106,7 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u8C22\u8C22\u4F60\u4EEC\u3002\u6211\u628A\u4F60\u4EEC\u7684\u540D\u5B57\u4E5F\u5E26\u51FA\u53BB\u4E86\u3002"
+      text: "Thank you. I carried your names out too."
   runStoryFlags:
   - f2_scout_camp_seen
   truthAwards:

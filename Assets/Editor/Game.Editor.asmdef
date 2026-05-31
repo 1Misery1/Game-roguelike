@@ -1,0 +1,29 @@
+{
+    "name": "Game.Editor",
+    "rootNamespace": "",
+    "references": [
+        "Game.Data",
+        "Game.Combat",
+        "Game.Core",
+        "Game.Art",
+        "Game.VFX",
+        "Game.Systems",
+        "Game.UI",
+        "Game.Actors",
+        "Game.Dungeon",
+        "Game.Narrative",
+        "Game.Factories",
+        "Game.Bootstrap"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

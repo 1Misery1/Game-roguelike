@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Floor2_FrostAltar
   m_EditorClassIdentifier: 
   objectId: f2_frost_altar
-  bannerText: "\u3010\u8C03\u67E5\u3011\u971C\u7720\u796D\u575B"
+  bannerText: "[Investigate] Frostsleep Altar"
   spawnFloor: 2
   spawnRoomIndex: 2
   spawnOffset: {x: -3.5, y: 2, z: 0}
@@ -29,9 +29,9 @@ MonoBehaviour:
     minRunCount: 0
     maxRunCount: 0
     lines:
-    - speaker: "\u65C1\u767D"
+    - speaker: "Narrator"
       portraitKey: 
-      text: "\u796D\u575B\u8986\u7740\u4E00\u5C42\u539A\u51B0\uFF0C\u51B0\u4E0B\u662F\u6559\u4F1A\u7559\u4E0B\u7684\u7977\u6587\u3002"
+      text: "The altar is sheathed in thick ice; beneath it, prayers left by the church."
   - note: "\u9996\u6B21-\u5965\u65AF\u6C40\u7977\u6587"
     minCount: 1
     maxCount: 1
@@ -42,16 +42,16 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u300C\u613F\u51B0\u5C01\u90AA\u6076\u3002\u300D"
+      text: "May the ice seal away evil."
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u300C\u613F\u6C89\u9ED8\u8986\u76D6\u7F6A\u8005\u3002\u300D"
+      text: "May silence cover the guilty."
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u300C\u613F\u65E0\u4EBA\u518D\u63D0\u8D77\u5730\u4E0B\u4E4B\u540D\u3002\u300D"
+      text: "May none speak the names beneath again."
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u2014\u2014\u8FD9\u4E0D\u662F\u5C01\u5370\u4EEA\u5F0F\u3002\u662F\u5C01\u53E3\u4EEA\u5F0F\u3002"
+      text: "\u2014 this is no sealing rite. It's a silencing rite."
   - note: "\u9996\u6B21-\u975E\u5965\u65AF\u6C40"
     minCount: 1
     maxCount: 1
@@ -62,7 +62,7 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u523B\u5B57\u50CF\u7977\u8BCD\uFF0C\u4F46\u8BFB\u8D77\u6765\u66F4\u50CF\u5728\u7981\u6B62\u540E\u4EBA\u63D0\u8D77\u4EC0\u4E48\u3002"
+      text: "The carvings read like prayers, but more like a ban on what later generations may mention."
   - note: "\u591A\u6B21-\u5965\u65AF\u6C40"
     minCount: 2
     maxCount: 2
@@ -73,7 +73,7 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u6559\u4F1A\u4E0D\u662F\u4E0D\u77E5\u9053\u3002\u4ED6\u4EEC\u9009\u62E9\u8BA9\u6B7B\u8005\u6C38\u8FDC\u6C89\u9ED8\u3002"
+      text: "The church was not unaware. They chose to keep the dead forever silent."
   - note: "\u4E09\u6B21-\u65C1\u767D"
     minCount: 3
     maxCount: 3
@@ -82,12 +82,12 @@ MonoBehaviour:
     minRunCount: 0
     maxRunCount: 0
     lines:
-    - speaker: "\u65C1\u767D"
+    - speaker: "Narrator"
       portraitKey: 
-      text: "\u7977\u6587\u7684\u7B14\u753B\u5F00\u59CB\u98CE\u5316\u3002\u51B0\u4E0B\u9732\u51FA\u66F4\u65E9\u7684\u4E00\u884C\u5B57\u2014\u2014"
-    - speaker: "\u65C1\u767D"
+      text: "The strokes of the prayer begin to weather. Beneath the ice, an earlier line emerges \u2014"
+    - speaker: "Narrator"
       portraitKey: 
-      text: "\u300C\u8BB0\u4F4F\u4ED6\u4EEC\u3002\u300D"
+      text: "Remember them."
   - note: "\u4E09\u6B21-\u5965\u65AF\u6C40\u65B0\u8A93"
     minCount: 3
     maxCount: 3
@@ -98,7 +98,7 @@ MonoBehaviour:
     lines:
     - speaker: '{hero}'
       portraitKey: '{heroKey}'
-      text: "\u6211\u4EE5\u6668\u8A93\u6559\u4F1A\u4E4B\u540D\uFF0C\u66FF\u4ED6\u4EEC\u8865\u56DE\u771F\u540D\u3002"
+      text: "In the name of the Dawnvow Church, I restore their true names."
   - note: "\u56DB\u6B21+-\u7EB8\u7247"
     minCount: 4
     maxCount: 0
@@ -107,9 +107,9 @@ MonoBehaviour:
     minRunCount: 0
     maxRunCount: 0
     lines:
-    - speaker: "\u65C1\u767D"
+    - speaker: "Narrator"
       portraitKey: 
-      text: "\u796D\u575B\u4E2D\u592E\u7559\u7740\u4E00\u7247\u70E7\u7126\u7684\u7EB8\u2014\u2014\u50CF\u662F\u6709\u4EBA\u5728\u4F60\u4E4B\u524D\u628A\u540D\u518C\u7684\u4E00\u9875\u653E\u4E86\u4E0A\u53BB\u3002"
+      text: "At the altar's center lies a scrap of charred paper \u2014 as if someone before you laid a page of the register here."
   runStoryFlags:
   - f2_altar_seen
   truthAwards:

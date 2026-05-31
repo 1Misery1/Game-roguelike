@@ -2,7 +2,7 @@ using Game.Data;
 using Game.Player;
 using UnityEngine;
 using UnityEngine.InputSystem;
-
+using Game.UI;
 namespace Game.Dungeon
 {
     // 商店武器展示台 — E键购买，OnGUI显示稀有度/价格/伤害
@@ -51,7 +51,7 @@ namespace Game.Dungeon
             int coins = GetCoins != null ? GetCoins() : 0;
             if (coins < Price)
             {
-                ShowMessage?.Invoke($"金币不足！需要 {Price} 金币");
+                ShowMessage?.Invoke($"Not enough coins! Need {Price} coins");
                 StartCoroutine(FlashRed());
                 return;
             }
@@ -74,7 +74,7 @@ namespace Game.Dungeon
         {
             if (_purchased || Weapon == null) return;
             if (Camera.main == null) return;
-            Game.Dev.UIFonts.ApplyToSkin();
+            UIFonts.ApplyToSkin();
 
             Vector3 screen = Camera.main.WorldToScreenPoint(transform.position + Vector3.up * 0.9f);
             if (screen.z < 0) return;
@@ -95,13 +95,13 @@ namespace Game.Dungeon
                 normal = { textColor = new Color(1f, 0.85f, 0.3f) }
             };
             GUI.Label(new Rect(x, y + 18f, 200, 18),
-                $"[{Price}c]  {Weapon.EffectiveDamage:0}伤  HP+{Weapon.HPBonus:0}", priceStyle);
+                $"[{Price}c]  {Weapon.EffectiveDamage:0} dmg  HP+{Weapon.HPBonus:0}", priceStyle);
 
             if (Weapon.Data.lifeStealRate > 0f || Weapon.Data.hpCostPerAttack > 0f)
             {
                 string special = Weapon.Data.lifeStealRate > 0f
-                    ? $"吸血{Weapon.Data.lifeStealRate * 100:0}%"
-                    : $"耗血{Weapon.Data.hpCostPerAttack:0}/次";
+                    ? $"Lifesteal {Weapon.Data.lifeStealRate * 100:0}%"
+                    : $"HP cost {Weapon.Data.hpCostPerAttack:0}/hit";
                 var spStyle = new GUIStyle(GUI.skin.label)
                 {
                     fontSize = 11, alignment = TextAnchor.MiddleCenter,
@@ -118,7 +118,7 @@ namespace Game.Dungeon
                     normal = { textColor = Color.white }
                 };
                 float hintY = (Weapon.Data.lifeStealRate > 0f || Weapon.Data.hpCostPerAttack > 0f) ? y + 52f : y + 36f;
-                GUI.Label(new Rect(x, hintY, 200, 16), "[E] 购买", hint);
+                GUI.Label(new Rect(x, hintY, 200, 16), "[E] Buy", hint);
             }
         }
     }

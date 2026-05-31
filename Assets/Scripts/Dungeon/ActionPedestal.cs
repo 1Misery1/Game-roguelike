@@ -1,7 +1,7 @@
 using Game.Player;
 using UnityEngine;
 using UnityEngine.InputSystem;
-
+using Game.UI;
 namespace Game.Dungeon
 {
     // 锻造台 / 附魔台 / 血药 — 商店中使用
@@ -54,7 +54,7 @@ namespace Game.Dungeon
             int coins = GetCoins != null ? GetCoins() : 0;
             if (coins < price)
             {
-                ShowMessage?.Invoke("金币不足！");
+                ShowMessage?.Invoke("Not enough coins!");
                 StartCoroutine(FlashRed());
                 return;
             }
@@ -79,7 +79,7 @@ namespace Game.Dungeon
         {
             if (usesLeft <= 0) return;
             if (Camera.main == null) return;
-            Game.Dev.UIFonts.ApplyToSkin();
+            UIFonts.ApplyToSkin();
 
             Vector3 screen = Camera.main.WorldToScreenPoint(transform.position + Vector3.up * 0.9f);
             if (screen.z < 0) return;
@@ -92,16 +92,16 @@ namespace Game.Dungeon
             switch (action)
             {
                 case ActionType.Forge:
-                    label = "锻造台"; labelColor = new Color(1f, 0.65f, 0.2f);
-                    detail = $"[{price}c]  剩{usesLeft}次";
+                    label = "Forge"; labelColor = new Color(1f, 0.65f, 0.2f);
+                    detail = $"[{price}c]  {usesLeft} left";
                     break;
                 case ActionType.Enchant:
-                    label = "附魔台"; labelColor = new Color(0.6f, 0.4f, 1f);
-                    detail = $"[{price}c]  剩{usesLeft}次";
+                    label = "Enchant"; labelColor = new Color(0.6f, 0.4f, 1f);
+                    detail = $"[{price}c]  {usesLeft} left";
                     break;
                 default: // HealthPotion
-                    label = "血药"; labelColor = new Color(0.2f, 0.95f, 0.4f);
-                    detail = $"[{price}c]  回复40%HP";
+                    label = "Health Potion"; labelColor = new Color(0.2f, 0.95f, 0.4f);
+                    detail = $"[{price}c]  restore 40% HP";
                     break;
             }
 
@@ -119,7 +119,7 @@ namespace Game.Dungeon
                     fontSize = 12, alignment = TextAnchor.MiddleCenter,
                     normal = { textColor = Color.white }
                 };
-                string hintText = action == ActionType.HealthPotion ? "[E] 使用" : "[E] 使用 (当前武器优先)";
+                string hintText = action == ActionType.HealthPotion ? "[E] Use" : "[E] Use (current weapon first)";
                 GUI.Label(new Rect(x, y + 20f, 180, 18), hintText, hint);
             }
         }

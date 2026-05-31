@@ -1,0 +1,27 @@
+{
+    "name": "Game.Bootstrap",
+    "rootNamespace": "Game.Bootstrap",
+    "references": [
+        "Game.Data",
+        "Game.Combat",
+        "Game.Core",
+        "Game.Art",
+        "Game.VFX",
+        "Game.Systems",
+        "Game.UI",
+        "Game.Actors",
+        "Game.Dungeon",
+        "Game.Narrative",
+        "Game.Factories",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

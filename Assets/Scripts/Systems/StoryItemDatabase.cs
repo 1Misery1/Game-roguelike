@@ -25,29 +25,29 @@ namespace Game.Systems
         static readonly Dictionary<string, ItemDef> _byId = new Dictionary<string, ItemDef>
         {
             // ── 净化系（选择净化路径获得，数值偏低但纯增益）─────────────────
-            ["寒镜碎片"] = new ItemDef {
-                id = "寒镜碎片", flavorTag = "防御+8  HP+20",
+            ["Frost Mirror Shard"] = new ItemDef {
+                id = "Frost Mirror Shard", flavorTag = "DEF +8  HP +20",
                 effects = new[] {
                     new Effect { stat = StatType.Defense, op = ModifierOp.Flat, value =  8f },
                     new Effect { stat = StatType.MaxHP,   op = ModifierOp.Flat, value = 20f },
                 }
             },
-            ["克制"] = new ItemDef {
-                id = "克制", flavorTag = "暴伤+25%  冷却-10%",
+            ["Restraint"] = new ItemDef {
+                id = "Restraint", flavorTag = "Crit DMG +25%  CD -10%",
                 effects = new[] {
                     new Effect { stat = StatType.CritDamage,        op = ModifierOp.PercentAdd, value = 0.25f },
                     new Effect { stat = StatType.CooldownReduction, op = ModifierOp.Flat,       value = 0.10f },
                 }
             },
-            ["记忆契约"] = new ItemDef {
-                id = "记忆契约", flavorTag = "防御+6  金币+15%",
+            ["Memory Pact"] = new ItemDef {
+                id = "Memory Pact", flavorTag = "DEF +6  Gold +15%",
                 effects = new[] {
                     new Effect { stat = StatType.Defense,  op = ModifierOp.Flat,       value = 6f },
                     new Effect { stat = StatType.CoinGain, op = ModifierOp.PercentAdd, value = 0.15f },
                 }
             },
-            ["推翻的勇气"] = new ItemDef {
-                id = "推翻的勇气", flavorTag = "暴击+12%  攻击+10",
+            ["Courage to Overthrow"] = new ItemDef {
+                id = "Courage to Overthrow", flavorTag = "Crit +12%  ATK +10",
                 effects = new[] {
                     new Effect { stat = StatType.CritRate, op = ModifierOp.Flat, value = 0.12f },
                     new Effect { stat = StatType.Attack,   op = ModifierOp.Flat, value = 10f   },
@@ -55,37 +55,37 @@ namespace Game.Systems
             },
 
             // ── 污染系（选择污染路径获得，数值高但身上多一份重量）─────────────
-            ["湖底遗物"] = new ItemDef {
-                id = "湖底遗物", flavorTag = "攻击+12  HP+25",
+            ["Lakebed Relic"] = new ItemDef {
+                id = "Lakebed Relic", flavorTag = "ATK +12  HP +25",
                 effects = new[] {
                     new Effect { stat = StatType.Attack, op = ModifierOp.Flat, value = 12f },
                     new Effect { stat = StatType.MaxHP,  op = ModifierOp.Flat, value = 25f },
                 }
             },
-            ["对峙记忆"] = new ItemDef {
-                id = "对峙记忆", flavorTag = "技能+18%  暴击+5%",
+            ["Memory of Confrontation"] = new ItemDef {
+                id = "Memory of Confrontation", flavorTag = "Skill +18%  Crit +5%",
                 effects = new[] {
                     new Effect { stat = StatType.SkillPower, op = ModifierOp.PercentAdd, value = 0.18f },
                     new Effect { stat = StatType.CritRate,   op = ModifierOp.Flat,       value = 0.05f },
                 }
             },
-            ["怒火残响"] = new ItemDef {
-                id = "怒火残响", flavorTag = "攻击+15  攻速+0.15",
+            ["Echo of Fury"] = new ItemDef {
+                id = "Echo of Fury", flavorTag = "ATK +15  ATK SPD +0.15",
                 effects = new[] {
                     new Effect { stat = StatType.Attack,      op = ModifierOp.Flat, value = 15f   },
                     new Effect { stat = StatType.AttackSpeed, op = ModifierOp.Flat, value = 0.15f },
                 }
             },
-            ["王座余威"] = new ItemDef {
-                id = "王座余威", flavorTag = "攻击+20%  技能+20%  移速-0.4（沉重）",
+            ["Throne's Lingering Might"] = new ItemDef {
+                id = "Throne's Lingering Might", flavorTag = "ATK +20%  Skill +20%  Move -0.4 (Heavy)",
                 effects = new[] {
                     new Effect { stat = StatType.Attack,     op = ModifierOp.PercentAdd, value =  0.20f },
                     new Effect { stat = StatType.SkillPower, op = ModifierOp.PercentAdd, value =  0.20f },
                     new Effect { stat = StatType.MoveSpeed,  op = ModifierOp.Flat,       value = -0.4f  },
                 }
             },
-            ["虚空记忆碎片"] = new ItemDef {
-                id = "虚空记忆碎片", flavorTag = "技能+10%",
+            ["Void Memory Shard"] = new ItemDef {
+                id = "Void Memory Shard", flavorTag = "Skill +10%",
                 effects = new[] {
                     new Effect { stat = StatType.SkillPower, op = ModifierOp.PercentAdd, value = 0.10f },
                 }
@@ -93,8 +93,8 @@ namespace Game.Systems
 
             // ── 纯叙事道具（无战斗加成，仅推动剧情，如 FrostAltar 联动）─────────
             // 例：「烧焦的工匠名册」无 effects，但 HasStoryItem 检查仍可生效
-            ["烧焦的工匠名册"] = new ItemDef {
-                id = "烧焦的工匠名册", flavorTag = "（剧情道具：可在霜眠祭坛上使用）",
+            ["Charred Artisan Register"] = new ItemDef {
+                id = "Charred Artisan Register", flavorTag = "(Story item: usable at the Frostsleep Altar)",
                 effects = new Effect[0]
             },
         };

@@ -1,8 +1,8 @@
 using System.Collections.Generic;
-using Game.Dev;
 using UnityEngine;
 using UnityEngine.InputSystem;
-
+using Game.Art;
+using Game.UI;
 namespace Game.Narrative
 {
     /// 对话框 UI（IMGUI 绘制），全局单例。
@@ -52,6 +52,7 @@ namespace Game.Narrative
             _index      = 0;
             _onComplete = onComplete;
             _open       = true;
+            Game.Core.GameSignals.DialogueActive = true;
             Time.timeScale = 0f;
         }
 
@@ -64,6 +65,7 @@ namespace Game.Narrative
         private void Close()
         {
             _open = false;
+            Game.Core.GameSignals.DialogueActive = false;
             Time.timeScale = 1f;
             var cb = _onComplete;
             _onComplete = null;
@@ -155,7 +157,7 @@ namespace Game.Narrative
             ShadowLabel(new Rect(tx, boxY + boxH * 0.375f, tw, boxH * 0.37f), line.Text, bodyStyle);
 
             // 推进提示
-            string hint = _index < _lines.Count - 1 ? "▶  点击 / 空格  继续" : "▶  点击 / 空格  结束";
+            string hint = _index < _lines.Count - 1 ? "▶  Click / Space  Continue" : "▶  Click / Space  End";
             int hintSize = Mathf.RoundToInt(Mathf.Clamp(boxH * 0.030f, 11f, 16f));
             GUI.Label(new Rect(tx, boxY + boxH * 0.79f, tw, boxH * 0.11f), hint,
                 Style(UIFont, hintSize, TextAnchor.MiddleRight, FontStyle.Italic,
@@ -163,7 +165,7 @@ namespace Game.Narrative
         }
 
         // 字体由全局 UIFonts 统一提供（方舟像素体；缺失时系统中文兜底）
-        private static Font UIFont   => Game.Dev.UIFonts.UI;
+        private static Font UIFont   => UIFonts.UI;
         private static Font NameFont => UIFont;
 
         // ── IMGUI 工具 ────────────────────────────────────────────────────────
