@@ -78,3 +78,15 @@ desktop.ini
 .idea/
 .vscode/
 .claude/
+
+# Working material kept out of version control (素材/文档/原图工作目录)
+/Docs/
+/photo/
+/_RawSprites/
+
+# Loose temp files produced during work (根目录工作临时文件)
+/*.png
+/_*.py
+/end
+/menu
+/run
