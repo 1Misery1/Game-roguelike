@@ -12,7 +12,9 @@ namespace Game.Art
 
         public static Sprite Get(string heroName)
         {
-            if (_cache.TryGetValue(heroName, out var s)) return s;
+            // 用 Unity 重载的 == 校验缓存对象是否仍存活：跨场景的 Resources.UnloadUnusedAssets
+            // 可能卸载底层贴图,使缓存里的 Sprite 变成"已销毁"对象,此时需重建。
+            if (_cache.TryGetValue(heroName, out var s) && s != null) return s;
             s = Build(heroName);
             if (s != null) _cache[heroName] = s;
             return s;
@@ -20,7 +22,7 @@ namespace Game.Art
 
         public static Sprite GetBack(string heroName)
         {
-            if (_cacheBack.TryGetValue(heroName, out var s)) return s;
+            if (_cacheBack.TryGetValue(heroName, out var s) && s != null) return s;
             s = BuildBack(heroName);
             if (s != null) _cacheBack[heroName] = s;
             return s;

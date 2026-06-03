@@ -19,10 +19,13 @@ namespace Game.Player
 
         GameObject     _go;
         SpriteRenderer _sr;
+        SpriteRenderer _ownerSr;   // 角色本体,用其 flipX 判断朝向
         bool           _animating;
 
         void Awake()
         {
+            _ownerSr = GetComponent<SpriteRenderer>();
+
             _go = new GameObject("_WeaponDisplay");
             _go.transform.SetParent(transform, false);
             _go.transform.localPosition = RestPos;
@@ -70,14 +73,15 @@ namespace Game.Player
         IEnumerator AttackAnim(WeaponCategory cat, Vector2 aimDir)
         {
             _animating = true;
-            float a = Angle(aimDir);
+            float up  = UpAngle();      // 固定「向上挥击」基准角(只随朝向轻微偏移,刀尖恒朝上)
+            float aim = Angle(aimDir);  // 仅远程弓矢沿用瞄准方向
             switch (cat)
             {
-                case WeaponCategory.Dagger:    yield return Stab(a, 0.13f, 0.50f); break;
-                case WeaponCategory.Longsword: yield return Slash(a, 0.20f, 75f);  break;
-                case WeaponCategory.Greatsword:yield return Slash(a, 0.30f, 110f); break;
-                case WeaponCategory.Bow:       yield return BowDraw(a, 0.22f);     break;
-                case WeaponCategory.Staff:     yield return StaffThrust(a, 0.18f, 0.45f); break;
+                case WeaponCategory.Dagger:    yield return Stab(up, 0.13f, 0.32f); break;
+                case WeaponCategory.Longsword: yield return Slash(up, 0.20f, 50f);  break;
+                case WeaponCategory.Greatsword:yield return Slash(up, 0.30f, 65f);  break;
+                case WeaponCategory.Bow:       yield return BowDraw(aim, 0.22f);    break;
+                case WeaponCategory.Staff:     yield return StaffThrust(up, 0.18f, 0.30f); break;
             }
             UpdateRestPose(aimDir);
             _animating = false;
@@ -86,26 +90,28 @@ namespace Game.Player
         IEnumerator SkillAnim(WeaponCategory cat, Vector2 aimDir)
         {
             _animating = true;
-            float a = Angle(aimDir);
+            float up  = UpAngle();      // 固定「向上挥击」基准角
+            float aim = Angle(aimDir);  // 仅远程弓矢沿用瞄准方向
             switch (cat)
             {
                 case WeaponCategory.Dagger:
-                    // Triple quick jab
-                    for (int i = 0; i < 3; i++) yield return Stab(a + i * 12f, 0.09f, 0.65f);
+                    // Triple quick jab (恒向上)
+                    for (int i = 0; i < 3; i++) yield return Stab(up + i * 8f, 0.09f, 0.42f);
                     break;
                 case WeaponCategory.Longsword:
-                    yield return Slash(a, 0.32f, 140f);
+                    yield return Slash(up, 0.32f, 90f);
                     break;
                 case WeaponCategory.Greatsword:
-                    yield return Slash(a, 0.45f, 180f);
+                    yield return Slash(up, 0.45f, 110f);
                     break;
                 case WeaponCategory.Bow:
                     // Rapid double shot
-                    yield return BowDraw(a - 8f, 0.16f);
-                    yield return BowDraw(a + 8f, 0.16f);
+                    yield return BowDraw(aim - 8f, 0.16f);
+                    yield return BowDraw(aim + 8f, 0.16f);
                     break;
                 case WeaponCategory.Staff:
-                    yield return StaffCircle(a, 0.40f);
+                    // 向上推击+脉冲(代替会朝下的环绕)
+                    yield return StaffThrust(up, 0.40f, 0.40f);
                     break;
             }
             UpdateRestPose(aimDir);
@@ -135,7 +141,7 @@ namespace Game.Player
         {
             float start = aimAngle + arcDeg * 0.5f;
             float end   = aimAngle - arcDeg * 0.5f;
-            const float r = 0.38f;
+            const float r = 0.3f;
             for (float t = 0f; t < dur; t += Time.deltaTime)
             {
                 if (!_go) yield break;
@@ -188,31 +194,24 @@ namespace Game.Player
             _go.transform.localPosition = RestPos;
         }
 
-        // Staff skill — sweeping circle flourish
-        IEnumerator StaffCircle(float aimAngle, float dur)
-        {
-            Vector3 baseS = _go.transform.localScale;
-            for (float t = 0f; t < dur; t += Time.deltaTime)
-            {
-                if (!_go) yield break;
-                float p = t / dur;
-                float a = (aimAngle + p * 360f) * Mathf.Deg2Rad;
-                _go.transform.localPosition = new Vector3(Mathf.Cos(a) * 0.42f, Mathf.Sin(a) * 0.42f, 0f);
-                SetRot(aimAngle + p * 360f);
-                _go.transform.localScale = baseS * (1f + 0.38f * Mathf.Sin(p * Mathf.PI));
-                yield return null;
-            }
-            _go.transform.localScale = baseS;
-        }
-
         // ── Helpers ───────────────────────────────────────────────────────────
+
+        // 固定的「向上」基准角(90°=正上)，只随朝向轻微外倾。
+        // 让挥击动作恒为向上、刀尖朝上，绝不出现朝下/绕剑刃甩柄的姿态。
+        float UpAngle()
+        {
+            bool facingRight = _ownerSr != null ? !_ownerSr.flipX : true;
+            return 90f + (facingRight ? -15f : 15f);
+        }
 
         void UpdateRestPose(Vector2 aimDir)
         {
-            float sign = aimDir.x >= 0f ? 1f : -1f;
-            _go.transform.localPosition = new Vector3(sign * 0.35f, -0.2f, 0f);
-            // Tip tilts slightly toward aim, not purely aim angle (looks more natural at rest)
-            SetRot(Angle(aimDir) * 0.5f + sign * 20f);
+            // 武器悬在角色「朝向的另一侧手」：面朝右(flipX=false)→武器在左；面朝左→武器在右。
+            bool facingRight = _ownerSr != null ? !_ownerSr.flipX : aimDir.x >= 0f;
+            float side = facingRight ? -1f : 1f;
+            // 始终竖握「朝上」、落在人物下半身；只随朝向轻微外倾，绝不朝下。
+            _go.transform.localPosition = new Vector3(side * 0.3f, -0.45f, 0f);
+            _go.transform.localRotation = Quaternion.Euler(0f, 0f, side * 15f);
         }
 
         // Sprite points UP; subtract 90° so aimAngle=0 (East) → sprite points East

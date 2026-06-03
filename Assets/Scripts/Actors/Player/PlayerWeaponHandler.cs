@@ -125,7 +125,7 @@ namespace Game.Player
                 float punchInterval = 0.5f;
                 if (Time.time < _lastAttackTime + punchInterval) return false;
                 _lastAttackTime = Time.time;
-                PunchAttack();
+                PunchAttack(aimDir);
                 return true;
             }
 
@@ -158,18 +158,32 @@ namespace Game.Player
             return true;
         }
 
-        private void PunchAttack()
+        private void PunchAttack(Vector2 aimDir)
         {
             float dmg = _stats.Get(StatType.Attack) + 8f;
             var cols = Physics2D.OverlapCircleAll(transform.position, 1.2f, NonWallMask);
             foreach (var col in cols)
             {
                 if (col.gameObject == gameObject) continue;
+                if (!InAttackArc(col, aimDir)) continue;
                 col.GetComponent<IDamageable>()?.TakeDamage(new DamageInfo
                 {
                     Amount = dmg, Type = DamageType.Physical, IsCrit = false, Source = gameObject
                 });
             }
+        }
+
+        // 近战命中方向过滤:只命中朝挥砍(aimDir)一侧扇形内的目标,贴身重叠者不受方向限制。
+        // 修复"向左挥砍却打到右侧目标"的整圆判定问题。
+        private const float MeleeArcMinDot = 0.25f;   // ≈ 正面 ±75°
+        private bool InAttackArc(Collider2D col, Vector2 aimDir)
+        {
+            Vector2 p  = transform.position;
+            Vector2 to = col.ClosestPoint(p) - p;
+            float dist = to.magnitude;
+            if (dist <= 0.5f) return true;                 // 贴身:不限方向
+            if (aimDir.sqrMagnitude < 0.0001f) return true; // 无明确朝向:回退为不限制
+            return Vector2.Dot(to / dist, aimDir.normalized) >= MeleeArcMinDot;
         }
 
         // ── 弓蓄力系统 ────────────────────────────────────────────────
@@ -284,6 +298,7 @@ namespace Game.Player
             foreach (var col in cols)
             {
                 if (col.gameObject == gameObject) continue;
+                if (!InAttackArc(col, aimDir)) continue;   // 只命中挥砍方向扇形内的目标
                 float finalDmg = damage;
                 if (canBackstab)
                 {

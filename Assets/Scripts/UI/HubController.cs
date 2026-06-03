@@ -37,9 +37,17 @@ namespace Game.UI
         [SerializeField] private Vector2 boundsMin = new Vector2(-11.5f, -5.5f);
         [SerializeField] private Vector2 boundsMax = new Vector2( 11.5f,  5.5f);
 
+        [Header("Camera follow (视角锁定在当前操控的角色上)")]
+        [Tooltip("越小越拉近、越聚焦角色；越大看到的房间越多")]
+        [SerializeField] private float   camOrthoSize = 5.5f;
+        [SerializeField] private float   camLerp      = 8f;          // 跟随平滑
+        [SerializeField] private Vector2 camMin = new Vector2(-12f, -7.2f); // 相机中心夹紧范围(房间四壁)
+        [SerializeField] private Vector2 camMax = new Vector2( 12f,  6.5f);
+
         [Header("Ghost / Unlock visuals (压暗,贴合被远处火光照亮的氛围)")]
         [SerializeField] private Color ghostTint = new Color(0.55f, 0.7f, 0.92f, 0.6f);
         [SerializeField] private Color unlockedTint = new Color(0.82f, 0.82f, 0.9f, 1f);
+        [SerializeField] private Color awokenTint = new Color(1f, 0.93f, 0.78f, 1f); // 觉醒魂体的暖金点亮
         [SerializeField] private Color pedestalLockedTint = new Color(0.28f, 0.28f, 0.36f, 1f);
         [SerializeField] private Color pedestalUnlockedTint = new Color(0.58f, 0.56f, 0.64f, 1f);
 
@@ -69,6 +77,11 @@ namespace Game.UI
 
             _persistent = GameManager.Instance != null ? GameManager.Instance.Persistent : PersistentState.Load();
             if (cam == null) cam = Camera.main;
+            if (cam != null)
+            {
+                cam.orthographic     = true;
+                cam.orthographicSize = camOrthoSize;
+            }
             if (player != null) _playerSr = player.GetComponent<SpriteRenderer>();
 
             _stations.AddRange(FindObjectsOfType<HubStation>());
@@ -78,12 +91,47 @@ namespace Game.UI
                 _playerGhostHeight = _playerSr.bounds.size.y;      // 与真身换装时保持等高
             }
             EnsureStoryUnlocks();
+            _selectedHeroIndex = -1;                 // 开局默认游魂态
+            bool fromTraining = TryResumeFromTraining();  // 若从练武场归来:以英雄态立于门旁
             ApplyPedestalUnlockVisuals();
             ApplyCompanionSeats();
             ApplyMemorialRows();
             ApplyLiftSeal();
             ApplyPlayerVisual();
-            Flash("你是一缕余烬游魂。走向台前已觉醒的残魂,按 E 附身,便能化作他的身躯下潜。", 7f);
+            SnapCamera();
+            if (fromTraining && _selectedHeroIndex >= 0)
+                Flash($"你自练武场归来,仍以 {_heroes[_selectedHeroIndex].displayName} 之身,立于门旁。", 4f);
+            else
+                Flash("你是一缕余烬游魂。走向台前已觉醒的残魂,按 E 附身,便能化作他的身躯下潜。", 7f);
+        }
+
+        // 从练武场返回:沿用刚才操控的英雄(英雄态),并把玩家落在练武场门旁。
+        // 返回 true 表示确实是从练武场归来且成功附身。
+        private bool TryResumeFromTraining()
+        {
+            var gm = GameManager.Instance;
+            if (gm == null || !gm.ReturningFromTraining) return false;
+            gm.ReturningFromTraining = false;                 // 消费一次性标志
+            if (gm.TrainingHero == null) return false;
+
+            int idx = System.Array.FindIndex(_heroes,
+                h => h != null && h.heroName == gm.TrainingHero.heroName);
+            if (idx < 0 || !_persistent.IsHeroUnlocked(_heroes[idx].heroName)) return false;
+
+            _selectedHeroIndex = idx;
+            var door = FindStation(HubStationKind.TrainingDoor);
+            if (door != null && player != null)
+            {
+                var p = door.transform.position;
+                player.position = new Vector3(p.x, p.y + 1.0f, player.position.z); // 门内侧一点,正对房间
+            }
+            return true;
+        }
+
+        private HubStation FindStation(HubStationKind kind)
+        {
+            foreach (var s in _stations) if (s.kind == kind) return s;
+            return null;
         }
 
         // 剧情解锁:某英雄的「专属真相」一旦在地底被揭开(写入存档 TruthFlags),
@@ -105,7 +153,7 @@ namespace Game.UI
             }
             if (changed) _persistent.Save();
             // 开局不自动附身:玩家先以「余烬游魂」形态游荡,需走到台座主动附身。
-            _selectedHeroIndex = -1;
+            // (_selectedHeroIndex 的初值在 Start 里设定,以便区分「从练武场归来」的情形)
         }
 
         // 把某个 SpriteRenderer 的图换成英雄「游戏内真身」精灵,并保持原显示高度不变。
@@ -150,8 +198,8 @@ namespace Game.UI
                     var ghost = fig.GetComponent<GhostFloat>();
                     if (unlocked)
                     {
-                        // 已觉醒:换成游戏内真身建模,实体显示,停止漂浮
-                        SwapToRealHero(fig, _heroes[s.heroIndex].heroName);
+                        // 已觉醒:手绘魂体点亮为暖金、停止漂浮(不再用低分辨率程序化真身)
+                        if (sr != null) sr.color = awokenTint;
                         if (ghost != null) ghost.enabled = false;
                     }
                     else
@@ -178,8 +226,11 @@ namespace Game.UI
                 companionSeats[i].SetActive(seated);
                 if (seated)
                 {
+                    // 火边已觉醒的同伴显示其游戏内「真身」像素角色(人物而非鬼魂),
+                    // 与玩家附身后的形象一致;台座上未唤醒者才保留残魂。
                     var spr = companionSeats[i].transform.Find("Sprite");
-                    SwapToRealHero(spr != null ? spr : companionSeats[i].transform, _heroes[i].heroName);
+                    SwapToRealHero(spr != null ? spr : companionSeats[i].transform,
+                                   _heroes[i].heroName);
                 }
             }
         }
@@ -216,6 +267,7 @@ namespace Game.UI
             if (_playerSr == null || player == null) return;
             if (_selectedHeroIndex >= 0 && _selectedHeroIndex < _heroes.Length)
             {
+                // 附身:玩家化作该英雄的游戏内真身(像素角色,人物而非魂体),保持统一显示高度
                 SwapToRealHero(player, _heroes[_selectedHeroIndex].heroName);
             }
             else
@@ -232,6 +284,36 @@ namespace Game.UI
                     }
                 }
             }
+            FitPlayerShadow();
+        }
+
+        // 玩家脚下贴地影：因游魂/真身切换会改 player.localScale，需反向补偿，
+        // 让阴影的世界大小与脚下偏移保持恒定（与火边伙伴的阴影一致），不随换身忽大忽小。
+        private void FitPlayerShadow()
+        {
+            if (player == null) return;
+            var sh = player.Find("Shadow");
+            if (sh == null) return;
+            float ps = player.localScale.x;
+            if (ps < 0.0001f) return;
+            const float shadowWorldScale = 0.40f; // 椭圆约 1 单位宽
+            const float shadowWorldOffY  = -0.72f; // 落在脚下的世界偏移
+            sh.localScale    = new Vector3(shadowWorldScale / ps, shadowWorldScale / ps, 1f);
+            var lp = sh.localPosition;
+            sh.localPosition = new Vector3(lp.x, shadowWorldOffY / ps, lp.z);
+        }
+
+        // 取某英雄的手绘魂体精灵(挂在其火边伙伴座位上的 Ghost_职业)。缺失时退回通用游魂图。
+        private Sprite HeroGhostSprite(int idx)
+        {
+            if (companionSeats != null && idx >= 0 && idx < companionSeats.Length && companionSeats[idx] != null)
+            {
+                var sp = companionSeats[idx].transform.Find("Sprite");
+                var sr = sp != null ? sp.GetComponent<SpriteRenderer>()
+                                    : companionSeats[idx].GetComponent<SpriteRenderer>();
+                if (sr != null && sr.sprite != null) return sr.sprite;
+            }
+            return _playerGhostSprite;
         }
 
         private void Update()
@@ -241,10 +323,15 @@ namespace Game.UI
             var dir = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
             if (dir.sqrMagnitude > 1f) dir.Normalize();
 
-            // 左右转向(与游戏内一致:朝右 flipX=false,朝左 flipX=true)
+            // 左右转向。英雄真身:朝右 flipX=false(与游戏内一致)。
+            // 余烬游魂贴图默认朝向与英雄相反,故游魂态额外反转,避免左右朝向反了。
             if      (dir.x >  0.01f) _facingRight = true;
             else if (dir.x < -0.01f) _facingRight = false;
-            if (_playerSr != null) _playerSr.flipX = !_facingRight;
+            if (_playerSr != null)
+            {
+                bool ghost = _selectedHeroIndex < 0;
+                _playerSr.flipX = ghost ? _facingRight : !_facingRight;
+            }
 
             Vector2 cur   = player.position;
             Vector2 delta = dir * moveSpeed * Time.deltaTime;
@@ -275,6 +362,33 @@ namespace Game.UI
                 UnPossess();
         }
 
+        // 视角锁定:相机平滑跟随当前操控的对象(游魂或附身的英雄),并夹紧到房间四壁内。
+        private void LateUpdate()
+        {
+            if (cam == null || player == null) return;
+            Vector3 target = CameraTargetFor(player.position);
+            cam.transform.position = Vector3.Lerp(cam.transform.position, target, 1f - Mathf.Exp(-camLerp * Time.deltaTime));
+        }
+
+        private Vector3 CameraTargetFor(Vector3 focus)
+        {
+            float hh = cam.orthographicSize;
+            float hw = hh * cam.aspect;
+            // 房间比视野窄时不横向平移(维持居中),否则夹紧
+            float cx = (camMax.x - camMin.x) > 2f * hw
+                ? Mathf.Clamp(focus.x, camMin.x + hw, camMax.x - hw) : (camMin.x + camMax.x) * 0.5f;
+            float cy = (camMax.y - camMin.y) > 2f * hh
+                ? Mathf.Clamp(focus.y, camMin.y + hh, camMax.y - hh) : (camMin.y + camMax.y) * 0.5f;
+            return new Vector3(cx, cy, cam.transform.position.z);
+        }
+
+        // 瞬移/换身后立即把相机对准目标,避免横跨房间的拉丝。
+        private void SnapCamera()
+        {
+            if (cam == null || player == null) return;
+            cam.transform.position = CameraTargetFor(player.position);
+        }
+
         // 离体:玩家在当前位置变回游魂,被附身的英雄重新坐回火边座位。
         private void UnPossess()
         {
@@ -300,6 +414,7 @@ namespace Game.UI
                 case HubStationKind.QuestBoard:
                     Flash("悬赏:斩杀地底的「怪物」。走向升降井便可开始下潜。", 4f); break;
                 case HubStationKind.LiftDoor: BeginDescent(); break;
+                case HubStationKind.TrainingDoor: EnterTraining(); break;
                 case HubStationKind.Campfire:
                     Flash("黑暗之前最后的火。某处的地底,仍有人在等。", 5f); break;
                 case HubStationKind.Memorial:
@@ -331,6 +446,7 @@ namespace Game.UI
             }
             ApplyPlayerVisual();        // 游魂 → 该英雄真身
             ApplyCompanionSeats();      // 隐藏被附身者的座位(原英雄消失),其余已解锁者照常围坐
+            SnapCamera();               // 视角立即对准刚附身的真身
             Flash($"附身成功 — 你化作了 {hero.displayName},自火边起身。", 2.5f);
         }
 
@@ -349,6 +465,24 @@ namespace Game.UI
                 return;
             }
             GameManager.Instance.StartRun(hero);
+        }
+
+        // 进入训练场(白盒练武场)。需先附身一缕残魂,以其真身入场试招。
+        private void EnterTraining()
+        {
+            if (_selectedHeroIndex < 0 || _selectedHeroIndex >= _heroes.Length)
+            {
+                Flash("游魂无法挥剑。先附身一缕已觉醒的残魂,再去练武场试招。", 4f);
+                return;
+            }
+            var hero = _heroes[_selectedHeroIndex];
+            if (GameManager.Instance == null)
+            {
+                Debug.LogWarning("[HubController] No GameManager in scene; cannot enter training.");
+                Flash("GameManager 缺失,无法进入练武场。", 3f);
+                return;
+            }
+            GameManager.Instance.EnterTraining(hero);
         }
 
         private void Flash(string msg, float dur) { _msg = msg; _msgUntil = Time.unscaledTime + dur; }
@@ -404,6 +538,7 @@ namespace Game.UI
                         ? $"选择 {h.displayName}" : $"凝视 {h.displayName} 的残魂";
                 case HubStationKind.QuestBoard: return "查看悬赏";
                 case HubStationKind.LiftDoor:   return "下潜";
+                case HubStationKind.TrainingDoor: return "进入练武场";
                 case HubStationKind.Campfire:   return "围火休憩";
                 case HubStationKind.Memorial:   return "细看名册";
                 case HubStationKind.Records:    return "查看战绩";
