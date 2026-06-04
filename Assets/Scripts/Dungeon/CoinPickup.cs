@@ -26,6 +26,7 @@ namespace Game.Dungeon
             if (_picked) return;
             if (other.GetComponent<PlayerController>() == null) return;
             _picked = true;
+            Game.Core.AudioManager.Get().PlaySfx("coin");
             OnPicked?.Invoke(amount);
             Destroy(gameObject);
         }

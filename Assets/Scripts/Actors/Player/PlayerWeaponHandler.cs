@@ -160,6 +160,7 @@ namespace Game.Player
 
         private void PunchAttack(Vector2 aimDir)
         {
+            Game.Core.AudioManager.Get().PlaySfx("swing");
             float dmg = _stats.Get(StatType.Attack) + 8f;
             var cols = Physics2D.OverlapCircleAll(transform.position, 1.2f, NonWallMask);
             foreach (var col in cols)
@@ -294,6 +295,7 @@ namespace Game.Player
         private void MeleeAttack(float damage, float range, DamageType type, bool isCrit, Vector2 aimDir,
             WeaponCategory category, bool canBackstab = false)
         {
+            Game.Core.AudioManager.Get().PlaySfx("swing");
             var cols = Physics2D.OverlapCircleAll(transform.position, range, NonWallMask);
             foreach (var col in cols)
             {

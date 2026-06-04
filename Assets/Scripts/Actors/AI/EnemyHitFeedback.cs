@@ -36,6 +36,9 @@ namespace Game.AI
 
         void OnHit(DamageInfo dmg)
         {
+            // 0. 命中音效（武器击中敌人）
+            Game.Core.AudioManager.Get().PlaySfx("hit");
+
             // 1. White flash (interrupt any ongoing flash first)
             if (_flashCo != null) StopCoroutine(_flashCo);
             _flashCo = StartCoroutine(FlashRoutine());

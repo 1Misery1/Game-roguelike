@@ -1076,6 +1076,9 @@ namespace Game.Bootstrap
             _bossHealth = bossHp;
             _bossName   = boss.name;
 
+            // 进入 Boss 战，切到战斗 BGM
+            AudioManager.Get().PlayMusic("boss_battle");
+
             // Boss 受击反馈：只做白闪 + HP 着色，无击退（Boss 体型大不应被弹飞）
             var feedback = boss.AddComponent<EnemyHitFeedback>();
             feedback.KnockbackForce = 0f;
@@ -1097,10 +1100,11 @@ namespace Game.Bootstrap
                 if (CurrentFloor >= maxFloor)
                 {
                     if (!_hiddenBossSpawned && IsHiddenBossUnlocked()) SpawnHiddenBoss();
-                    else                                                TriggerVictory();
+                    else { AudioManager.Get().PlayMusic("dungeon_ambient_1"); TriggerVictory(); }
                 }
                 else
                 {
+                    AudioManager.Get().PlayMusic("dungeon_ambient_1");
                     TriggerFloorComplete();
                 }
             };
@@ -1189,6 +1193,7 @@ namespace Game.Bootstrap
 
                 _bossHealth = boss.GetComponent<Health>();
                 _bossName   = "Kingdom's Guilt";
+                AudioManager.Get().PlayMusic("boss_battle");
                 var feedback = boss.AddComponent<EnemyHitFeedback>();
                 feedback.KnockbackForce = 0f;
                 _bossHealth.OnDamaged += dmg =>
@@ -1986,6 +1991,8 @@ namespace Game.Bootstrap
             {
                 StartCoroutine(FlashRoutine(sr, new Color(1f, 0.4f, 0.4f), 0.18f));
                 if (playerTr != null) DamageNumbers.Instance?.Show(playerTr.position + Vector3.up * 0.5f, dmg.Amount, dmg.IsCrit);
+                // 受击音效；排除耗血武器对自身造成的 True 伤害（Source 为玩家自身）
+                if (dmg.Source != _player) AudioManager.Get().PlaySfx("hurt");
             };
             _playerHealth.OnDied += () =>
             {
@@ -2024,6 +2031,9 @@ namespace Game.Bootstrap
             // 武器 HP 加成会在 Health 之后才提高 MaxHP，导致 _current 卡在基础上限
             // 装备完起手武器后强制顶满 Current
             _playerHealth.Heal(_playerHealth.Max);
+
+            // 开局起播地牢探索 BGM（Boss 战时会切到战斗曲，结束后切回）
+            AudioManager.Get().PlayMusic("dungeon_ambient_1");
         }
 
         private void SpawnWeaponPedestal(Vector3 pos, WeaponInstance weapon)
