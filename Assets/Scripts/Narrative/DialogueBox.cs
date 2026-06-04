@@ -95,6 +95,17 @@ namespace Game.Narrative
             }
         }
 
+        // 英雄立绘缓存（Resources/Portraits/{heroKey}.png）。含 null 缓存，避免每帧 Resources.Load。
+        private static readonly Dictionary<string, Texture2D> _portraitArt =
+            new Dictionary<string, Texture2D>();
+        private static Texture2D LoadPortraitArt(string key)
+        {
+            if (_portraitArt.TryGetValue(key, out var t)) return t;
+            t = Resources.Load<Texture2D>($"Portraits/{key}");
+            _portraitArt[key] = t;
+            return t;
+        }
+
         // ── 布局 ──────────────────────────────────────────────────────────────
         // 背景图 1672×941。各区域按背景图内框比例标定：
         //   · 左侧头像内框 ≈ x[0.07~0.28]  y[0.21~0.79]
@@ -126,13 +137,23 @@ namespace Game.Narrative
                 FillRect(new Rect(boxX, boxY + boxH - 2f, boxW, 2f), new Color(0.5f, 0.4f, 0.7f));
             }
 
-            // 左侧头像（嵌入背景图的内框）
-            var portrait = string.IsNullOrEmpty(line.PortraitKey) ? null : HeroSprites.Get(line.PortraitKey);
-            if (portrait != null)
+            // 左侧头像（嵌入背景图的内框）：优先真立绘（Resources/Portraits/{key}.png），
+            // 缺失时回退到 HeroSprites 程序化精灵。
+            if (!string.IsNullOrEmpty(line.PortraitKey))
             {
                 var portRect = new Rect(boxX + boxW * 0.085f, boxY + boxH * 0.27f,
                                         boxW * 0.180f, boxH * 0.44f);
-                GUI.DrawTexture(portRect, portrait.texture, ScaleMode.ScaleToFit);
+                var art = LoadPortraitArt(line.PortraitKey);
+                if (art != null)
+                {
+                    GUI.DrawTexture(portRect, art, ScaleMode.ScaleToFit);
+                }
+                else
+                {
+                    var portrait = HeroSprites.Get(line.PortraitKey);
+                    if (portrait != null)
+                        GUI.DrawTexture(portRect, portrait.texture, ScaleMode.ScaleToFit);
+                }
             }
 
             // 右侧文字面板

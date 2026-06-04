@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using Game.Data;
 namespace Game.Bootstrap
@@ -31,8 +32,14 @@ namespace Game.Bootstrap
                 sprite = customSprite;
             else
             {
-                var tex = GenerateTexture(kind);
-                sprite  = Sprite.Create(tex, new Rect(0, 0, W, H), new Vector2(0.5f, 0.5f), PPU);
+                // 优先使用生成的氛围地面图（Resources/Backgrounds/Floor{1,2,3}.png）；
+                // 缺图时回退为程序化纹理。最终都会被拉伸填满战斗区，PPU 不影响尺寸。
+                sprite = LoadArtSprite(kind);
+                if (sprite == null)
+                {
+                    var tex = GenerateTexture(kind);
+                    sprite  = Sprite.Create(tex, new Rect(0, 0, W, H), new Vector2(0.5f, 0.5f), PPU);
+                }
             }
 
             var go = new GameObject("FloorBackground");
@@ -48,6 +55,32 @@ namespace Game.Bootstrap
             float refH = sprite.rect.height / sprite.pixelsPerUnit;
             go.transform.localScale = new Vector3(worldWidth / refW, worldHeight / refH, 1f);
             return go;
+        }
+
+        // 按楼层主题加载生成的氛围地面图；缓存（含 null）避免重复 Resources.Load。
+        static readonly Dictionary<FloorProceduralKind, Sprite> _artCache =
+            new Dictionary<FloorProceduralKind, Sprite>();
+        static Sprite LoadArtSprite(FloorProceduralKind kind)
+        {
+            string name;
+            switch (kind)
+            {
+                case FloorProceduralKind.Inferno: name = "Backgrounds/Floor1"; break;
+                case FloorProceduralKind.Frost:   name = "Backgrounds/Floor2"; break;
+                case FloorProceduralKind.Chaos:   name = "Backgrounds/Floor3"; break;
+                default: return null;
+            }
+            if (_artCache.TryGetValue(kind, out var cached)) return cached;
+            var tex = Resources.Load<Texture2D>(name);
+            Sprite s = null;
+            if (tex != null)
+            {
+                tex.filterMode = FilterMode.Bilinear;
+                s = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height),
+                                  new Vector2(0.5f, 0.5f), 100f);
+            }
+            _artCache[kind] = s;
+            return s;
         }
 
         static FloorProceduralKind KindFromFloor(int floor)

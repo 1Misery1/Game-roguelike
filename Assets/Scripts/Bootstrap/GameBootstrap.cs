@@ -1148,7 +1148,23 @@ namespace Game.Bootstrap
                 float kgScaleMul = kg != null ? (kg.visualScale / 1.4f) : 1.6f; // 1.4 是 ChaosLord 默认缩放
                 boss.transform.localScale *= kgScaleMul;
                 var sr = boss.GetComponent<SpriteRenderer>();
-                if (sr != null) sr.color = kg != null ? kg.tintColor : new Color(0.92f, 0.78f, 0.30f);
+                var kgSprite = LoadKingdomGuiltSprite();
+                if (sr != null)
+                {
+                    if (kgSprite != null)
+                    {
+                        // 专属立绘：覆盖复用自 ChaosLord 的程序化精灵，保留原色（不做金色叠染）
+                        sr.sprite = kgSprite;
+                        sr.color  = Color.white;
+                        // 单一立绘，禁用「前/背面切换」否则转身会变回占位方块
+                        var facing = boss.GetComponent<EnemyFacing>();
+                        if (facing != null) Destroy(facing);
+                    }
+                    else
+                    {
+                        sr.color = kg != null ? kg.tintColor : new Color(0.92f, 0.78f, 0.30f);
+                    }
+                }
 
                 // 移除原 ChaosLord AI，挂上自定义 AI
                 var oldAI = boss.GetComponent<ChaosLordAI>();
@@ -2109,6 +2125,41 @@ namespace Game.Bootstrap
             enemy.GetComponent<Health>()?.Heal(99999f);
         }
 
+        // KingdomGuilt 最终 Boss 专属立绘（Resources/Enemies/KingdomGuilt.png）。
+        // PPU 设为高度/2，使整帧≈2 世界单位，与 ChaosLord 程序化精灵基准一致，沿用既有缩放系数。
+        private static Sprite _kgSprite;
+        private static bool   _kgSpriteTried;
+        private static Sprite LoadKingdomGuiltSprite()
+        {
+            if (_kgSpriteTried) return _kgSprite;
+            _kgSpriteTried = true;
+            var tex = Resources.Load<Texture2D>("Enemies/KingdomGuilt");
+            if (tex == null)
+            {
+                Debug.LogWarning("[GameBootstrap] 未找到 Enemies/KingdomGuilt 立绘，回退为 ChaosLord 外观。");
+                return null;
+            }
+            tex.filterMode = FilterMode.Bilinear;
+            _kgSprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height),
+                                      new Vector2(0.5f, 0.5f), tex.height / 2f);
+            return _kgSprite;
+        }
+
+        // 三档结局 CG（Resources/Endings/Ending_{Crown|Truth|Normal}.png）。
+        // 缓存（含 null）避免每帧 Resources.Load；缺图时过场自动回退为纯黑+标题。
+        private static readonly Dictionary<EndingTier, Texture2D> _endingCG =
+            new Dictionary<EndingTier, Texture2D>();
+        private static Texture2D GetEndingCG(EndingTier tier)
+        {
+            if (_endingCG.TryGetValue(tier, out var t)) return t;
+            string name = tier == EndingTier.Crown ? "Ending_Crown"
+                        : tier == EndingTier.Truth ? "Ending_Truth"
+                        :                            "Ending_Normal";
+            t = Resources.Load<Texture2D>($"Endings/{name}");
+            _endingCG[tier] = t; // 可能为 null，仍缓存
+            return t;
+        }
+
         private TalentPickup SpawnTalentOrb(TalentData data, Color color)
         {
             var go = new GameObject("Talent_" + data.talentName);
@@ -2835,12 +2886,28 @@ namespace Game.Bootstrap
             float elapsed  = Mathf.Max(0f, Time.unscaledTime - _cutsceneStartTime);
             float progress = _cutsceneDuration > 0f ? Mathf.Clamp01(elapsed / _cutsceneDuration) : 1f;
 
-            // 黑幕 alpha：开头淡入，结尾淡出
-            float blackAlpha =
-                progress < 0.15f ? Mathf.SmoothStep(0f, 1f, progress / 0.15f) :
-                progress > 0.85f ? Mathf.SmoothStep(1f, 0f, (progress - 0.85f) / 0.15f) :
-                                   1f;
-            FillRect(new Rect(0, 0, Screen.width, Screen.height), new Color(0f, 0f, 0f, blackAlpha));
+            var full = new Rect(0, 0, Screen.width, Screen.height);
+
+            // 黑底：开头淡入到全黑，之后保持（作为 CG 之下的底；CG 缺失时即原纯黑过场）
+            float blackBaseAlpha = progress < 0.15f ? Mathf.SmoothStep(0f, 1f, progress / 0.15f) : 1f;
+            FillRect(full, new Color(0f, 0f, 0f, blackBaseAlpha));
+
+            // 结局 CG：0.15→0.30 淡入、0.30→0.85 保持、0.85→1.0 淡出回黑
+            var cg = GetEndingCG(_endingTier);
+            if (cg != null && progress >= 0.15f)
+            {
+                float cgAlpha =
+                    progress < 0.30f ? Mathf.SmoothStep(0f, 1f, (progress - 0.15f) / 0.15f) :
+                    progress < 0.85f ? 1f :
+                                       Mathf.SmoothStep(1f, 0f, (progress - 0.85f) / 0.15f);
+                var prevCol = GUI.color;
+                GUI.color = new Color(1f, 1f, 1f, cgAlpha);
+                GUI.DrawTexture(full, cg, ScaleMode.ScaleAndCrop);
+                GUI.color = prevCol;
+                // 标题区压暗带，保证文字在亮部场景上仍可读
+                FillRect(new Rect(0, Screen.height * 0.40f, Screen.width, Screen.height * 0.18f),
+                         new Color(0f, 0f, 0f, 0.38f * cgAlpha));
+            }
 
             // 标题 alpha：中段淡入并保持，结尾随黑幕同步淡出
             float titleAlpha =
@@ -2874,7 +2941,7 @@ namespace Game.Bootstrap
             }
 
             // 极淡的跳过提示（仅在黑幕完全展开时显示）
-            if (blackAlpha > 0.95f && progress < 0.85f)
+            if (blackBaseAlpha > 0.95f && progress < 0.85f)
             {
                 GUI.Label(new Rect(0, Screen.height * 0.88f, Screen.width, 22),
                     "(Space / Enter to skip)",
