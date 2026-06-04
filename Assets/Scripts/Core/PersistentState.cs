@@ -44,6 +44,11 @@ namespace Game.Core
         private const string FileName = "save.json";
         private static string SavePath => Path.Combine(Application.persistentDataPath, FileName);
 
+        /// 存档文件是否存在（标题页据此决定「继续游戏」是否可用）。
+        public static bool SaveExists => File.Exists(SavePath);
+        /// 存档文件完整路径（供标题页读取最后保存时间等元信息）。
+        public static string SaveFilePath => SavePath;
+
         public bool IsHeroUnlocked(string heroId) => UnlockedHeroIds.Contains(heroId);
 
         public bool TryUnlockHero(string heroId, int cost)
