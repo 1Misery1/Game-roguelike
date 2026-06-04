@@ -99,10 +99,13 @@ namespace Game.UI
             ApplyLiftSeal();
             ApplyPlayerVisual();
             SnapCamera();
+            const string ghostGuide = "你是一缕余烬游魂。走向台前已觉醒的残魂,按 E 附身,便能化作他的身躯下潜。";
             if (fromTraining && _selectedHeroIndex >= 0)
                 Flash($"你自练武场归来,仍以 {_heroes[_selectedHeroIndex].displayName} 之身,立于门旁。", 4f);
+            else if (!IntroController.HasSeen)
+                IntroController.Play(onComplete: () => Flash(ghostGuide, 7f));  // 首次入营:先看开场,再给引导
             else
-                Flash("你是一缕余烬游魂。走向台前已觉醒的残魂,按 E 附身,便能化作他的身躯下潜。", 7f);
+                Flash(ghostGuide, 7f);
         }
 
         // 从练武场返回:沿用刚才操控的英雄(英雄态),并把玩家落在练武场门旁。
@@ -318,6 +321,7 @@ namespace Game.UI
 
         private void Update()
         {
+            if (IntroController.IsActive) return;   // 开场动画播放期间冻结营地操作
             if (player == null) return;
 
             var dir = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
@@ -416,7 +420,7 @@ namespace Game.UI
                 case HubStationKind.LiftDoor: BeginDescent(); break;
                 case HubStationKind.TrainingDoor: EnterTraining(); break;
                 case HubStationKind.Campfire:
-                    Flash("黑暗之前最后的火。某处的地底,仍有人在等。", 5f); break;
+                    IntroController.Play(); break;   // 围火重温开场（你是如何来到这里的）
                 case HubStationKind.Memorial:
                     Flash($"名册碑 — 已记起真相 {_persistent.TruthFlags.Count} / 10。记住他们的名字。", 5f); break;
                 case HubStationKind.Records:
@@ -489,6 +493,7 @@ namespace Game.UI
 
         private void OnGUI()
         {
+            if (IntroController.IsActive) return;   // 开场动画期间不画营地 HUD，交给 IntroController 全屏接管
             UIFonts.ApplyToSkin();
             if (_centerStyle == null)
                 _centerStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter };
@@ -539,7 +544,7 @@ namespace Game.UI
                 case HubStationKind.QuestBoard: return "查看悬赏";
                 case HubStationKind.LiftDoor:   return "下潜";
                 case HubStationKind.TrainingDoor: return "进入练武场";
-                case HubStationKind.Campfire:   return "围火休憩";
+                case HubStationKind.Campfire:   return "围火·重温开场";
                 case HubStationKind.Memorial:   return "细看名册";
                 case HubStationKind.Records:    return "查看战绩";
             }

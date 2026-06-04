@@ -421,6 +421,7 @@ namespace Game.UI
                 _persistent = new PersistentState();
                 _persistent.Save();
                 EnsureStarterUnlocked();
+                IntroController.ClearSeen();   // 重置存档后，下次进营地重新播放开场
             }
             GUI.Label(new Rect(resetX, fy, resetW, 30), "Reset Save (clear all progress)",
                 MkLabel(11, TextAnchor.MiddleCenter, FontStyle.Normal, new Color(1f, 0.55f, 0.5f)));
