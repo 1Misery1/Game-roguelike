@@ -63,9 +63,9 @@ namespace Game.AI
             float   speed = _stats.Get(StatType.MoveSpeed);
 
             if (dist > preferredMaxDist)
-                _rb.MovePosition(_rb.position + dir * speed * Time.fixedDeltaTime);
+                _rb.MovePosition(EnemyNavigator.Resolve(_rb.position, _rb.position + dir * speed * Time.fixedDeltaTime));
             else if (dist < preferredMinDist)
-                _rb.MovePosition(_rb.position - dir * speed * Time.fixedDeltaTime);
+                _rb.MovePosition(EnemyNavigator.Resolve(_rb.position, _rb.position - dir * speed * Time.fixedDeltaTime));
         }
 
         // HP≤50% 进入Phase2：召唤速度提升，一次多召唤1只

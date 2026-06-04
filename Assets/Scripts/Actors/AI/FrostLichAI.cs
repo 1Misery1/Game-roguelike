@@ -91,9 +91,9 @@ namespace Game.AI
             Vector2 toTarget = ((Vector2)target.position - _rb.position).normalized;
 
             if (dist < preferredMinDist)
-                _rb.MovePosition(_rb.position - toTarget * speed * Time.fixedDeltaTime);
+                _rb.MovePosition(EnemyNavigator.Resolve(_rb.position, _rb.position - toTarget * speed * Time.fixedDeltaTime));
             else if (dist > preferredMaxDist)
-                _rb.MovePosition(_rb.position + toTarget * speed * Time.fixedDeltaTime);
+                _rb.MovePosition(EnemyNavigator.Resolve(_rb.position, _rb.position + toTarget * speed * Time.fixedDeltaTime));
         }
 
         private void CheckPhase2()

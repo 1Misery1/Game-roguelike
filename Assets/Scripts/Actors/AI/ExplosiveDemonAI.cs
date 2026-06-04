@@ -67,7 +67,7 @@ namespace Game.AI
             Vector2 delta = (Vector2)target.position - _rb.position;
             float   dist  = delta.magnitude;
             if (dist < 0.001f || dist <= stoppingDistance) return;
-            _rb.MovePosition(_rb.position + delta / dist * _stats.Get(StatType.MoveSpeed) * Time.fixedDeltaTime);
+            _rb.MovePosition(EnemyNavigator.Resolve(_rb.position, _rb.position + delta / dist * _stats.Get(StatType.MoveSpeed) * Time.fixedDeltaTime));
         }
 
         private void Explode()

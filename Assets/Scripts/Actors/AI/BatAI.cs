@@ -89,9 +89,9 @@ namespace Game.AI
                     Vector2 offset  = new Vector2(Mathf.Cos(_orbitAngle), Mathf.Sin(_orbitAngle)) * orbitRadius;
                     Vector2 desired = (Vector2)target.position + offset;
                     Vector2 dir     = _nav.GetMoveDirection(desired);
-                    _rb.MovePosition(Vector2.MoveTowards(_rb.position,
+                    _rb.MovePosition(EnemyNavigator.Resolve(_rb.position, Vector2.MoveTowards(_rb.position,
                         _rb.position + dir * orbitSpeed * Time.fixedDeltaTime,
-                        orbitSpeed * Time.fixedDeltaTime));
+                        orbitSpeed * Time.fixedDeltaTime)));
                     break;
                 }
 
@@ -101,13 +101,13 @@ namespace Game.AI
                     break;
 
                 case State.Dash:
-                    _rb.MovePosition(_rb.position + _dashDir * dashSpeed * Time.fixedDeltaTime);
+                    _rb.MovePosition(EnemyNavigator.Resolve(_rb.position, _rb.position + _dashDir * dashSpeed * Time.fixedDeltaTime));
                     break;
 
                 case State.Retreat:
                 {
                     Vector2 away = ((Vector2)transform.position - (Vector2)target.position).normalized;
-                    _rb.MovePosition(_rb.position + away * retreatSpeed * Time.fixedDeltaTime);
+                    _rb.MovePosition(EnemyNavigator.Resolve(_rb.position, _rb.position + away * retreatSpeed * Time.fixedDeltaTime));
                     break;
                 }
             }

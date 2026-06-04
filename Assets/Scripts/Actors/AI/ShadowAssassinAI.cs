@@ -71,9 +71,9 @@ namespace Game.AI
             float   speed = _stats.Get(StatType.MoveSpeed);
 
             if (dist > preferredMaxDist)
-                _rb.MovePosition(_rb.position + dir * speed * Time.fixedDeltaTime);
+                _rb.MovePosition(EnemyNavigator.Resolve(_rb.position, _rb.position + dir * speed * Time.fixedDeltaTime));
             else if (dist < preferredMinDist)
-                _rb.MovePosition(_rb.position - dir * speed * Time.fixedDeltaTime);
+                _rb.MovePosition(EnemyNavigator.Resolve(_rb.position, _rb.position - dir * speed * Time.fixedDeltaTime));
         }
 
         private IEnumerator TelegraphBlink()

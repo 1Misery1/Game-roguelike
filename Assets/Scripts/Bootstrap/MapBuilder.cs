@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Game.AI;
 using UnityEngine;
 using Game.Art;
@@ -239,6 +240,156 @@ namespace Game.Bootstrap
             },
         };
 
+        // ══════════════════════════════════════════════════════════════════════
+        //  运行时程序化布局生成（item 5：地图深度）
+        //  以「世界种子 + 楼层 + 变体」确定性产出 string[] 布局，沿用同一套瓦片
+        //  字符，因此渲染 / NavGrid / 门 / 出生点全部复用现有管线，零额外接线。
+        //  连通性由构造保证：外圈 2 格恒为地板（敌人四壁刷怪带 + 周界环路），障碍
+        //  仅落在核心点阵且彼此天然留 >=1 空地；末尾再洪泛验证，失败回退静态图。
+        // ══════════════════════════════════════════════════════════════════════
+
+        /// 是否启用运行时程序化布局（关掉则回退到 9 张手写静态图 / 房间预制体）
+        public static bool Procedural = true;
+
+        static int  _worldSeed;
+        static bool _seeded;
+        static int  _reseedCounter;
+
+        /// 世界种子：同一局内恒定 → 每层确定性可复现；首次访问惰性随机
+        public static int WorldSeed
+        {
+            get { if (!_seeded) ReseedWorld(); return _worldSeed; }
+            set { _worldSeed = value; _seeded = true; }
+        }
+
+        /// 每局开始调用一次，刷新世界种子 → 新一局得到全新布局
+        public static void ReseedWorld()
+        {
+            _worldSeed = unchecked((int)System.DateTime.Now.Ticks + (++_reseedCounter) * 0x6F4E3D2B);
+            _seeded    = true;
+        }
+
+        /// 程序化产出一张 string[] 布局（确定性：相同 WorldSeed/floor/variant → 相同图）
+        static string[] Generate(int floor, int variant)
+        {
+            int fi  = Mathf.Clamp(floor - 1, 0, 2);
+            int idx = fi * 3 + (variant % 3);
+            int seed = unchecked(WorldSeed * 73856093 ^ (floor + 1) * 19349663 ^ ((variant % 3) + 1) * 83492791);
+            var rng  = new System.Random(seed);
+
+            // 1) 四周墙、内部地板
+            var g = new char[TileH][];
+            for (int r = 0; r < TileH; r++)
+            {
+                g[r] = new char[TileW];
+                for (int c = 0; c < TileW; c++)
+                    g[r][c] = (r == 0 || r == TileH - 1 || c == 0 || c == TileW - 1) ? '#' : '.';
+            }
+
+            // 2) 右侧中央双格出口
+            g[8][TileW - 1] = 'd';
+            g[9][TileW - 1] = 'd';
+
+            // 3) 核心点阵障碍（外圈留作周界 + 刷怪带 + 出生点 + 门口走廊）
+            const int x0 = 5, y0 = 3, cellW = 5, cellH = 4;
+            int x1 = TileW - 6;   // 核心右界 26
+            int y1 = TileH - 4;   // 核心下界 16
+            for (int cy = y0; cy + cellH - 1 <= y1; cy += cellH)
+            for (int cx = x0; cx + cellW - 1 <= x1; cx += cellW)
+            {
+                if (rng.Next(100) < 22) continue;           // 疏密随机：部分子格留空
+                StampFeature(g, rng, fi, cx + 1, cy + 1, cellW - 2, cellH - 2);
+            }
+
+            var rows = ToRows(g);
+            return Verify(rows) ? rows : _maps[idx];          // 验证失败 → 回退静态图
+        }
+
+        // 主题化特征权重（每行 = wall / pillar / trap 的累计阈值，余下为装饰）
+        //   F1 炼狱→多墙   F2 霜境→多柱   F3 混沌→多陷阱
+        static readonly int[][] _featureThresh =
+        {
+            new[] { 55, 72, 88 },   // fi=0 wall<55  pillar<72  trap<88  decor
+            new[] { 22, 70, 86 },   // fi=1 wall<22  pillar<70  trap<86  decor
+            new[] { 26, 48, 90 },   // fi=2 wall<26  pillar<48  trap<90  decor
+        };
+
+        // 在子格内部区域 (rx,ry,rw,rh) 盖一个特征；区域四周天然留 >=1 空地 → 保证连通
+        static void StampFeature(char[][] g, System.Random rng, int fi, int rx, int ry, int rw, int rh)
+        {
+            var th   = _featureThresh[Mathf.Clamp(fi, 0, 2)];
+            int roll = rng.Next(100);
+            if (roll < th[0])         // 墙块
+            {
+                int w  = Mathf.Min(rw, 2 + rng.Next(2));
+                int h  = Mathf.Min(rh, 1 + rng.Next(2));
+                int ox = rx + rng.Next(rw - w + 1);
+                int oy = ry + rng.Next(rh - h + 1);
+                for (int y = oy; y < oy + h; y++)
+                for (int x = ox; x < ox + w; x++) g[y][x] = '#';
+            }
+            else if (roll < th[1])    // 柱阵
+            {
+                int n = 1 + rng.Next(rw * rh / 2 + 1);
+                for (int k = 0; k < n; k++)
+                    g[ry + rng.Next(rh)][rx + rng.Next(rw)] = 'p';
+            }
+            else if (roll < th[2])    // 陷阱
+            {
+                int x = rx + rng.Next(rw), y = ry + rng.Next(rh);
+                g[y][x] = 't';
+                if (rng.Next(100) < 35 && x + 1 < rx + rw) g[y][x + 1] = 't';
+            }
+            else                      // 装饰
+            {
+                g[ry + rng.Next(rh)][rx + rng.Next(rw)] = 'x';
+            }
+        }
+
+        static string[] ToRows(char[][] g)
+        {
+            var rows = new string[TileH];
+            for (int r = 0; r < TileH; r++) rows[r] = new string(g[r]);
+            return rows;
+        }
+
+        // 洪泛验证：自出生格 8 向连通；门 + 四壁刷怪带代表点须全部可达，否则判失败
+        static bool Verify(string[] rows)
+        {
+            bool Walk(int c, int r) =>
+                c >= 0 && c < TileW && r >= 0 && r < TileH &&
+                (rows[r][c] == '.' || rows[r][c] == 'd' || rows[r][c] == 't' ||
+                 rows[r][c] == 'l' || rows[r][c] == 'x');
+
+            int sc = 2, sr = TileH / 2;          // 出生格 (2,10)
+            if (!Walk(sc, sr)) return false;
+
+            var seen  = new bool[TileW, TileH];
+            var stack = new Stack<int>();
+            seen[sc, sr] = true;
+            stack.Push(sr * TileW + sc);
+            while (stack.Count > 0)
+            {
+                int v = stack.Pop();
+                int c = v % TileW, r = v / TileW;
+                for (int dy = -1; dy <= 1; dy++)
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    if (dx == 0 && dy == 0) continue;
+                    int nc = c + dx, nr = r + dy;
+                    if (nc < 0 || nc >= TileW || nr < 0 || nr >= TileH) continue;
+                    if (seen[nc, nr] || !Walk(nc, nr)) continue;
+                    seen[nc, nr] = true;
+                    stack.Push(nr * TileW + nc);
+                }
+            }
+
+            // 门(双格) + 右/上/下三向刷怪带代表点（左向即出生格本身）
+            return seen[TileW - 1, 8] && seen[TileW - 1, 9] &&
+                   seen[TileW - 3, TileH / 2] &&
+                   seen[TileW / 2, 2] && seen[TileW / 2, TileH - 3];
+        }
+
         // ── 精灵缓存 ─────────────────────────────────────────────────────────
         static Sprite[] _wallSprites    = new Sprite[3];
         static Sprite[] _pillarSprites  = new Sprite[3];
@@ -246,16 +397,17 @@ namespace Game.Bootstrap
         static Sprite[] _trapSprites    = new Sprite[3];
 
         // ── 构建地图 ─────────────────────────────────────────────────────────
-        public static MapInfo Build(int floor, int variant, Transform parent)
+        public static MapInfo Build(int floor, int variant, Transform parent, bool createBackground = true)
         {
             int fi  = Mathf.Clamp(floor - 1, 0, 2);
             int idx = fi * 3 + (variant % 3);
-            var rows = _maps[idx];
+            var rows = Procedural ? Generate(floor, variant) : _maps[idx];
 
             NavGrid.Build(rows);
             SetupPhysicsLayers();
 
-            FloorBackground.Create(floor, parent, TileW + 4f, TileH + 4f);
+            if (createBackground)
+                FloorBackground.Create(floor, parent, TileW + 4f, TileH + 4f);
 
             float ox = -TileW * 0.5f;
             float oy =  TileH * 0.5f;

@@ -153,6 +153,7 @@ namespace Game.Bootstrap
             _state       = State.Playing;
             RunCoins     = 0;
             CurrentFloor = 1;
+            MapBuilder.ReseedWorld();   // 每局刷新世界种子 → 程序化布局每局不同
             _floorRooms  = GenerateFloor();
             BuildArena();
             SetFloorBackground();
@@ -2280,6 +2281,18 @@ namespace Game.Bootstrap
 
         private MapInfo LoadRoomPrefab(int floor, int variant, Transform parent)
         {
+            // 程序化布局：跳过静态房间预制体，运行时生成（每局不同）。
+            // Build 内部用同一份 rows 同时铺设几何并重建 NavGrid → 渲染与寻路同源。
+            if (MapBuilder.Procedural)
+            {
+                var theme = GetFloorTheme();
+                if (theme != null)
+                    FloorBackground.Create(theme, parent, MapDims.TileW + 4f, MapDims.TileH + 4f);
+                else
+                    FloorBackground.Create(floor, parent, MapDims.TileW + 4f, MapDims.TileH + 4f);
+                return MapBuilder.Build(floor, variant, parent, createBackground: false);
+            }
+
             string letter = _variantLetters[variant % 3];
             string path   = $"Rooms/Floor{floor}/Room_F{floor}{letter}";
             var prefab    = Resources.Load<GameObject>(path);

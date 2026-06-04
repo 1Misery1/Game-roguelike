@@ -96,7 +96,7 @@ namespace Game.AI
             {
                 Vector2 dir   = ((Vector2)target.position - _rb.position).normalized;
                 float   speed = _stats.Get(StatType.MoveSpeed);
-                _rb.MovePosition(_rb.position + dir * speed * Time.fixedDeltaTime);
+                _rb.MovePosition(EnemyNavigator.Resolve(_rb.position, _rb.position + dir * speed * Time.fixedDeltaTime));
             }
         }
 

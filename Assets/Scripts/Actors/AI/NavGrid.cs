@@ -13,13 +13,17 @@ namespace Game.AI
         static readonly bool[,] _w        = new bool[W, H]; // _w[col, row]
         static readonly int [,] _hazard   = new int [W, H]; // 危险代价（A* 加成；可走但成本高）
 
-        // 静态地形危险（'t' 陷阱 / 'l' 岩浆）：穿越一格相当于 15 步路径
-        const int StaticHazardPenalty  = 15;
-        // 动态危险（LavaPool / IceSpike / VoidRift / FlamePillar 等运行时生成）：每格 +12
-        const int DynamicHazardPenalty = 12;
+        // 静态地形危险（'t' 陷阱 / 'l' 岩浆）：穿越一格代价极高 → A* 几乎总会绕开
+        const int StaticHazardPenalty  = 40;
+        // 动态危险（LavaPool / IceSpike / VoidRift / FlamePillar 等运行时生成）：每格 +28
+        const int DynamicHazardPenalty = 28;
+
+        /// 是否已构建过有效地图（未建图的场景如训练场不应阻挡敌人移动）
+        public static bool HasMap { get; private set; }
 
         public static void Build(string[] rows)
         {
+            HasMap = true;
             for (int r = 0; r < H; r++)
             {
                 string row = r < rows.Length ? rows[r] : "";

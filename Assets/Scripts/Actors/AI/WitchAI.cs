@@ -51,9 +51,9 @@ namespace Game.AI
             float   speed = _stats.Get(StatType.MoveSpeed);
 
             if (dist > preferredDistance + 1.5f)
-                _rb.MovePosition(_rb.position + dir * speed * Time.fixedDeltaTime);
+                _rb.MovePosition(EnemyNavigator.Resolve(_rb.position, _rb.position + dir * speed * Time.fixedDeltaTime));
             else if (dist < preferredDistance - 1.5f)
-                _rb.MovePosition(_rb.position - dir * speed * Time.fixedDeltaTime);
+                _rb.MovePosition(EnemyNavigator.Resolve(_rb.position, _rb.position - dir * speed * Time.fixedDeltaTime));
         }
 
         private void Update()

@@ -47,12 +47,12 @@ namespace Game.AI
             if (dist > preferredDistance + 1.5f)
             {
                 Vector2 dir = _nav.GetMoveDirection(target.position);
-                _rb.MovePosition(_rb.position + dir * speed * Time.fixedDeltaTime);
+                _rb.MovePosition(EnemyNavigator.Resolve(_rb.position, _rb.position + dir * speed * Time.fixedDeltaTime));
             }
             else if (dist < preferredDistance - 1.5f)
             {
                 Vector2 away = ((Vector2)transform.position - (Vector2)target.position).normalized;
-                _rb.MovePosition(_rb.position + away * speed * Time.fixedDeltaTime);
+                _rb.MovePosition(EnemyNavigator.Resolve(_rb.position, _rb.position + away * speed * Time.fixedDeltaTime));
             }
         }
 
