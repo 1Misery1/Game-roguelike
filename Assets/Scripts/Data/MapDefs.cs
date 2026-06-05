@@ -16,5 +16,8 @@ namespace Game.Data
         public float   HalfH;
         public Vector3 PlayerSpawn;
         public Vector3 DoorPos;
+
+        /// 动态刷怪点（异形房间用，按可达开放格预计算）。矩形/预制体房间为 null → 走旧的固定内缩逻辑。
+        public Vector3[] EnemySpawns;
     }
 }

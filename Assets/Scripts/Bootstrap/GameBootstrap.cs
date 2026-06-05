@@ -45,6 +45,7 @@ namespace Game.Bootstrap
         private PersistentState _persistent;
         private MapInfo _mapInfo;
         private int _mapVariant;
+        private bool _arenaIsRect;          // 当前竞技场几何是否为规整矩形（商店/Boss 房）
         private HeroData _currentHero;
 
         private GameObject _arenaRoot;
@@ -322,9 +323,6 @@ namespace Game.Bootstrap
         {
             if (_currentRoomRoot != null) Destroy(_currentRoomRoot);
             _currentRoomIndex = index;
-            // Reset player to left spawn point
-            if (_player != null)
-                _player.transform.position = _mapInfo.PlayerSpawn;
 
             if (index >= _floorRooms.Count)
             {
@@ -332,9 +330,22 @@ namespace Game.Bootstrap
                 return;
             }
 
+            var type = _floorRooms[index];
+
+            // 商店房 / Boss 房用规整矩形，其余房型用本层异形几何；仅在 矩形↔异形 切换时重建竞技场
+            bool wantRect = (type == "Shop" || type == "Boss");
+            if (wantRect != _arenaIsRect || _arenaRoot == null)
+            {
+                RebuildArenaGeometry(wantRect);
+                _arenaIsRect = wantRect;
+            }
+
+            // Reset player to left spawn point（用当前房型几何的出生点）
+            if (_player != null)
+                _player.transform.position = _mapInfo.PlayerSpawn;
+
             if (index > 0) OnNewRoomEntered(); // timed-talent countdown (room 0 excluded)
 
-            var type = _floorRooms[index];
             _currentRoomRoot = new GameObject($"Room_{index}_{type}");
             GameSignals.CombatInProgress = false; // 新房间默认非战斗；有刷怪波次时由 SpawnRoomWave 置位
             switch (type)
@@ -383,7 +394,8 @@ namespace Game.Bootstrap
 
             var go = new GameObject($"Story_{data.objectId}");
             go.transform.SetParent(_currentRoomRoot.transform);
-            go.transform.position = _mapInfo.PlayerSpawn + offsetFromSpawn;
+            // 异形房：相对出生点的固定偏移可能落墙，吸附到最近可走格以保证剧情物可交互
+            go.transform.position = NearestWalkableWorld(_mapInfo.PlayerSpawn + offsetFromSpawn);
 
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sprite       = MakeUnitSquareSprite();
@@ -851,6 +863,7 @@ namespace Game.Bootstrap
 
         private void SpawnActionPedestal(Vector3 pos, ActionPedestal.ActionType actionType, int price, int uses)
         {
+            pos = NearestWalkableWorld(pos);   // 异形房：固定坐标可能落墙，吸附到最近可走格
             bool isForge = actionType == ActionPedestal.ActionType.Forge;
             var go = new GameObject(isForge ? "ForgeAltar" : "EnchantAltar");
             go.transform.SetParent(_currentRoomRoot.transform, true);
@@ -899,6 +912,7 @@ namespace Game.Bootstrap
 
         private void SpawnHealthPotionPedestal(Vector3 pos, int price)
         {
+            pos = NearestWalkableWorld(pos);   // 异形房：吸附到最近可走格
             var go = new GameObject("HealthPotion");
             go.transform.SetParent(_currentRoomRoot.transform, true);
             go.transform.position   = pos;
@@ -932,6 +946,7 @@ namespace Game.Bootstrap
 
         private void SpawnShopWeaponPedestal(Vector3 pos, WeaponInstance weapon, int price, ShopDecorData decor = null)
         {
+            pos = NearestWalkableWorld(pos);   // 异形房：吸附到最近可走格
             var go = new GameObject("ShopWeapon_" + weapon.Data.weaponName);
             go.transform.SetParent(_currentRoomRoot.transform, true);
             go.transform.position   = pos;
@@ -981,6 +996,7 @@ namespace Game.Bootstrap
 
         private void SpawnTalentDrawPedestal(Vector3 pos, int price)
         {
+            pos = NearestWalkableWorld(pos);   // 异形房：吸附到最近可走格
             var go = new GameObject("TalentDraw");
             go.transform.SetParent(_currentRoomRoot.transform, true);
             go.transform.position   = pos;
@@ -1037,7 +1053,7 @@ namespace Game.Bootstrap
         private void BuildFloor1Boss()
         {
             ShowBanner("BOSS — Hell Giant descends!");
-            var boss   = EnemyFactory.SpawnHellGiant(new Vector3(0f, 2.5f, 0f),
+            var boss   = EnemyFactory.SpawnHellGiant(NearestWalkableWorld(new Vector3(0f, 2.5f, 0f)),
                              _player.transform, _currentRoomRoot.transform, null);
             var bossAI = boss.GetComponent<HellGiantAI>();
             var roomTr = _currentRoomRoot.transform;
@@ -1051,7 +1067,7 @@ namespace Game.Bootstrap
         private void BuildFloor2Boss()
         {
             ShowBanner("BOSS — Frost Lich appears! Beware the frost!");
-            var boss = EnemyFactory.SpawnFrostLich(new Vector3(0f, 2.5f, 0f),
+            var boss = EnemyFactory.SpawnFrostLich(NearestWalkableWorld(new Vector3(0f, 2.5f, 0f)),
                            _player.transform, _currentRoomRoot.transform);
             ScaleEnemyStats(boss, FloorScale);
             RegisterBossEvents(boss);
@@ -1061,7 +1077,7 @@ namespace Game.Bootstrap
         private void BuildFloor3Boss()
         {
             ShowBanner("BOSS — Chaos Lord appears! The final battle!");
-            var boss   = EnemyFactory.SpawnChaosLord(new Vector3(0f, 2.5f, 0f),
+            var boss   = EnemyFactory.SpawnChaosLord(NearestWalkableWorld(new Vector3(0f, 2.5f, 0f)),
                              _player.transform, _currentRoomRoot.transform);
             var bossAI = boss.GetComponent<ChaosLordAI>();
             bossAI.SpawnMinionCallback = pos => SpawnRandomNormalEnemy(pos, () => { });
@@ -1145,7 +1161,7 @@ namespace Game.Bootstrap
             Game.Narrative.DialogueBox.Get().Play(lines, () =>
             {
                 // 复用 ChaosLord 实体外观；统计/缩放/颜色/AI 全部按 KingdomGuilt SO 覆盖
-                var boss   = EnemyFactory.SpawnChaosLord(new Vector3(0f, 2.5f, 0f),
+                var boss   = EnemyFactory.SpawnChaosLord(NearestWalkableWorld(new Vector3(0f, 2.5f, 0f)),
                                  _player.transform, _currentRoomRoot.transform);
                 boss.name  = "Kingdom_Guilt";
 
@@ -1491,12 +1507,9 @@ namespace Game.Bootstrap
         // Rebuild arena with new floor colors (called on floor transition)
         private void UpdateArenaColors()
         {
-            if (_arenaRoot != null) { Destroy(_arenaRoot); _arenaRoot = null; }
-            _arenaRoot  = new GameObject("Arena");
-            _mapVariant = Random.Range(0, 3);
-            _mapInfo    = LoadRoomPrefab(CurrentFloor, _mapVariant, _arenaRoot.transform);
-            ArenaHalfW  = _mapInfo.HalfW;
-            ArenaHalfH  = _mapInfo.HalfH;
+            _mapVariant  = Random.Range(0, 3);
+            _arenaIsRect = false;            // 新楼层默认异形几何
+            RebuildArenaGeometry(forceRect: false);
         }
 
         private string GetFloorName()
@@ -1758,6 +1771,22 @@ namespace Game.Bootstrap
         // 从场景四壁边缘随机取一个刷怪点（Hades 风格入场）
         private Vector3 RandomEdgeSpawnPos(bool avoidLeftWall = true)
         {
+            // 异形房间：从预计算的可达开放格里挑（取若干候选中离玩家最远者，避免贴脸刷怪）
+            var dyn = _mapInfo.EnemySpawns;
+            if (dyn != null && dyn.Length > 0)
+            {
+                Vector3 pp   = _player != null ? _player.transform.position : Vector3.zero;
+                Vector3 best = dyn[Random.Range(0, dyn.Length)];
+                float   bestD = (best - pp).sqrMagnitude;
+                for (int i = 0; i < 5; i++)
+                {
+                    var cand = dyn[Random.Range(0, dyn.Length)];
+                    float d  = (cand - pp).sqrMagnitude;
+                    if (d > bestD) { best = cand; bestD = d; }
+                }
+                return best;
+            }
+
             float hw = _mapInfo.HalfW - 2.5f;
             float hh = _mapInfo.HalfH - 2.2f;
             int sides = avoidLeftWall ? 3 : 4;
@@ -2039,6 +2068,7 @@ namespace Game.Bootstrap
 
         private void SpawnWeaponPedestal(Vector3 pos, WeaponInstance weapon)
         {
+            pos = NearestWalkableWorld(pos);   // 异形房：吸附到最近可走格
             var go = new GameObject("WeaponPedestal_" + weapon.Data.weaponName);
             go.transform.SetParent(_currentRoomRoot.transform, true);
             go.transform.position   = pos;
@@ -2272,17 +2302,27 @@ namespace Game.Bootstrap
 
         private void BuildArena()
         {
-            _arenaRoot  = new GameObject("Arena");
-            _mapVariant = Random.Range(0, 3);
-            _mapInfo    = LoadRoomPrefab(CurrentFloor, _mapVariant, _arenaRoot.transform);
-            ArenaHalfW  = _mapInfo.HalfW;
-            ArenaHalfH  = _mapInfo.HalfH;
+            _mapVariant  = Random.Range(0, 3);
+            _arenaIsRect = false;            // 新楼层默认异形几何
+            RebuildArenaGeometry(forceRect: false);
         }
 
-        private MapInfo LoadRoomPrefab(int floor, int variant, Transform parent)
+        // 按房型重建竞技场几何：商店/Boss → 规整矩形；其余 → 本层异形布局。
+        // _mapVariant 同层恒定 + 生成确定性 → 同层每次重建得到一致的异形布局。
+        private void RebuildArenaGeometry(bool forceRect)
+        {
+            if (_arenaRoot != null) { Destroy(_arenaRoot); _arenaRoot = null; }
+            _arenaRoot = new GameObject("Arena");
+            _mapInfo   = LoadRoomPrefab(CurrentFloor, _mapVariant, _arenaRoot.transform, forceRect);
+            ArenaHalfW = _mapInfo.HalfW;
+            ArenaHalfH = _mapInfo.HalfH;
+        }
+
+        private MapInfo LoadRoomPrefab(int floor, int variant, Transform parent, bool forceRect = false)
         {
             // 程序化布局：跳过静态房间预制体，运行时生成（每局不同）。
             // Build 内部用同一份 rows 同时铺设几何并重建 NavGrid → 渲染与寻路同源。
+            // forceRect：商店房 / Boss 房强制规整矩形布局。
             if (MapBuilder.Procedural)
             {
                 var theme = GetFloorTheme();
@@ -2290,7 +2330,7 @@ namespace Game.Bootstrap
                     FloorBackground.Create(theme, parent, MapDims.TileW + 4f, MapDims.TileH + 4f);
                 else
                     FloorBackground.Create(floor, parent, MapDims.TileW + 4f, MapDims.TileH + 4f);
-                return MapBuilder.Build(floor, variant, parent, createBackground: false);
+                return MapBuilder.Build(floor, variant, parent, createBackground: false, forceRect: forceRect);
             }
 
             string letter = _variantLetters[variant % 3];

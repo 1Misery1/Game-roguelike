@@ -269,15 +269,32 @@ namespace Game.Bootstrap
             _seeded    = true;
         }
 
-        /// 程序化产出一张 string[] 布局（确定性：相同 WorldSeed/floor/variant → 相同图）
-        static string[] Generate(int floor, int variant)
+        // ── 生成器输出（异形房间需把出生/出门/刷怪点动态告知 Build/Bootstrap）──
+        static bool          _genValid;          // 本次是否产出有效的异形布局
+        static Vector3       _genSpawn;          // 玩家出生世界坐标
+        static List<Vector3> _genEnemySpawns;    // 可达开放格（敌人刷怪候选）
+
+        /// 程序化产出一张 string[] 布局（确定性：相同 WorldSeed/floor/variant → 相同图）。
+        /// 优先生成「异形轮廓」房间，退化时回退矩形布局，再不行回退静态图。
+        static string[] Generate(int floor, int variant, bool forceRect = false)
         {
             int fi  = Mathf.Clamp(floor - 1, 0, 2);
             int idx = fi * 3 + (variant % 3);
             int seed = unchecked(WorldSeed * 73856093 ^ (floor + 1) * 19349663 ^ ((variant % 3) + 1) * 83492791);
             var rng  = new System.Random(seed);
 
-            // 1) 四周墙、内部地板
+            // forceRect：商店房 / Boss 房强制规整矩形（GenerateRect 内置 _genValid=false → 固定出生 + 旧刷怪逻辑）
+            if (forceRect) return GenerateRect(fi, idx, rng);
+
+            var irregular = GenerateIrregular(fi, rng);
+            return irregular ?? GenerateRect(fi, idx, rng);
+        }
+
+        // ── 矩形布局：外圈空 + 核心点阵障碍；连通性靠构造 + 洪泛验证 ────────────
+        static string[] GenerateRect(int fi, int idx, System.Random rng)
+        {
+            _genValid = false;                       // 矩形房沿用固定出生 + 旧刷怪逻辑
+
             var g = new char[TileH][];
             for (int r = 0; r < TileH; r++)
             {
@@ -286,23 +303,153 @@ namespace Game.Bootstrap
                     g[r][c] = (r == 0 || r == TileH - 1 || c == 0 || c == TileW - 1) ? '#' : '.';
             }
 
-            // 2) 右侧中央双格出口
             g[8][TileW - 1] = 'd';
             g[9][TileW - 1] = 'd';
 
-            // 3) 核心点阵障碍（外圈留作周界 + 刷怪带 + 出生点 + 门口走廊）
             const int x0 = 5, y0 = 3, cellW = 5, cellH = 4;
-            int x1 = TileW - 6;   // 核心右界 26
-            int y1 = TileH - 4;   // 核心下界 16
+            int x1 = TileW - 6, y1 = TileH - 4;
             for (int cy = y0; cy + cellH - 1 <= y1; cy += cellH)
             for (int cx = x0; cx + cellW - 1 <= x1; cx += cellW)
             {
-                if (rng.Next(100) < 22) continue;           // 疏密随机：部分子格留空
+                if (rng.Next(100) < 22) continue;
                 StampFeature(g, rng, fi, cx + 1, cy + 1, cellW - 2, cellH - 2);
             }
 
             var rows = ToRows(g);
-            return Verify(rows) ? rows : _maps[idx];          // 验证失败 → 回退静态图
+            return Verify(rows) ? rows : _maps[idx];
+        }
+
+        // ══ 异形房间：重叠矩形并集 + 横向主脊 → 非矩形轮廓；连通由主脊 + 验证保证 ══
+        static string[] GenerateIrregular(int fi, System.Random rng)
+        {
+            // 1) 全墙
+            var g = new char[TileH][];
+            for (int r = 0; r < TileH; r++)
+            {
+                g[r] = new char[TileW];
+                for (int c = 0; c < TileW; c++) g[r][c] = '#';
+            }
+
+            // 2) 横向主脊：横贯左右的走廊 → 保证出生(左)↔出门(右)连通
+            int spineH   = 4 + rng.Next(3);                          // 4..6
+            int spineTop = 4 + rng.Next(Mathf.Max(1, TileH - 8 - spineH + 1));
+            Carve(g, 2, spineTop, TileW - 4, spineH);
+
+            // 3) 若干重叠矩形「凸包」：与主脊纵向相交 → 连通且轮廓不规则
+            int blobs = 3 + rng.Next(3);                             // 3..5
+            for (int k = 0; k < blobs; k++)
+            {
+                int bw = 5 + rng.Next(8);                            // 5..12
+                int bh = 4 + rng.Next(7);                            // 4..10
+                int bx = 1 + rng.Next(Mathf.Max(1, TileW - 2 - bw));
+                int byMin = Mathf.Max(1, spineTop - bh + 2);
+                int byMax = Mathf.Min(TileH - 1 - bh, spineTop + spineH - 2);
+                int by = byMax <= byMin ? byMin : byMin + rng.Next(byMax - byMin + 1);
+                Carve(g, bx, by, bw, bh);
+            }
+
+            // 4) 主题化障碍（散点，要求四邻皆地板 → 不封口；末尾再洪泛验证）
+            ScatterFeatures(g, rng, fi);
+
+            // 5) 出生 / 出门：主脊中线最左 / 最右地板格
+            int midRow = spineTop + spineH / 2;
+            int sc = -1, dc = -1;
+            for (int c = 1; c < TileW - 1; c++) if (g[midRow][c] == '.') { sc = c; break; }
+            for (int c = TileW - 2; c > 0;     c--) if (g[midRow][c] == '.') { dc = c; break; }
+            if (sc < 0 || dc < 0 || dc - sc < 6) return null;        // 退化 → 回退矩形
+            g[midRow][dc] = 'd';
+
+            var rows = ToRows(g);
+
+            // 6) 连通验证 + 收集敌人可达刷怪格
+            var seen = FloodFrom(rows, sc, midRow);
+            if (!seen[dc, midRow]) return null;                      // 门不可达 → 回退
+
+            Vector3 spawnW = ToWorld(sc, midRow);
+            var enemies = new List<Vector3>();
+            for (int r = 1; r < TileH - 1; r++)
+            for (int c = 1; c < TileW - 1; c++)
+            {
+                if (!seen[c, r] || rows[r][c] != '.') continue;
+                Vector3 w = ToWorld(c, r);
+                if ((w - spawnW).sqrMagnitude >= 6f * 6f) enemies.Add(w);  // 远离出生点
+            }
+            if (enemies.Count < 4) return null;                      // 刷怪点太少 → 回退
+
+            _genValid       = true;
+            _genSpawn       = spawnW;
+            _genEnemySpawns = enemies;
+            return rows;
+        }
+
+        // 把 (x,y,w,h) 矩形雕成地板，永不破坏外框
+        static void Carve(char[][] g, int x, int y, int w, int h)
+        {
+            for (int r = y; r < y + h; r++)
+            for (int c = x; c < x + w; c++)
+                if (c >= 1 && c < TileW - 1 && r >= 1 && r < TileH - 1)
+                    g[r][c] = '.';
+        }
+
+        // 异形房散点障碍：随机地板格 + 四邻皆地板（避免贴边封口）
+        static void ScatterFeatures(char[][] g, System.Random rng, int fi)
+        {
+            var th = _featureThresh[Mathf.Clamp(fi, 0, 2)];
+            int want = 10 + rng.Next(8), attempts = 80;
+            while (attempts-- > 0 && want > 0)
+            {
+                int x = 2 + rng.Next(TileW - 4), y = 2 + rng.Next(TileH - 4);
+                if (g[y][x] != '.' ||
+                    g[y - 1][x] != '.' || g[y + 1][x] != '.' ||
+                    g[y][x - 1] != '.' || g[y][x + 1] != '.') continue;
+
+                int roll = rng.Next(100);
+                char t = roll < th[0] ? '#' : roll < th[1] ? 'p' : roll < th[2] ? 't' : 'x';
+                g[y][x] = t;
+                if ((t == '#' || t == 'p') && rng.Next(100) < 50)    // 偶尔扩成小簇
+                {
+                    int nx = x + (rng.Next(2) * 2 - 1);
+                    if (g[y][nx] == '.' && g[y - 1][nx] == '.' && g[y + 1][nx] == '.') g[y][nx] = t;
+                }
+                want--;
+            }
+        }
+
+        static Vector3 ToWorld(int c, int r)
+        {
+            var v = NavGrid.CellToWorld(new Vector2Int(c, r));
+            return new Vector3(v.x, v.y, 0f);
+        }
+
+        static bool TileWalkable(string[] rows, int c, int r) =>
+            c >= 0 && c < TileW && r >= 0 && r < TileH &&
+            (rows[r][c] == '.' || rows[r][c] == 'd' || rows[r][c] == 't' ||
+             rows[r][c] == 'l' || rows[r][c] == 'x');
+
+        // 自 (sc,sr) 起 8 向洪泛，返回可达可走格集合
+        static bool[,] FloodFrom(string[] rows, int sc, int sr)
+        {
+            var seen = new bool[TileW, TileH];
+            if (!TileWalkable(rows, sc, sr)) return seen;
+            var stack = new Stack<int>();
+            seen[sc, sr] = true;
+            stack.Push(sr * TileW + sc);
+            while (stack.Count > 0)
+            {
+                int v = stack.Pop();
+                int c = v % TileW, r = v / TileW;
+                for (int dy = -1; dy <= 1; dy++)
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    if (dx == 0 && dy == 0) continue;
+                    int nc = c + dx, nr = r + dy;
+                    if (nc < 0 || nc >= TileW || nr < 0 || nr >= TileH) continue;
+                    if (seen[nc, nr] || !TileWalkable(rows, nc, nr)) continue;
+                    seen[nc, nr] = true;
+                    stack.Push(nr * TileW + nc);
+                }
+            }
+            return seen;
         }
 
         // 主题化特征权重（每行 = wall / pillar / trap 的累计阈值，余下为装饰）
@@ -397,11 +544,11 @@ namespace Game.Bootstrap
         static Sprite[] _trapSprites    = new Sprite[3];
 
         // ── 构建地图 ─────────────────────────────────────────────────────────
-        public static MapInfo Build(int floor, int variant, Transform parent, bool createBackground = true)
+        public static MapInfo Build(int floor, int variant, Transform parent, bool createBackground = true, bool forceRect = false)
         {
             int fi  = Mathf.Clamp(floor - 1, 0, 2);
             int idx = fi * 3 + (variant % 3);
-            var rows = Procedural ? Generate(floor, variant) : _maps[idx];
+            var rows = Procedural ? Generate(floor, variant, forceRect) : _maps[idx];
 
             NavGrid.Build(rows);
             SetupPhysicsLayers();
@@ -417,7 +564,9 @@ namespace Game.Bootstrap
             var torchSpr  = GetTorch(fi);
             var trapSpr   = GetTrap(fi);
 
-            var playerSpawn = new Vector3(ox + 2.5f, 0f, 0f);
+            var playerSpawn = (Procedural && _genValid)
+                ? _genSpawn
+                : new Vector3(ox + 2.5f, 0f, 0f);
             var doorPos     = new Vector3(-ox - 0.5f, 0f, 0f);
 
             for (int r = 0; r < TileH; r++)
@@ -473,6 +622,9 @@ namespace Game.Bootstrap
                 HalfH       = TileH * 0.5f,
                 PlayerSpawn = playerSpawn,
                 DoorPos     = doorPos,
+                EnemySpawns = (Procedural && _genValid && _genEnemySpawns != null)
+                    ? _genEnemySpawns.ToArray()
+                    : null,
             };
         }
 
