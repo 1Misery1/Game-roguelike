@@ -549,8 +549,9 @@ namespace Game.Bootstrap
                 go.transform.localScale = new Vector3(0.65f, 0.65f, 1f);
 
                 var sr = go.AddComponent<SpriteRenderer>();
-                sr.sprite       = MakeUnitSquareSprite();
-                sr.color        = WeaponData.GetRarityColor(weapon.Data.rarity);
+                var wspr = WeaponSprites.Get(weapon.Data.weaponName);   // 真实武器立绘，缺失则回退稀有度方块
+                sr.sprite       = wspr != null ? wspr : MakeUnitSquareSprite();
+                sr.color        = wspr != null ? Color.white : WeaponData.GetRarityColor(weapon.Data.rarity);
                 sr.sortingOrder = 7;
 
                 var col = go.AddComponent<CircleCollider2D>();
@@ -871,8 +872,8 @@ namespace Game.Bootstrap
             go.transform.localScale = new Vector3(0.7f, 0.7f, 1f);
 
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite       = MakeUnitSquareSprite();
-            sr.color        = isForge ? new Color(1f, 0.65f, 0.2f) : new Color(0.55f, 0.3f, 1f);
+            sr.sprite       = isForge ? InteractableSprites.Anvil() : InteractableSprites.EnchantCrystal();
+            sr.color        = Color.white;
             sr.sortingOrder = 7;
 
             var col = go.AddComponent<CircleCollider2D>();
@@ -919,8 +920,8 @@ namespace Game.Bootstrap
             go.transform.localScale = new Vector3(0.65f, 0.65f, 1f);
 
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite       = MakeUnitSquareSprite();
-            sr.color        = new Color(0.2f, 0.92f, 0.38f);
+            sr.sprite       = InteractableSprites.Potion();
+            sr.color        = Color.white;
             sr.sortingOrder = 7;
 
             var col = go.AddComponent<CircleCollider2D>();
@@ -1003,8 +1004,8 @@ namespace Game.Bootstrap
             go.transform.localScale = new Vector3(0.75f, 0.75f, 1f);
 
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite       = MakeUnitSquareSprite();
-            sr.color        = new Color(0.75f, 0.3f, 0.95f);
+            sr.sprite       = InteractableSprites.Tome();
+            sr.color        = Color.white;
             sr.sortingOrder = 7;
 
             var col = go.AddComponent<CircleCollider2D>();
@@ -1853,8 +1854,8 @@ namespace Game.Bootstrap
             _altarPos = go.transform.position;
 
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite       = MakeUnitSquareSprite();
-            sr.color        = new Color(0.75f, 0.3f, 0.95f);
+            sr.sprite       = InteractableSprites.Altar();
+            sr.color        = Color.white;
             sr.sortingOrder = 7;
 
             var col = go.AddComponent<CircleCollider2D>();
@@ -1970,8 +1971,8 @@ namespace Game.Bootstrap
             doorGO.transform.localScale = new Vector3(0.35f, 1.8f, 1f); // 竖向出口
 
             var sr = doorGO.AddComponent<SpriteRenderer>();
-            sr.sprite       = MakeUnitSquareSprite();
-            sr.color        = new Color(0.25f, 0.95f, 0.35f);
+            sr.sprite       = InteractableSprites.Door();
+            sr.color        = Color.white;
             sr.sortingOrder = 8;
 
             var col = doorGO.AddComponent<BoxCollider2D>();
@@ -2208,7 +2209,7 @@ namespace Game.Bootstrap
             go.transform.localScale = new Vector3(0.55f, 0.55f, 1f);
 
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite       = MakeUnitSquareSprite();
+            sr.sprite       = InteractableSprites.Gem();   // 灰度宝石，由下方 sr.color 按天赋色着色
             sr.color        = color;
             sr.sortingOrder = 7;
 
