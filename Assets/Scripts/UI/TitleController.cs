@@ -14,7 +14,7 @@ namespace Game.UI
     {
         private const string HubScene = "Hub";
 
-        private enum Page { Main, Settings, Load, ConfirmNew }
+        private enum Page { Main, Settings, Load, ConfirmNew, Credits }
         private Page _screen = Page.Main;
 
         // ── 余烬粒子（代码动画）─────────────────────────────────────────────
@@ -97,6 +97,7 @@ namespace Game.UI
                 case Page.Settings:   DrawSettings(sw, sh);    break;
                 case Page.Load:       DrawLoadPanel(sw, sh);   break;
                 case Page.ConfirmNew: DrawConfirmNew(sw, sh);  break;
+                case Page.Credits:    DrawCredits(sw, sh);     break;
             }
 
             GUI.Label(new Rect(12, sh - 22, 360, 18),
@@ -164,7 +165,6 @@ namespace Game.UI
             GUI.Label(new Rect(0, ty, sw, 70), "Embers of the Three Realms", _titleStyle);
             GUI.color = Color.white;
 
-            GUI.Label(new Rect(0, ty + 60, sw, 34), "三 界 余 烬", _subStyle);
             GUI.Label(new Rect(0, ty + 96, sw, 22),
                 "A nameless ember descends to finish what the fallen began.",
                 _smallStyle2);
@@ -181,23 +181,27 @@ namespace Game.UI
             int row = 0;
             // 继续游戏（无存档则禁用）
             if (Button(new Rect(bx, by + row++ * (bh + gap), bw, bh),
-                    "继续游戏  Continue", _saveExists, accent: true) && _saveExists)
+                    "Continue", _saveExists, accent: true) && _saveExists)
                 Continue();
 
             if (Button(new Rect(bx, by + row++ * (bh + gap), bw, bh),
-                    "新游戏  New Game", true))
+                    "New Game", true))
             { if (_saveExists) _screen = Page.ConfirmNew; else NewGame(); }
 
             if (Button(new Rect(bx, by + row++ * (bh + gap), bw, bh),
-                    "读取存档  Load Save", true))
+                    "Load Save", true))
                 _screen = Page.Load;
 
             if (Button(new Rect(bx, by + row++ * (bh + gap), bw, bh),
-                    "设置  Settings", true))
+                    "Settings", true))
                 _screen = Page.Settings;
 
             if (Button(new Rect(bx, by + row++ * (bh + gap), bw, bh),
-                    "退出  Quit", true))
+                    "Credits", true))
+                _screen = Page.Credits;
+
+            if (Button(new Rect(bx, by + row++ * (bh + gap), bw, bh),
+                    "Quit", true))
                 Quit();
 
             // 回车 = 继续（有存档时）
@@ -213,11 +217,11 @@ namespace Game.UI
         {
             float pw = Mathf.Min(440f, sw - 60f), ph = 300f;
             float px = (sw - pw) * 0.5f, py = sh * 0.42f;
-            Panel(px, py, pw, ph, "读取存档  ·  Load Save");
+            Panel(px, py, pw, ph, "Load Save");
 
             if (!_saveExists)
             {
-                GUI.Label(new Rect(px, py + ph * 0.5f - 14, pw, 28), "没有可读取的存档  ·  No save data",
+                GUI.Label(new Rect(px, py + ph * 0.5f - 14, pw, 28), "No save data",
                     Center(14, new Color(0.7f, 0.6f, 0.55f)));
             }
             else
@@ -229,12 +233,12 @@ namespace Game.UI
 
                 var rows = new (string, string)[]
                 {
-                    ("最深楼层  Deepest Floor", ps.BestFloor > 0 ? $"Floor {ps.BestFloor}" : "—"),
-                    ("通关次数  Victories",      ps.TotalVictories.ToString()),
-                    ("总周目    Total Runs",     ps.TotalRuns.ToString()),
-                    ("解锁货币  Currency",       $"{ps.UnlockCurrency} ◈"),
-                    ("已解锁英雄 Heroes",         ps.UnlockedHeroIds.Count.ToString()),
-                    ("最后保存  Last Saved",     when),
+                    ("Deepest Floor", ps.BestFloor > 0 ? $"Floor {ps.BestFloor}" : "—"),
+                    ("Victories",     ps.TotalVictories.ToString()),
+                    ("Total Runs",    ps.TotalRuns.ToString()),
+                    ("Currency",      $"{ps.UnlockCurrency} ◈"),
+                    ("Heroes",        ps.UnlockedHeroIds.Count.ToString()),
+                    ("Last Saved",    when),
                 };
                 float ry = py + 48f;
                 for (int i = 0; i < rows.Length; i++)
@@ -250,9 +254,9 @@ namespace Game.UI
             }
 
             float byy = py + ph - 56f, half = (pw - 48f) * 0.5f;
-            if (Button(new Rect(px + 18, byy, half, 38), "载入  Load", _saveExists, accent: true) && _saveExists)
+            if (Button(new Rect(px + 18, byy, half, 38), "Load", _saveExists, accent: true) && _saveExists)
                 Continue();
-            if (Button(new Rect(px + 30 + half, byy, half, 38), "返回  Back", true))
+            if (Button(new Rect(px + 30 + half, byy, half, 38), "Back", true))
                 _screen = Page.Main;
         }
 
@@ -262,17 +266,17 @@ namespace Game.UI
         {
             float pw = Mathf.Min(420f, sw - 60f), ph = 180f;
             float px = (sw - pw) * 0.5f, py = sh * 0.46f;
-            Panel(px, py, pw, ph, "开始新游戏？");
+            Panel(px, py, pw, ph, "Start a New Game?");
 
             var warn = Center(13, new Color(0.95f, 0.7f, 0.55f));
             warn.wordWrap = true;
             GUI.Label(new Rect(px + 24, py + 50, pw - 48, 56),
-                "这会清除当前存档与进度，并从头开始。\nThis erases your current save and starts over.", warn);
+                "This erases your current save and starts over.", warn);
 
             float byy = py + ph - 56f, half = (pw - 48f) * 0.5f;
-            if (Button(new Rect(px + 18, byy, half, 38), "确认开始  Confirm", true, danger: true))
+            if (Button(new Rect(px + 18, byy, half, 38), "Confirm", true, danger: true))
                 NewGame();
-            if (Button(new Rect(px + 30 + half, byy, half, 38), "返回  Back", true))
+            if (Button(new Rect(px + 30 + half, byy, half, 38), "Back", true))
                 _screen = Page.Main;
         }
 
@@ -282,17 +286,17 @@ namespace Game.UI
         {
             float pw = Mathf.Min(440f, sw - 60f), ph = 220f;
             float px = (sw - pw) * 0.5f, py = sh * 0.44f;
-            Panel(px, py, pw, ph, "设置  ·  Settings");
+            Panel(px, py, pw, ph, "Settings");
 
             float fy = py + 52f;
-            GUI.Label(new Rect(px + 24, fy, 180, 26), "主音量  Master Volume", Left(13, new Color(0.82f, 0.82f, 0.88f)));
+            GUI.Label(new Rect(px + 24, fy, 180, 26), "Master Volume", Left(13, new Color(0.82f, 0.82f, 0.88f)));
             float vol = AudioListener.volume;
             float nv  = GUI.HorizontalSlider(new Rect(px + 200, fy + 8, pw - 270, 12), vol, 0f, 1f);
             if (!Mathf.Approximately(nv, vol)) AudioListener.volume = nv;
             GUI.Label(new Rect(px + pw - 60, fy, 44, 26), $"{nv * 100:0}%", Right(12, new Color(0.65f, 0.65f, 0.72f)));
 
             fy += 40f;
-            GUI.Label(new Rect(px + 24, fy, 180, 26), "全屏  Fullscreen", Left(13, new Color(0.82f, 0.82f, 0.88f)));
+            GUI.Label(new Rect(px + 24, fy, 180, 26), "Fullscreen", Left(13, new Color(0.82f, 0.82f, 0.88f)));
             bool fs = UnityEngine.Screen.fullScreen;
             bool nf = GUI.Toggle(new Rect(px + 200, fy + 4, 18, 18), fs, "");
             if (nf != fs) UnityEngine.Screen.fullScreen = nf;
@@ -300,10 +304,56 @@ namespace Game.UI
 
             fy += 40f;
             GUI.Label(new Rect(px + 24, fy, pw - 48, 26),
-                $"分辨率  {UnityEngine.Screen.width} × {UnityEngine.Screen.height}",
+                $"Resolution  {UnityEngine.Screen.width} × {UnityEngine.Screen.height}",
                 Left(12, new Color(0.6f, 0.6f, 0.66f)));
 
-            if (Button(new Rect(px + (pw - 160) * 0.5f, py + ph - 50f, 160, 38), "返回  Back", true))
+            if (Button(new Rect(px + (pw - 160) * 0.5f, py + ph - 50f, 160, 38), "Back", true))
+                _screen = Page.Main;
+        }
+
+        // ── 制作名单 / Credits ─────────────────────────────────────────────────
+        // 玩家可见的素材署名页，满足 LPC (CC-BY-SA) 等在使用处给出署名的义务。
+        // 完整许可证与逐源说明见仓库根目录 ATTRIBUTIONS.md。
+
+        private void DrawCredits(float sw, float sh)
+        {
+            float pw = Mathf.Min(560f, sw - 60f);
+            float ph = Mathf.Min(sh - 110f, 438f);
+            float px = (sw - pw) * 0.5f;
+            float py = Mathf.Max(70f, sh * 0.30f - 10f);
+            Panel(px, py, pw, ph, "Credits");
+
+            var head = Left(13, new Color(0.98f, 0.88f, 0.4f));
+            var line = Left(11, new Color(0.78f, 0.78f, 0.84f));
+            var dim  = Left(10, new Color(0.55f, 0.55f, 0.62f));
+            float x = px + 26f, w = pw - 52f, y = py + 50f;
+
+            void H(string s) { GUI.Label(new Rect(x, y, w, 18), s, head); y += 22f; }
+            void L(string s) { GUI.Label(new Rect(x + 10, y, w - 10, 16), s, line); y += 17f; }
+            void D(string s) { GUI.Label(new Rect(x + 10, y, w - 10, 16), s, dim);  y += 16f; }
+
+            H("Game Design & Programming");
+            L("1Misery1    ·    Engine: Unity 2022.3 LTS");
+            y += 6f;
+
+            H("Art assets (third-party)");
+            L("0x72 — DungeonTileset II  (CC0)");
+            L("Kenney — Roguelike / Characters / Micro  (CC0)");
+            L("LPC — Johannes Sjölund (wulax); base by Stephen");
+            D("          Challener (Redshrike)  ·  CC-BY-SA 3.0");
+            L("CraftPix.net — free game assets");
+            L("Dungeon Crawl Stone Soup — David E. Gervais");
+            y += 6f;
+
+            H("Font & Audio");
+            L("Ark Pixel font — TakWolf  (SIL OFL 1.1)");
+            L("Audio — Kenney, JaggedStone, yd, MintoDog  (CC0)");
+            y += 8f;
+
+            D("Full licenses & attribution: ATTRIBUTIONS.md");
+            D("LPC-derived sprites are licensed CC-BY-SA 3.0.");
+
+            if (Button(new Rect(px + (pw - 160) * 0.5f, py + ph - 50f, 160, 38), "Back", true))
                 _screen = Page.Main;
         }
 

@@ -26,8 +26,7 @@ namespace Game.Dungeon
 
         private void Update()
         {
-            transform.Rotate(0f, 0f, 80f * Time.deltaTime);
-
+            // 固定摆放、不旋转（问题7）
             // 战斗期间不可交互；玩家仍站在祭坛上时，战斗结束后立即结算
             if (_playerInside) TryResolve();
         }

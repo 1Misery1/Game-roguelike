@@ -34,4 +34,4 @@ MonoBehaviour:
   unlockedByDefault: 0
   unlockCost: 60
   requiredTruthFlag: truth_furnace_overload
-  lockedStoryLine: "这缕星烬之魂在火光里忽明忽暗。她追随恩师的界核研究而来。查明熔炉为何过载、界核如何失控，真相会让她重新凝实。"
+  lockedStoryLine: "This star-ember soul flickers in the firelight. She followed her mentor's research into the realmcore. Learn why the furnace overloaded and how the realmcore broke loose, and the truth will make her whole again."

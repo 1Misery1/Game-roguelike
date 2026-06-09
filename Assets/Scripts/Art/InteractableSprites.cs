@@ -18,6 +18,7 @@ namespace Game.Art
         public static Sprite Tome()           => Cached("tome",    DrawTome);
         public static Sprite Door()           => Cached("door",    DrawDoor);
         public static Sprite Altar()          => Cached("altar",   DrawAltar);
+        public static Sprite Orb()            => Cached("orb",     DrawOrb);
 
         static Sprite Cached(string key, System.Action<Color32[], int> draw)
         {
@@ -173,6 +174,26 @@ namespace Game.Art
             P(p, z, 14, 22, spk);
             P(p, z, 9, 20, spk); P(p, z, 23, 21, spk); P(p, z, 16, 27, spk);
             P(p, z, 20, 25, orb); P(p, z, 12, 25, orb);
+        }
+
+        // ── 光球：放射状辉光圆球（灰度，由 sr.color 着色为天赋色）──────────────
+        static void DrawOrb(Color32[] p, int z)
+        {
+            const int cx = 16, cy = 16;
+            const float R = 15f;
+            for (int y = 0; y < z; y++)
+            for (int x = 0; x < z; x++)
+            {
+                float d = Mathf.Sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy)) / R;
+                if (d > 1f) continue;
+                float core = Mathf.Clamp01(1f - d);
+                byte val = (byte)Mathf.Clamp(70f + 185f * core * core, 0f, 255f);    // 亮核
+                byte a   = (byte)Mathf.Clamp(255f * (1f - d * d) * 1.25f, 0f, 255f); // 柔和外晕
+                p[y * z + x] = new Color32(val, val, val, a);
+            }
+            P(p, z, 12, 20, C(255, 255, 255, 235));   // 左上高光
+            P(p, z, 13, 20, C(255, 255, 255, 205));
+            P(p, z, 12, 19, C(255, 255, 255, 185));
         }
 
         // ── 绘制工具（与 WeaponSprites 同款）─────────────────────────────────

@@ -151,8 +151,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bde986a3f938dc344b557d3f8ac2499a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  halfW: 12
-  halfH: 7
+  bgWorldWidth: 26
+  playHalfW: 9.6
+  playHalfH: 7.2
   dummyCount: 4
 --- !u!4 &1712268810
 Transform:

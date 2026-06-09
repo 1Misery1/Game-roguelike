@@ -23,6 +23,7 @@ namespace Game.AI
         private float _timer;
         private SpriteRenderer _sr;
         private readonly HashSet<IDamageable> _inside = new HashSet<IDamageable>();
+        private bool _stable;
 
         private static readonly Color IdleColor   = new Color(0.45f, 0.08f, 0.04f, 0.80f);
         private static readonly Color WarnColor   = new Color(1.00f, 0.55f, 0.05f, 0.95f);
@@ -39,8 +40,19 @@ namespace Game.AI
             col.isTrigger = true;
         }
 
+        // 战斗胜利后：停止喷发循环，转入冷却暗红的稳定态、不再伤害（保留可见，不销毁）。
+        public void Stabilize()
+        {
+            _stable = true;
+            if (_sr != null) _sr.color = new Color(0.30f, 0.10f, 0.05f, 0.85f);
+            _inside.Clear();
+            var col = GetComponent<CircleCollider2D>();
+            if (col != null) col.enabled = false;
+        }
+
         private void Update()
         {
+            if (_stable) return;
             _timer += Time.deltaTime;
             switch (_phase)
             {

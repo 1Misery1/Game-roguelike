@@ -1,0 +1,38 @@
+LPC-DERIVED SPRITE LICENSE NOTICE
+=================================
+
+Some of the character / enemy / skeleton sprites in this folder (and in
+../Heroes, ../../Enemies, ../../Weapons) are DERIVED WORKS based on the
+Liberated Pixel Cup (LPC) character art.
+
+Original work
+-------------
+"[LPC] Medieval Fantasy Character Sprites"
+- Created by:  Johannes Sjölund (wulax)
+- Base assets: Stephen Challener (Redshrike)
+- Source:      https://opengameart.org/content/lpc-medieval-fantasy-character-sprites
+
+License
+-------
+These derived sprites are made available under the
+**Creative Commons Attribution-ShareAlike 3.0 (CC-BY-SA 3.0)** license
+(the original is also offered under GPL 3.0 / OGA-BY 3.0).
+  CC-BY-SA 3.0: https://creativecommons.org/licenses/by-sa/3.0/
+
+ShareAlike: because these sprites adapt CC-BY-SA material, the adapted
+sprites themselves are licensed CC-BY-SA 3.0. The game's source code and
+other (CC0) assets are NOT affected by this license — only these LPC-derived
+sprite files are.
+
+Modifications made to the original
+----------------------------------
+- Removed the original background (alpha keyed out).
+- Cropped individual standing/idle poses out of the full LPC animation sheets.
+- Re-packed selected frames into per-character horizontal sprite sheets.
+- Squared the canvas and upscaled 4x with nearest-neighbour (see
+  extract_sprites.py / _RawSprites/fix_sprites.py at the repo root).
+
+If you reuse these specific sprites, you must keep this attribution and
+license, and license your own adaptations under CC-BY-SA 3.0.
+
+See ../../../ATTRIBUTIONS.md for the full project asset attribution list.

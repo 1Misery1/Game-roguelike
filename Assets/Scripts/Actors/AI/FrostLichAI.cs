@@ -115,7 +115,7 @@ namespace Game.AI
             EnemyProjectile.Spawn(
                 transform.position, dir, speed: 9f, attackRange,
                 new DamageInfo { Amount = attackDamage, Type = DamageType.Magical, Source = gameObject },
-                ProjectileType.IceMissile, size: 0.28f, transform.parent);
+                ProjectileType.IceMissile, size: 0.42f, transform.parent);   // 冰霜飞弹放大（0.28→0.42）
         }
 
         // 冰霜新星：AOE + 打断玩家
@@ -150,7 +150,7 @@ namespace Game.AI
                 EnemyProjectile.Spawn(
                     transform.position, dir, speed: 8f, volleyRange,
                     new DamageInfo { Amount = volleyDamage, Type = DamageType.Magical, Source = gameObject },
-                    ProjectileType.IceSpike, size: 0.2f, transform.parent);
+                    ProjectileType.IceSpike, size: 0.5f, transform.parent);   // 冰棱放大（0.2→0.5）
             }
         }
 

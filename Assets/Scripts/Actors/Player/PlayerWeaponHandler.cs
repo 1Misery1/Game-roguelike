@@ -80,6 +80,7 @@ namespace Game.Player
         public void EquipWeapon(WeaponInstance weapon, int slot)
         {
             if (slot < 0 || slot >= Slots.Length) return;
+            float curBefore = _health != null ? _health.Current : 0f;
             float maxBefore = _stats != null ? _stats.Get(StatType.MaxHP) : 0f;
 
             _stats?.RemoveModifiersFrom(_weaponHPSources[slot]);
@@ -87,8 +88,8 @@ namespace Game.Player
             ApplyWeaponHPBonus(slot);
 
             float maxAfter = _stats != null ? _stats.Get(StatType.MaxHP) : 0f;
-            float delta = maxAfter - maxBefore;
-            if (Mathf.Abs(delta) > 0.001f) _health?.AdjustCurrentByMaxDelta(delta);
+            // 以变更前的 Current 为基准，避免换装中途 ClampToMax 把血量塌到基础上限
+            _health?.SetCurrentForMaxChange(curBefore, maxBefore, maxAfter);
 
             if (slot == ActiveSlotIndex) _holder?.SetWeapon(weapon?.Data);
         }
@@ -106,12 +107,13 @@ namespace Game.Player
         public void RefreshWeaponHPBonus(int slot)
         {
             if (slot < 0 || slot >= Slots.Length) return;
+            float curBefore = _health != null ? _health.Current : 0f;
             float maxBefore = _stats != null ? _stats.Get(StatType.MaxHP) : 0f;
             _stats?.RemoveModifiersFrom(_weaponHPSources[slot]);
             ApplyWeaponHPBonus(slot);
             float maxAfter = _stats != null ? _stats.Get(StatType.MaxHP) : 0f;
-            float delta = maxAfter - maxBefore;
-            if (Mathf.Abs(delta) > 0.001f) _health?.AdjustCurrentByMaxDelta(delta);
+            // 升级提升血量上限时，当前血量随上限增量上升（不再错误地塌回基础上限）
+            _health?.SetCurrentForMaxChange(curBefore, maxBefore, maxAfter);
         }
 
         // 普通攻击
@@ -232,8 +234,8 @@ namespace Game.Player
             bool isCrit = Random.value < _stats.Get(StatType.CritRate);
             if (isCrit) damage *= _stats.Get(StatType.CritDamage);
 
-            RangedAttack(damage, aimDir, weapon.Data.attackRange, weapon.Data.damageType, isCrit);
-            if (weapon.Data.lifeStealRate > 0f) _health?.Heal(damage * weapon.Data.lifeStealRate);
+            // 蓄力箭：吸血同样改为命中敌人才结算（挥空/射空不回血）
+            RangedAttack(damage, aimDir, weapon.Data.attackRange, weapon.Data.damageType, isCrit, weapon.Data.lifeStealRate);
 
             _anim?.PlayAttack(WeaponCategory.Bow, aimDir);
             OnNormalAttackFired?.Invoke();
@@ -269,33 +271,36 @@ namespace Game.Player
                 || weapon.Data.category == WeaponCategory.Dagger
                 || weapon.Data.backstabBonus;
 
+            float lifeSteal = weapon.Data.lifeStealRate;
             switch (weapon.Data.category)
             {
                 case WeaponCategory.Dagger:
                 case WeaponCategory.Longsword:
                 case WeaponCategory.Greatsword:
-                    MeleeAttack(damage, weapon.Data.attackRange, type, isCrit, aimDir, weapon.Data.category, canBackstab);
+                    // 近战：按「实际打到敌人的伤害」回血，挥空不回血
+                    float dealt = MeleeAttack(damage, weapon.Data.attackRange, type, isCrit, aimDir, weapon.Data.category, canBackstab);
+                    if (lifeSteal > 0f && dealt > 0f) _health?.Heal(dealt * lifeSteal);
                     break;
                 case WeaponCategory.Bow:
-                    RangedAttack(damage, aimDir, weapon.Data.attackRange, type, isCrit);
+                    // 远程：吸血交由箭矢命中敌人时结算
+                    RangedAttack(damage, aimDir, weapon.Data.attackRange, type, isCrit, lifeSteal);
                     break;
                 case WeaponCategory.Staff:
+                    // 法球：吸血交由法球碰到敌人时结算
                     float aoe = weapon.Data.aoeRadius > 0f ? weapon.Data.aoeRadius : 1.2f;
-                    MagicBlast(damage, aimDir, weapon.Data.attackRange, aoe, type, isCrit);
+                    MagicBlast(damage, aimDir, weapon.Data.attackRange, aoe, type, isCrit, lifeSteal);
                     break;
             }
-
-            // Lifesteal (吸血武器)
-            if (weapon.Data.lifeStealRate > 0f)
-                _health?.Heal(damage * weapon.Data.lifeStealRate);
         }
 
         private static readonly int NonWallMask = ~(1 << 9);
 
-        private void MeleeAttack(float damage, float range, DamageType type, bool isCrit, Vector2 aimDir,
+        // 返回「实际对敌人造成的伤害总量」，供吸血按命中结算（挥空不回血）
+        private float MeleeAttack(float damage, float range, DamageType type, bool isCrit, Vector2 aimDir,
             WeaponCategory category, bool canBackstab = false)
         {
             Game.Core.AudioManager.Get().PlaySfx("swing");
+            float dealtToEnemies = 0f;
             var cols = Physics2D.OverlapCircleAll(transform.position, range, NonWallMask);
             foreach (var col in cols)
             {
@@ -308,19 +313,23 @@ namespace Game.Player
                     if (ef != null && ef.IsBackExposed((Vector2)transform.position))
                         finalDmg *= 1.2f;
                 }
-                col.GetComponent<IDamageable>()?.TakeDamage(new DamageInfo
+                var dmg = col.GetComponent<IDamageable>();
+                if (dmg == null) continue;
+                dmg.TakeDamage(new DamageInfo
                 {
                     Amount = finalDmg, Type = type, IsCrit = isCrit, Source = gameObject
                 });
+                if (col.GetComponent<EnemyTag>() != null) dealtToEnemies += finalDmg;
             }
             // 近战刀光特效：实例化可视化编辑的劈砍预制体（Sprite 逐帧动画）
             if (aimDir == Vector2.zero) aimDir = Vector2.right;
             float angle = Mathf.Atan2(aimDir.y, aimDir.x) * Mathf.Rad2Deg;
             var fxPos = transform.position + (Vector3)(aimDir.normalized * range * 0.45f);
             MeleeSlashFX.Spawn(category, fxPos, angle, range, transform.parent);
+            return dealtToEnemies;
         }
 
-        private void RangedAttack(float damage, Vector2 dir, float range, DamageType type, bool isCrit)
+        private void RangedAttack(float damage, Vector2 dir, float range, DamageType type, bool isCrit, float lifeStealRate = 0f)
         {
             if (dir == Vector2.zero) dir = Vector2.right;
             // 飞行至首个敌人碰撞或撞墙/超距时才结算伤害
@@ -328,10 +337,10 @@ namespace Game.Player
             PlayerProjectile.Spawn(
                 ProjectileType.Arrow, transform.position, dir,
                 14f, range, 0.28f, transform.parent,
-                info, aoeRadius: 0f, source: gameObject);
+                info, aoeRadius: 0f, source: gameObject, lifeStealRate: lifeStealRate);
         }
 
-        private void MagicBlast(float damage, Vector2 dir, float range, float radius, DamageType type, bool isCrit)
+        private void MagicBlast(float damage, Vector2 dir, float range, float radius, DamageType type, bool isCrit, float lifeStealRate = 0f)
         {
             if (dir == Vector2.zero) dir = Vector2.right;
             // 法球飞行至敌人/墙体或最大射程后，在落点 OverlapCircle 触发 AOE
@@ -339,7 +348,7 @@ namespace Game.Player
             PlayerProjectile.Spawn(
                 ProjectileType.MagicOrb, transform.position, dir,
                 10f, range, 0.32f, transform.parent,
-                info, aoeRadius: radius, source: gameObject);
+                info, aoeRadius: radius, source: gameObject, lifeStealRate: lifeStealRate);
         }
 
         private float RawSkillCooldown

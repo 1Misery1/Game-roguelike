@@ -17,11 +17,7 @@ namespace Game.Dungeon
             if (col != null) col.isTrigger = true;
         }
 
-        private void Update()
-        {
-            transform.Rotate(0f, 0f, 120f * Time.deltaTime);
-        }
-
+        // 固定摆放、不旋转
         private void OnTriggerEnter2D(Collider2D other)
         {
             if (_picked) return;

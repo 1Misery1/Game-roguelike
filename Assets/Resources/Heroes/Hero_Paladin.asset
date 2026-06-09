@@ -34,4 +34,4 @@ MonoBehaviour:
   unlockedByDefault: 0
   unlockCost: 100
   requiredTruthFlag: truth_church_silence
-  lockedStoryLine: "一道沉默的虚影静立台前。黎明誓约者一生只信誓言。去揭开教会缄口掩埋的真相，他才肯应召归来。"
+  lockedStoryLine: "A silent shade stands before the pedestal. The Dawn Oathbound trusted only his vows. Uncover the truth the church buried in silence, and he will answer the call."

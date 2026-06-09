@@ -140,7 +140,13 @@ Branch strategy: feature branches merged to `main` via PR after each milestone.
 
 | Role | Name |
 |---|---|
-| Game Design, Programming, Art | 1Misery1 |
+| Game Design & Programming | 1Misery1 |
 | Engine | Unity Technologies — Unity 2022.3 LTS |
-| Pixel Art Tooling | Unity SpriteRenderer + custom procedural sprite generation |
+| Art / Audio / Font assets | Third-party packs (0x72, Kenney, LPC/wulax, CraftPix, DCSS/Gervais, Ark Pixel font, OpenGameArt) — see [`ATTRIBUTIONS.md`](ATTRIBUTIONS.md) |
+| Sprite processing tooling | `extract_sprites.py` — extracts/re-packs frames from the third-party reference sheets above (not original artwork) |
 | Inspiration | Hades (Supergiant Games), Binding of Isaac |
+
+> **Note on art:** the in-game sprites are **derived from third-party asset packs**,
+> not original or procedurally generated artwork. Some sources (LPC, CraftPix) carry
+> attribution / ShareAlike obligations that must be met before public release — see
+> [`ATTRIBUTIONS.md`](ATTRIBUTIONS.md) for the per-source status and required actions.

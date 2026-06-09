@@ -41,7 +41,7 @@ namespace Game.Bootstrap
             SpawnDummies();
             EnsureCamera();
 
-            Flash("练武场 · 白盒。空格/左键 攻击，R 武器技能，F 英雄技能。稻草人血量无限，尽情试招。", 7f);
+            Flash("Training Arena. Space/Left-click to attack, R weapon skill, F hero skill. The dummy has infinite HP — practice freely.", 7f);
         }
 
         // ── 解析要试练的英雄 ───────────────────────────────────────────
@@ -273,15 +273,15 @@ namespace Game.Bootstrap
                 _center = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter };
 
             GUI.color = new Color(0.95f, 0.85f, 0.55f);
-            GUI.Label(new Rect(12, 8, 400, 26), "三界余烬 — 练武场");
+            GUI.Label(new Rect(12, 8, 400, 26), "Embers of the Three Realms — Training Arena");
             GUI.color = Color.white;
-            GUI.Label(new Rect(12, 32, 600, 22), "WASD 移动 · 空格/左键 攻击 · R 武器技能 · F 英雄技能 · Q 换武器 · Esc 返回");
+            GUI.Label(new Rect(12, 32, 600, 22), "WASD move · Space/Left-click attack · R weapon skill · F hero skill · Q swap weapon · Esc back");
 
             if (_nearExit)
             {
                 var r = new Rect(Screen.width * 0.5f - 200, Screen.height - 64, 400, 26);
                 GUI.color = new Color(0f, 0f, 0f, 0.5f); GUI.Box(r, GUIContent.none);
-                GUI.color = new Color(0.7f, 0.95f, 1f); GUI.Label(r, "[E] 返回营地", _center);
+                GUI.color = new Color(0.7f, 0.95f, 1f); GUI.Label(r, "[E] Return to Camp", _center);
                 GUI.color = Color.white;
             }
 

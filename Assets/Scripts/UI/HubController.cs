@@ -32,6 +32,7 @@ namespace Game.UI
         [Header("Tuning")]
         [SerializeField] private float   moveSpeed      = 6f;
         [SerializeField] private float   interactRadius = 1.7f;
+        [SerializeField] private float   labelRevealRadius = 2.9f; // 仅当玩家靠近到此半径内才显示台座英文标签
         [SerializeField] private float   playerRadius   = 0.42f;   // 碰撞检测半径
         [SerializeField] private LayerMask obstacleMask = ~0;       // 障碍体积所在层(默认全部)
         [SerializeField] private Vector2 boundsMin = new Vector2(-11.5f, -5.5f);
@@ -64,6 +65,7 @@ namespace Game.UI
         private string _msg = "";
         private float  _msgUntil;
         private GUIStyle _centerStyle;
+        private GUIStyle _msgStyle;     // 提示横幅：自动换行，配合动态高度
 
         private const float TruthTotal = 10f;
         private const float FloorTotal = 3f;
@@ -99,9 +101,9 @@ namespace Game.UI
             ApplyLiftSeal();
             ApplyPlayerVisual();
             SnapCamera();
-            const string ghostGuide = "你是一缕余烬游魂。走向台前已觉醒的残魂,按 E 附身,便能化作他的身躯下潜。";
+            const string ghostGuide = "You are a drifting ember-spirit. Approach an awakened remnant at its pedestal and press E to possess it, then descend in its body.";
             if (fromTraining && _selectedHeroIndex >= 0)
-                Flash($"你自练武场归来,仍以 {_heroes[_selectedHeroIndex].displayName} 之身,立于门旁。", 4f);
+                Flash($"You return from the Training Arena, still in {_heroes[_selectedHeroIndex].displayName}'s body, standing by the door.", 4f);
             else if (!IntroController.HasSeen)
                 IntroController.Play(onComplete: () => Flash(ghostGuide, 7f));  // 首次入营:先看开场,再给引导
             else
@@ -401,7 +403,7 @@ namespace Game.UI
             _selectedHeroIndex = -1;
             ApplyPlayerVisual();     // 当前位置变回游魂
             ApplyCompanionSeats();   // 该英雄重新出现在火边原座位
-            Flash($"你离体而出,化回游魂。{hero.displayName} 重新坐回火边。", 3.5f);
+            Flash($"You leave the body and become a spirit again. {hero.displayName} returns to the fireside.", 3.5f);
         }
 
         // 目标位置是否与场景里的障碍体积重叠。
@@ -416,15 +418,15 @@ namespace Game.UI
             {
                 case HubStationKind.HeroPedestal: InteractHero(s.heroIndex); break;
                 case HubStationKind.QuestBoard:
-                    Flash("悬赏:斩杀地底的「怪物」。走向升降井便可开始下潜。", 4f); break;
+                    Flash("Bounty: slay the \"monsters\" below. Head to the descent lift to begin.", 4f); break;
                 case HubStationKind.LiftDoor: BeginDescent(); break;
                 case HubStationKind.TrainingDoor: EnterTraining(); break;
                 case HubStationKind.Campfire:
                     IntroController.Play(); break;   // 围火重温开场（你是如何来到这里的）
                 case HubStationKind.Memorial:
-                    Flash($"名册碑 — 已记起真相 {_persistent.TruthFlags.Count} / 10。记住他们的名字。", 5f); break;
+                    Flash($"Memorial — truths recalled {_persistent.TruthFlags.Count} / 10. Remember their names.", 5f); break;
                 case HubStationKind.Records:
-                    Flash($"出征 {_persistent.TotalRuns}  ·  通关 {_persistent.TotalVictories}  ·  最深 {_persistent.BestFloor} 层  ·  记起真相 {_persistent.TruthFlags.Count}/10", 6f); break;
+                    Flash($"Runs {_persistent.TotalRuns}  ·  Victories {_persistent.TotalVictories}  ·  Deepest Floor {_persistent.BestFloor}  ·  Truths {_persistent.TruthFlags.Count}/10", 6f); break;
             }
         }
 
@@ -437,7 +439,7 @@ namespace Game.UI
             {
                 string line = !string.IsNullOrEmpty(hero.lockedStoryLine)
                     ? hero.lockedStoryLine
-                    : $"{hero.displayName} 的残魂还认不出自己。先在地底揭开属于他的真相吧。";
+                    : $"{hero.displayName}'s remnant does not yet know itself. Uncover its truth below first.";
                 Flash(line, 7f);
                 return;
             }
@@ -451,21 +453,21 @@ namespace Game.UI
             ApplyPlayerVisual();        // 游魂 → 该英雄真身
             ApplyCompanionSeats();      // 隐藏被附身者的座位(原英雄消失),其余已解锁者照常围坐
             SnapCamera();               // 视角立即对准刚附身的真身
-            Flash($"附身成功 — 你化作了 {hero.displayName},自火边起身。", 2.5f);
+            Flash($"Possession complete — you become {hero.displayName} and rise from the fireside.", 2.5f);
         }
 
         private void BeginDescent()
         {
             if (_selectedHeroIndex < 0 || _selectedHeroIndex >= _heroes.Length)
             {
-                Flash("你仍是无形的游魂。先附身一缕已觉醒的残魂,才能下潜。", 4f);
+                Flash("You are still a formless spirit. Possess an awakened remnant before you can descend.", 4f);
                 return;
             }
             var hero = _heroes[_selectedHeroIndex];
             if (GameManager.Instance == null)
             {
                 Debug.LogWarning("[HubController] No GameManager in scene; cannot start run.");
-                Flash("GameManager 缺失,无法下潜。", 3f);
+                Flash("GameManager missing; cannot descend.", 3f);
                 return;
             }
             GameManager.Instance.StartRun(hero);
@@ -476,14 +478,14 @@ namespace Game.UI
         {
             if (_selectedHeroIndex < 0 || _selectedHeroIndex >= _heroes.Length)
             {
-                Flash("游魂无法挥剑。先附身一缕已觉醒的残魂,再去练武场试招。", 4f);
+                Flash("A spirit cannot swing a blade. Possess an awakened remnant before training.", 4f);
                 return;
             }
             var hero = _heroes[_selectedHeroIndex];
             if (GameManager.Instance == null)
             {
                 Debug.LogWarning("[HubController] No GameManager in scene; cannot enter training.");
-                Flash("GameManager 缺失,无法进入练武场。", 3f);
+                Flash("GameManager missing; cannot enter the Training Arena.", 3f);
                 return;
             }
             GameManager.Instance.EnterTraining(hero);
@@ -497,16 +499,23 @@ namespace Game.UI
             UIFonts.ApplyToSkin();
             if (_centerStyle == null)
                 _centerStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter };
+            if (_msgStyle == null)
+                _msgStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, wordWrap = true };
 
             GUI.color = new Color(0.95f, 0.85f, 0.55f);
-            GUI.Label(new Rect(12, 8, Screen.width - 24, 26), "三界余烬 — 营地");
+            GUI.Label(new Rect(12, 8, Screen.width - 24, 26), "Embers of the Three Realms — Camp");
             GUI.color = Color.white;
             var selName = (_selectedHeroIndex >= 0 && _selectedHeroIndex < _heroes.Length)
-                ? _heroes[_selectedHeroIndex].displayName : "(未附身)";
+                ? _heroes[_selectedHeroIndex].displayName : "(unpossessed)";
             GUI.Label(new Rect(Screen.width - 360, 10, 348, 22),
-                $"英雄: {selName}    真相: {_persistent.TruthFlags.Count}/10");
+                $"Hero: {selName}    Truths: {_persistent.TruthFlags.Count}/10");
 
-            foreach (var s in _stations) DrawStationLabel(s);
+            // 仅显示玩家附近台座的标签（靠近才浮现，而非一开始全部显示）
+            if (player != null)
+                foreach (var s in _stations)
+                    if (((Vector2)(s.transform.position - player.position)).sqrMagnitude
+                            <= labelRevealRadius * labelRevealRadius)
+                        DrawStationLabel(s);
 
             if (_near != null)
             {
@@ -520,16 +529,39 @@ namespace Game.UI
             {
                 var h = _heroes[_selectedHeroIndex];
                 GUI.Label(new Rect(12, Screen.height - 92, Screen.width - 24, 60),
-                    $"{h.displayName}   [Q] 魂出(变回游魂)\nHP {h.baseMaxHP:0}  ATK {h.baseAttack:0}  DEF {h.baseDefense:0}  ·  技能: {h.heroSkillName}  ·  被动: {h.heroPassiveName}");
+                    $"{h.displayName}   [Q] Leave body (back to spirit)\nHP {h.baseMaxHP:0}  ATK {h.baseAttack:0}  DEF {h.baseDefense:0}  ·  Skill: {h.heroSkillName}  ·  Passive: {h.heroPassiveName}");
             }
 
             if (Time.unscaledTime < _msgUntil && !string.IsNullOrEmpty(_msg))
             {
-                var r = new Rect(Screen.width * 0.5f - 360, Screen.height * 0.5f + 120, 720, 28);
+                // 横幅高度按换行后的文字实际高度自适应，避免两行字挤进一行框被截断
+                const float boxW = 720f, padX = 18f, padY = 12f;
+                float textH = _msgStyle.CalcHeight(new GUIContent(_msg), boxW - padX * 2f);
+                float boxH  = Mathf.Max(30f, textH + padY * 2f);
+                var r = new Rect(Screen.width * 0.5f - boxW * 0.5f, Screen.height * 0.5f + 120, boxW, boxH);
                 GUI.color = new Color(0f, 0f, 0f, 0.55f); GUI.Box(r, GUIContent.none);
-                GUI.color = new Color(0.95f, 0.9f, 0.8f); GUI.Label(r, _msg, _centerStyle);
+                GUI.color = new Color(0.95f, 0.9f, 0.8f);
+                GUI.Label(new Rect(r.x + padX, r.y + padY, boxW - padX * 2f, boxH - padY * 2f), _msg, _msgStyle);
                 GUI.color = Color.white;
             }
+        }
+
+        // 台座英文标签（靠近时显示）。忽略场景里可能是中文的 s.title，统一由 kind 给出英文名。
+        private string StationLabel(HubStation s)
+        {
+            switch (s.kind)
+            {
+                case HubStationKind.HeroPedestal:
+                    return (s.heroIndex >= 0 && s.heroIndex < _heroes.Length)
+                        ? _heroes[s.heroIndex].displayName : "Soul";
+                case HubStationKind.QuestBoard:   return "Bounty Board";
+                case HubStationKind.LiftDoor:     return "Descent Lift";
+                case HubStationKind.TrainingDoor: return "Training Arena";
+                case HubStationKind.Campfire:     return "Campfire";
+                case HubStationKind.Memorial:     return "Memorial";
+                case HubStationKind.Records:      return "Records";
+            }
+            return s.kind.ToString();
         }
 
         private string PromptFor(HubStation s)
@@ -537,18 +569,18 @@ namespace Game.UI
             switch (s.kind)
             {
                 case HubStationKind.HeroPedestal:
-                    if (s.heroIndex < 0 || s.heroIndex >= _heroes.Length) return "选择";
+                    if (s.heroIndex < 0 || s.heroIndex >= _heroes.Length) return "Select";
                     var h = _heroes[s.heroIndex];
                     return _persistent.IsHeroUnlocked(h.heroName)
-                        ? $"选择 {h.displayName}" : $"凝视 {h.displayName} 的残魂";
-                case HubStationKind.QuestBoard: return "查看悬赏";
-                case HubStationKind.LiftDoor:   return "下潜";
-                case HubStationKind.TrainingDoor: return "进入练武场";
-                case HubStationKind.Campfire:   return "围火·重温开场";
-                case HubStationKind.Memorial:   return "细看名册";
-                case HubStationKind.Records:    return "查看战绩";
+                        ? $"Possess {h.displayName}" : $"Gaze at {h.displayName}'s remnant";
+                case HubStationKind.QuestBoard: return "View bounty";
+                case HubStationKind.LiftDoor:   return "Descend";
+                case HubStationKind.TrainingDoor: return "Enter Training Arena";
+                case HubStationKind.Campfire:   return "Sit by the fire";
+                case HubStationKind.Memorial:   return "Read the memorial";
+                case HubStationKind.Records:    return "View records";
             }
-            return "交互";
+            return "Interact";
         }
 
         private void DrawStationLabel(HubStation s)
@@ -563,10 +595,10 @@ namespace Game.UI
             Vector3 sp = cam.WorldToScreenPoint(world);
             if (sp.z < 0f) return;
 
-            string text = string.IsNullOrEmpty(s.title) ? s.kind.ToString() : s.title;
+            string text = StationLabel(s);
             if (s.kind == HubStationKind.HeroPedestal && s.heroIndex >= 0 && s.heroIndex < _heroes.Length)
             {
-                if (!_persistent.IsHeroUnlocked(_heroes[s.heroIndex].heroName)) text += "  [残魂未醒]";
+                if (!_persistent.IsHeroUnlocked(_heroes[s.heroIndex].heroName)) text += "  [dormant soul]";
                 else if (s.heroIndex == _selectedHeroIndex) text += "  ◀";
             }
 

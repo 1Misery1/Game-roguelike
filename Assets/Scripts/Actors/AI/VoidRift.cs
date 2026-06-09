@@ -1,139 +1,87 @@
+using System.Collections;
 using Game.Combat;
 using Game.Data;
 using UnityEngine;
 
 namespace Game.AI
 {
-    // 混沌虚空裂隙（第3层地形杀）：
-    //   靠近时持续吸引玩家（减速）并造成真实伤害；周期性脉冲爆发更强效果
+    // 第3层「虚空危险格」：潜伏(1×1) → 闪烁预警 → 突然扩大到 3×3(9格)，
+    // 对范围内「玩家与敌人」各造成一次低额伤害 + 一次减速（以减速为主），随后收回循环。
     public class VoidRift : MonoBehaviour
     {
-        public float slowRadius    = 5.5f;  // 减速区半径
-        public float slowAmount    = 0.22f; // 移速减缓幅度（22%）
-        public float coreRadius    = 0.6f;  // 核心伤害半径（贴合 1.2 缩放核心方块视觉，避免伤害超出可见）
-        public float damagePerSec  = 8f;    // 核心区每秒真实伤害
-        public float pulseInterval = 6.5f;  // 脉冲间隔（秒）
-        public float pulseDuration = 2.5f;  // 脉冲持续时间
-        public float pulseDamage   = 32f;   // 脉冲额外一次性伤害
+        public float idleTime     = 4.0f;   // 潜伏（1×1）
+        public float flickerTime  = 1.2f;   // 闪烁预警
+        public float expandedTime = 0.7f;   // 扩大持续
+        public float baseScale    = 1f;     // 潜伏 1×1
+        public float expandScale  = 3f;     // 扩大 3×3 = 9 格
+        public float damage       = 10f;    // 一次性低伤害
+        public float slowAmount   = 0.40f;  // 减速 40%（主效果）
+        public float slowDuration = 3.0f;   // 临时 buff，3 秒后自动解除
 
-        private float _cycleTimer;
-        private bool  _pulsing;
-        private bool  _pulseDamageApplied;
+        private enum Phase { Idle, Flicker, Expanded }
+        private Phase _phase = Phase.Idle;
+        private float _timer;
+        private SpriteRenderer _sr;
+        private bool _stable;
 
-        // 减速追踪
-        private bool           _playerInSlowZone;
-        private CharacterStats _trackedStats;
-        private string         _slowKey;
-
-        private SpriteRenderer _coreSr;
-        private SpriteRenderer _auraSr;
-
-        private static readonly Color CoreIdle  = new Color(0.55f, 0.05f, 0.75f, 0.90f);
-        private static readonly Color CorePulse = new Color(0.90f, 0.00f, 1.00f, 1.00f);
-        private static readonly Color AuraIdle  = new Color(0.38f, 0.00f, 0.58f, 0.18f);
-        private static readonly Color AuraPulse = new Color(0.70f, 0.00f, 1.00f, 0.42f);
+        private static readonly Color IdleColor  = new Color(0.45f, 0.05f, 0.65f, 0.35f);
+        private static readonly Color WarnColor  = new Color(0.95f, 0.00f, 1.00f, 0.95f);
+        private static readonly Color BurstColor = new Color(0.75f, 0.00f, 1.00f, 0.85f);
 
         private void Awake()
         {
-            _slowKey = "VoidRift_" + GetInstanceID();
-            _cycleTimer = Random.Range(0f, pulseInterval);
+            _sr = GetComponent<SpriteRenderer>();
+            transform.localScale = new Vector3(baseScale, baseScale, 1f);
+            if (_sr != null) _sr.color = IdleColor;
+            _timer = Random.Range(0f, idleTime);
+        }
 
-            _coreSr = GetComponent<SpriteRenderer>();
-            _coreSr.color = CoreIdle;
-
-            // 发光光晕子物体（代表减速区视觉）
-            var auraGO = new GameObject("VoidAura");
-            auraGO.transform.SetParent(transform, false);
-            auraGO.transform.localScale = new Vector3(slowRadius * 2f, slowRadius * 2f, 1f);
-            _auraSr = auraGO.AddComponent<SpriteRenderer>();
-            _auraSr.sprite       = _coreSr.sprite;
-            _auraSr.color        = AuraIdle;
-            _auraSr.sortingOrder = _coreSr.sortingOrder - 1;
+        // 战斗胜利后：停止扩张循环，回到 1×1 暗紫稳定态、不再伤害（保留可见，不销毁）。
+        public void Stabilize()
+        {
+            _stable = true;
+            transform.localScale = new Vector3(baseScale, baseScale, 1f);
+            if (_sr != null) _sr.color = new Color(0.30f, 0.10f, 0.40f, 0.5f);
         }
 
         private void Update()
         {
-            UpdatePulse();
-            UpdateSlowZone();
-            UpdateVisuals();
-
-            // 核心区持续真实伤害
-            float coreDmg = damagePerSec * (_pulsing ? 2.5f : 1f) * Time.deltaTime;
-            foreach (var col in Physics2D.OverlapCircleAll(transform.position, coreRadius))
+            if (_stable) return;
+            _timer += Time.deltaTime;
+            switch (_phase)
             {
-                if (col.GetComponent<EnemyTag>() != null) continue;
+                case Phase.Idle:
+                    transform.localScale = new Vector3(baseScale, baseScale, 1f);
+                    if (_sr != null) _sr.color = IdleColor;
+                    if (_timer >= idleTime) Go(Phase.Flicker);
+                    break;
+                case Phase.Flicker:
+                    if (_sr != null) _sr.color = Color.Lerp(IdleColor, WarnColor, Mathf.PingPong(Time.time * 8f, 1f));
+                    if (_timer >= flickerTime) { Expand(); Go(Phase.Expanded); }
+                    break;
+                case Phase.Expanded:
+                    if (_sr != null) _sr.color = BurstColor;
+                    if (_timer >= expandedTime) Go(Phase.Idle);
+                    break;
+            }
+        }
+
+        private void Go(Phase p) { _phase = p; _timer = 0f; }
+
+        // 突然扩大到 3×3，对范围内「玩家 + 敌人」各一次：低伤害 + 减速
+        private void Expand()
+        {
+            transform.localScale = new Vector3(expandScale, expandScale, 1f);
+            foreach (var col in Physics2D.OverlapBoxAll(transform.position, new Vector2(expandScale, expandScale), 0f))
+            {
                 col.GetComponent<IDamageable>()?.TakeDamage(new DamageInfo
                 {
-                    Amount        = coreDmg,
-                    Type          = DamageType.True,
-                    Source        = null,
-                    BypassIFrames = true,
+                    Amount = damage, Type = DamageType.Magical, Source = null,
                 });
-            }
-        }
-
-        private void UpdatePulse()
-        {
-            _cycleTimer += Time.deltaTime;
-            if (!_pulsing && _cycleTimer >= pulseInterval)
-            {
-                _pulsing            = true;
-                _pulseDamageApplied = false;
-                _cycleTimer         = 0f;
-            }
-            if (_pulsing)
-            {
-                // 脉冲开始0.3秒后造成额外一次性伤害
-                if (!_pulseDamageApplied && _cycleTimer >= 0.3f)
-                {
-                    _pulseDamageApplied = true;
-                    foreach (var col in Physics2D.OverlapCircleAll(transform.position, slowRadius))
-                    {
-                        if (col.GetComponent<EnemyTag>() != null) continue;
-                        col.GetComponent<IDamageable>()?.TakeDamage(new DamageInfo
-                        {
-                            Amount = pulseDamage,
-                            Type   = DamageType.Magical,
-                            Source = null,
-                        });
-                    }
-                }
-                if (_cycleTimer >= pulseDuration) _pulsing = false;
-            }
-        }
-
-        // 轮询玩家是否在减速区内，动态增减 StatModifier
-        private void UpdateSlowZone()
-        {
-            bool nowInZone = false;
-            foreach (var col in Physics2D.OverlapCircleAll(transform.position, slowRadius))
-            {
-                if (col.GetComponent<EnemyTag>() != null) continue;
                 var stats = col.GetComponent<CharacterStats>();
-                if (stats == null) continue;
-                _trackedStats = stats;
-                nowInZone     = true;
-                break;
+                if (stats != null)
+                    TimedModifier.Apply(stats, StatType.MoveSpeed, ModifierOp.PercentMul, -slowAmount, slowDuration);
             }
-
-            if (nowInZone && !_playerInSlowZone)
-                _trackedStats?.AddModifier(new StatModifier(StatType.MoveSpeed, ModifierOp.PercentMul, -slowAmount, _slowKey));
-            else if (!nowInZone && _playerInSlowZone)
-                _trackedStats?.RemoveModifiersFrom(_slowKey);
-
-            _playerInSlowZone = nowInZone;
-        }
-
-        private void UpdateVisuals()
-        {
-            float t = Mathf.PingPong(Time.time * 2.5f, 1f);
-            _coreSr.color = _pulsing ? Color.Lerp(CoreIdle,  CorePulse,  t) : CoreIdle;
-            _auraSr.color = _pulsing ? Color.Lerp(AuraIdle,  AuraPulse,  t) : AuraIdle;
-        }
-
-        private void OnDestroy()
-        {
-            if (_playerInSlowZone) _trackedStats?.RemoveModifiersFrom(_slowKey);
         }
     }
 }

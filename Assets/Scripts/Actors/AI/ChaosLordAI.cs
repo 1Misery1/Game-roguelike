@@ -111,10 +111,16 @@ namespace Game.AI
             }
         }
 
-        // 近战横扫：AOE + 击退
+        private static readonly Color MeleeWarn = new Color(1f, 0.35f, 0.1f, 0.55f);
+        private static readonly Color MeleeHit  = new Color(1f, 0.45f, 0.15f, 0.7f);
+        private static readonly Color BurstWarn = new Color(0.8f, 0.1f, 1f, 0.5f);
+        private static readonly Color BurstHit  = new Color(1f, 0.15f, 0.55f, 0.75f);
+
+        // 近战横扫：AOE + 击退（命中瞬间闪一圈橙色，让玩家看清扫击范围）
         private void DoMeleeSwipe()
         {
             _lastAttackTime = Time.time;
+            AoeTelegraph.Spawn(transform.position, attackRange, 0f, 0.25f, MeleeWarn, MeleeHit, 8);
             foreach (var col in Physics2D.OverlapCircleAll(transform.position, attackRange))
             {
                 if (col.gameObject == gameObject) continue;
@@ -134,6 +140,9 @@ namespace Game.AI
             _lastBurstTime = Time.time;
             for (int i = 0; i < burstPulses; i++)
             {
+                // 先撑大一圈紫色预警(0.45s)，玩家看到后可走出半径躲避，再落下脉冲伤害。
+                AoeTelegraph.Spawn(transform.position, burstRadius, 0.45f, 0.3f, BurstWarn, BurstHit);
+                yield return new WaitForSeconds(0.45f);
                 DoBurstPulse();
                 if (i < burstPulses - 1)
                     yield return new WaitForSeconds(0.5f);

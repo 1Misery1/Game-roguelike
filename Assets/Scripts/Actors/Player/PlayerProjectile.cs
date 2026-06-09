@@ -22,6 +22,7 @@ namespace Game.Player
         private GameObject _source;
         private bool       _detonated;
         private bool       _piercing;
+        private float      _lifeStealRate;   // 吸血：仅在「实际命中敌人」时按已造成伤害回血
         private HashSet<GameObject> _pierced;
 
         // 真贴图视觉预制体缓存（缺失则回退到程序化精灵）
@@ -43,7 +44,7 @@ namespace Game.Player
             ProjectileType type, Vector3 startPos, Vector2 dir,
             float speed, float maxRange, float size, Transform parent,
             DamageInfo damage, float aoeRadius, GameObject source,
-            bool piercing = false)
+            bool piercing = false, float lifeStealRate = 0f)
         {
             if (dir == Vector2.zero) dir = Vector2.right;
             dir = dir.normalized;
@@ -88,8 +89,16 @@ namespace Game.Player
             proj._aoeRadius  = aoeRadius;
             proj._source     = source;
             proj._piercing   = piercing;
+            proj._lifeStealRate = lifeStealRate;
             if (piercing) proj._pierced = new HashSet<GameObject>();
             return proj;
+        }
+
+        // 命中敌人后按已造成伤害回血给施法者（法球/箭矢「打到敌人才加血」）
+        private void Steal()
+        {
+            if (_lifeStealRate <= 0f || _source == null) return;
+            _source.GetComponent<Game.Combat.Health>()?.Heal(_damage.Amount * _lifeStealRate);
         }
 
         private const float HitRadius = 0.25f;  // 命中敌人的轮询半径
@@ -111,12 +120,16 @@ namespace Game.Player
                 if (_piercing)
                 {
                     if (_pierced.Add(c.gameObject))
+                    {
                         c.GetComponent<IDamageable>()?.TakeDamage(_damage);
+                        Steal();
+                    }
                     continue;
                 }
 
                 if (_aoeRadius > 0f) { Detonate(); return; }
                 c.GetComponent<IDamageable>()?.TakeDamage(_damage);
+                Steal();
                 Destroy(gameObject);
                 return;
             }
@@ -148,12 +161,15 @@ namespace Game.Player
 
             var mask = ~(1 << 9); // 排除墙体层
             var cols = Physics2D.OverlapCircleAll(transform.position, _aoeRadius, mask);
+            bool hitEnemy = false;
             foreach (var col in cols)
             {
                 if (col.gameObject == _source) continue;
                 if (col.GetComponent<EnemyTag>() == null) continue;
                 col.GetComponent<IDamageable>()?.TakeDamage(_damage);
+                hitEnemy = true;
             }
+            if (hitEnemy) Steal();   // AOE 命中到至少一个敌人才回血（每次引爆结算一次）
             Destroy(gameObject);
         }
     }

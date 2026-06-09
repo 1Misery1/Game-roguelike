@@ -34,4 +34,4 @@ MonoBehaviour:
   unlockedByDefault: 0
   unlockCost: 30
   requiredTruthFlag: truth_scout_sacrifice
-  lockedStoryLine: "残魂在台前游移，却认不出自己的名字——她是斥候队唯一的幸存者。去冰原的斥候营地，弄清同伴们最后为何而死，她才会想起自己是谁。"
+  lockedStoryLine: "The remnant drifts before the pedestal, unable to recall her own name — she was the scout party's sole survivor. Go to the scout camp on the frostplains, learn why her companions fell, and she will remember who she is."

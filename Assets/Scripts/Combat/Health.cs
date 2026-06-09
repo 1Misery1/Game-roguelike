@@ -73,6 +73,16 @@ namespace Game.Combat
             _current = Mathf.Min(_current, Max);
         }
 
+        // 换装 / 升级 武器导致 MaxHP 变化时使用：以「变更前的 Current」为基准 + 上限差值。
+        // 必须传入变更前的 curBefore，因为换装过程中 RemoveModifier→ClampToMax 会先把 _current
+        // 夹到「去掉加成后的较低上限」，若直接用被夹后的 _current 计算，血量会错误地塌到基础上限附近。
+        public void SetCurrentForMaxChange(float curBefore, float maxBefore, float maxAfter)
+        {
+            if (curBefore <= 0f) return;           // 变更前已死亡不复活
+            float delta = maxAfter - maxBefore;
+            _current = Mathf.Clamp(curBefore + delta, 1f, Max);
+        }
+
         private void ClampToMax()
         {
             _current = Mathf.Min(_current, Max);

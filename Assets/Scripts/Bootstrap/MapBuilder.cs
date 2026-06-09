@@ -276,7 +276,7 @@ namespace Game.Bootstrap
 
         /// 程序化产出一张 string[] 布局（确定性：相同 WorldSeed/floor/variant → 相同图）。
         /// 优先生成「异形轮廓」房间，退化时回退矩形布局，再不行回退静态图。
-        static string[] Generate(int floor, int variant, bool forceRect = false)
+        static string[] Generate(int floor, int variant, bool forceRect = false, bool clean = false)
         {
             int fi  = Mathf.Clamp(floor - 1, 0, 2);
             int idx = fi * 3 + (variant % 3);
@@ -284,14 +284,15 @@ namespace Game.Bootstrap
             var rng  = new System.Random(seed);
 
             // forceRect：商店房 / Boss 房强制规整矩形（GenerateRect 内置 _genValid=false → 固定出生 + 旧刷怪逻辑）
-            if (forceRect) return GenerateRect(fi, idx, rng);
+            // clean：商店房专用，纯地板+墙壁，不撒任何障碍/陷阱。
+            if (forceRect) return GenerateRect(fi, idx, rng, clean);
 
             var irregular = GenerateIrregular(fi, rng);
             return irregular ?? GenerateRect(fi, idx, rng);
         }
 
         // ── 矩形布局：外圈空 + 核心点阵障碍；连通性靠构造 + 洪泛验证 ────────────
-        static string[] GenerateRect(int fi, int idx, System.Random rng)
+        static string[] GenerateRect(int fi, int idx, System.Random rng, bool clean = false)
         {
             _genValid = false;                       // 矩形房沿用固定出生 + 旧刷怪逻辑
 
@@ -306,20 +307,26 @@ namespace Game.Bootstrap
             g[8][TileW - 1] = 'd';
             g[9][TileW - 1] = 'd';
 
-            const int x0 = 5, y0 = 3, cellW = 5, cellH = 4;
-            int x1 = TileW - 6, y1 = TileH - 4;
-            for (int cy = y0; cy + cellH - 1 <= y1; cy += cellH)
-            for (int cx = x0; cx + cellW - 1 <= x1; cx += cellW)
+            // clean（商店房）：跳过核心障碍点阵 → 纯地板+四周墙壁，无柱/陷阱/岩浆。
+            if (!clean)
             {
-                if (rng.Next(100) < 22) continue;
-                StampFeature(g, rng, fi, cx + 1, cy + 1, cellW - 2, cellH - 2);
+                const int x0 = 5, y0 = 3, cellW = 5, cellH = 4;
+                int x1 = TileW - 6, y1 = TileH - 4;
+                for (int cy = y0; cy + cellH - 1 <= y1; cy += cellH)
+                for (int cx = x0; cx + cellW - 1 <= x1; cx += cellW)
+                {
+                    if (rng.Next(100) < 22) continue;
+                    StampFeature(g, rng, fi, cx + 1, cy + 1, cellW - 2, cellH - 2);
+                }
             }
 
             var rows = ToRows(g);
             return Verify(rows) ? rows : _maps[idx];
         }
 
-        // ══ 异形房间：重叠矩形并集 + 横向主脊 → 非矩形轮廓；连通由主脊 + 验证保证 ══
+        // ══ 异形房间：居中核心矩形 + 上下镜像外凸 lobe + 轮廓平滑 → 对称规整且非矩形 ══
+        //   设计目标：保留"非矩形"的变化感，但消除随机重叠矩形产生的歪斜锯齿，
+        //   读起来像"刻意设计的对称房间"而非"随机噪声"。连通由中线走廊 + 验证保证。
         static string[] GenerateIrregular(int fi, System.Random rng)
         {
             // 1) 全墙
@@ -330,29 +337,39 @@ namespace Game.Bootstrap
                 for (int c = 0; c < TileW; c++) g[r][c] = '#';
             }
 
-            // 2) 横向主脊：横贯左右的走廊 → 保证出生(左)↔出门(右)连通
-            int spineH   = 4 + rng.Next(3);                          // 4..6
-            int spineTop = 4 + rng.Next(Mathf.Max(1, TileH - 8 - spineH + 1));
-            Carve(g, 2, spineTop, TileW - 4, spineH);
+            int midRow = TileH / 2;
 
-            // 3) 若干重叠矩形「凸包」：与主脊纵向相交 → 连通且轮廓不规则
-            int blobs = 3 + rng.Next(3);                             // 3..5
-            for (int k = 0; k < blobs; k++)
+            // 2) 中央核心矩形：垂直居中、横贯左右 → 出生(左)↔出门(右)连通且轮廓规整
+            int coreH      = 6 + rng.Next(4);                        // 6..9
+            int coreTop    = Mathf.Clamp(midRow - coreH / 2, 1, TileH - 1 - coreH);
+            int coreMargin = 2 + rng.Next(2);                        // 左右留边 2..3
+            Carve(g, coreMargin, coreTop, TileW - 2 * coreMargin, coreH);
+
+            // 3) 上下镜像的外凸 lobe：制造对称、规整的非矩形轮廓（紧贴核心 → 必连通）
+            int lobes = 2 + rng.Next(2);                             // 2..3
+            for (int k = 0; k < lobes; k++)
             {
-                int bw = 5 + rng.Next(8);                            // 5..12
-                int bh = 4 + rng.Next(7);                            // 4..10
-                int bx = 1 + rng.Next(Mathf.Max(1, TileW - 2 - bw));
-                int byMin = Mathf.Max(1, spineTop - bh + 2);
-                int byMax = Mathf.Min(TileH - 1 - bh, spineTop + spineH - 2);
-                int by = byMax <= byMin ? byMin : byMin + rng.Next(byMax - byMin + 1);
-                Carve(g, bx, by, bw, bh);
+                int lw   = 5 + rng.Next(7);                          // 5..11（chunky）
+                int lh   = 2 + rng.Next(3);                          // 2..4
+                int lx   = 2 + rng.Next(Mathf.Max(1, TileW - 4 - lw));
+                int topY = Mathf.Max(1, coreTop - lh);               // 紧贴核心上沿外凸
+                Carve(g, lx, topY, lw, lh);
+                int botY = Mathf.Min(TileH - 1 - lh, TileH - topY - lh); // 水平中线镜像 → 下沿对称
+                Carve(g, lx, botY, lw, lh);
             }
 
-            // 4) 主题化障碍（散点，要求四邻皆地板 → 不封口；末尾再洪泛验证）
-            ScatterFeatures(g, rng, fi);
+            // 4) 轮廓平滑两遍：填平单格凹口、削掉孤立尖刺 → 圆润干净的边缘（仅翻转 '#'/'.'）
+            SmoothOutline(g);
+            SmoothOutline(g);
 
-            // 5) 出生 / 出门：主脊中线最左 / 最右地板格
-            int midRow = spineTop + spineH / 2;
+            // 5) 重新打通中央横向走廊：确保平滑后出生↔出门仍连通
+            Carve(g, coreMargin, midRow, TileW - 2 * coreMargin, 1);
+
+            // 6) 主题化障碍（散点，要求四邻皆地板 → 不封口；末尾再洪泛验证）
+            ScatterFeatures(g, rng, fi);
+            if (fi == 0) ScatterLava(g, rng);   // 第一层：撒几片可走岩浆
+
+            // 7) 出生 / 出门：中线最左 / 最右地板格
             int sc = -1, dc = -1;
             for (int c = 1; c < TileW - 1; c++) if (g[midRow][c] == '.') { sc = c; break; }
             for (int c = TileW - 2; c > 0;     c--) if (g[midRow][c] == '.') { dc = c; break; }
@@ -361,7 +378,7 @@ namespace Game.Bootstrap
 
             var rows = ToRows(g);
 
-            // 6) 连通验证 + 收集敌人可达刷怪格
+            // 8) 连通验证 + 收集敌人可达刷怪格
             var seen = FloodFrom(rows, sc, midRow);
             if (!seen[dc, midRow]) return null;                      // 门不可达 → 回退
 
@@ -380,6 +397,29 @@ namespace Game.Bootstrap
             _genSpawn       = spawnW;
             _genEnemySpawns = enemies;
             return rows;
+        }
+
+        // 轮廓平滑（形态学）：单格凹口（周围多为开放格的墙）填成地板，
+        // 孤立尖刺（周围几乎全是墙的地板）削回墙。只在 '#'↔'.' 间翻转，保留 p/t/x/d。
+        static void SmoothOutline(char[][] g)
+        {
+            var src = new char[TileH][];
+            for (int r = 0; r < TileH; r++) src[r] = (char[])g[r].Clone();
+
+            for (int r = 1; r < TileH - 1; r++)
+            for (int c = 1; c < TileW - 1; c++)
+            {
+                int open = 0;                                  // 8 邻里"开放"(非墙)格计数
+                for (int dy = -1; dy <= 1; dy++)
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    if (dx == 0 && dy == 0) continue;
+                    if (src[r + dy][c + dx] != '#') open++;
+                }
+                char cur = src[r][c];
+                if      (cur == '#' && open >= 5) g[r][c] = '.';   // 凹口 → 填平
+                else if (cur == '.' && open <= 1) g[r][c] = '#';   // 尖刺 → 削掉
+            }
         }
 
         // 把 (x,y,w,h) 矩形雕成地板，永不破坏外框
@@ -404,7 +444,7 @@ namespace Game.Bootstrap
                     g[y][x - 1] != '.' || g[y][x + 1] != '.') continue;
 
                 int roll = rng.Next(100);
-                char t = roll < th[0] ? '#' : roll < th[1] ? 'p' : roll < th[2] ? 't' : 'x';
+                char t = roll < th[0] ? '#' : 'p';   // 只放墙/石柱：不再生成陷阱('t')与装饰('x')
                 g[y][x] = t;
                 if ((t == '#' || t == 'p') && rng.Next(100) < 50)    // 偶尔扩成小簇
                 {
@@ -412,6 +452,22 @@ namespace Game.Bootstrap
                     if (g[y][nx] == '.' && g[y - 1][nx] == '.' && g[y + 1][nx] == '.') g[y][nx] = t;
                 }
                 want--;
+            }
+        }
+
+        // 第一层：把若干小片地板格变成可走岩浆（'l'）。'l' 仍可走/由危险层让敌人绕开。
+        static void ScatterLava(char[][] g, System.Random rng)
+        {
+            int patches = 2 + rng.Next(2);   // 2..3 片
+            for (int k = 0; k < patches; k++)
+            {
+                int pw = 2 + rng.Next(2), ph = 2 + rng.Next(2);            // 2..3
+                int x  = 5 + rng.Next(Mathf.Max(1, TileW - 10 - pw));      // 避开最左/右(出生/出门)
+                int y  = 3 + rng.Next(Mathf.Max(1, TileH - 6 - ph));
+                for (int rr = y; rr < y + ph; rr++)
+                for (int cc = x; cc < x + pw; cc++)
+                    if (rr > 0 && rr < TileH - 1 && cc > 0 && cc < TileW - 1 && g[rr][cc] == '.')
+                        g[rr][cc] = 'l';
             }
         }
 
@@ -475,21 +531,11 @@ namespace Game.Bootstrap
                 for (int y = oy; y < oy + h; y++)
                 for (int x = ox; x < ox + w; x++) g[y][x] = '#';
             }
-            else if (roll < th[1])    // 柱阵
+            else                      // 柱阵（不再生成陷阱 't' 与装饰 'x'）
             {
                 int n = 1 + rng.Next(rw * rh / 2 + 1);
                 for (int k = 0; k < n; k++)
                     g[ry + rng.Next(rh)][rx + rng.Next(rw)] = 'p';
-            }
-            else if (roll < th[2])    // 陷阱
-            {
-                int x = rx + rng.Next(rw), y = ry + rng.Next(rh);
-                g[y][x] = 't';
-                if (rng.Next(100) < 35 && x + 1 < rx + rw) g[y][x + 1] = 't';
-            }
-            else                      // 装饰
-            {
-                g[ry + rng.Next(rh)][rx + rng.Next(rw)] = 'x';
             }
         }
 
@@ -543,12 +589,43 @@ namespace Game.Bootstrap
         static Sprite[] _torchSprites   = new Sprite[3];
         static Sprite[] _trapSprites    = new Sprite[3];
 
+        // ── docs 准备好的整块瓦片图（Resources/Tiles/*）：优先于 Kenney/程序化贴图 ──
+        static readonly Sprite[] _floorTile  = new Sprite[3];
+        static readonly Sprite[] _hazardTile = new Sprite[3];
+        static Sprite _pillarTile; static bool _pillarTried;
+        static readonly string[] _floorTileNames  = { "Floor_Inferno",  "Floor_Frost",  "Floor_Chaos"  };
+        static readonly string[] _wallTileNames   = { "Wall_Inferno",   "Wall_Frost",   "Wall_Chaos"   };
+        static readonly string[] _hazardTileNames = { "Hazard_Inferno", "Hazard_Frost", "Hazard_Chaos" };
+
+        static Sprite LoadTileSprite(string name) => Resources.Load<Sprite>("Tiles/" + name);
+        static Sprite GetFloorTile(int fi)
+        {
+            if (_floorTile[fi] == null) _floorTile[fi] = LoadTileSprite(_floorTileNames[fi]);
+            return _floorTile[fi];
+        }
+        static Sprite GetHazardTile(int fi)
+        {
+            if (_hazardTile[fi] == null) _hazardTile[fi] = LoadTileSprite(_hazardTileNames[fi]);
+            return _hazardTile[fi];
+        }
+        static Sprite GetPillarTile()
+        {
+            if (!_pillarTried) { _pillarTile = LoadTileSprite("Pillar"); _pillarTried = true; }
+            return _pillarTile;
+        }
+        static Sprite _lavaTile; static bool _lavaTried;
+        static Sprite GetLavaTile()
+        {
+            if (!_lavaTried) { _lavaTile = LoadTileSprite("Lava_Inferno"); _lavaTried = true; }
+            return _lavaTile;
+        }
+
         // ── 构建地图 ─────────────────────────────────────────────────────────
-        public static MapInfo Build(int floor, int variant, Transform parent, bool createBackground = true, bool forceRect = false)
+        public static MapInfo Build(int floor, int variant, Transform parent, bool createBackground = true, bool forceRect = false, bool clean = false)
         {
             int fi  = Mathf.Clamp(floor - 1, 0, 2);
             int idx = fi * 3 + (variant % 3);
-            var rows = Procedural ? Generate(floor, variant, forceRect) : _maps[idx];
+            var rows = Procedural ? Generate(floor, variant, forceRect, clean) : _maps[idx];
 
             NavGrid.Build(rows);
             SetupPhysicsLayers();
@@ -586,8 +663,7 @@ namespace Game.Bootstrap
                         case '#':
                             SpawnFloor(pos, fi, r, c, parent, isUnderWall: true);
                             SpawnWall(pos, wallSpr, parent);
-                            if (ShouldAddTorch(rows, r, c) && (c + r * 3) % 8 == 0)
-                                SpawnTorch(pos, torchSpr, parent);
+                            // 火把已移除（纯装饰、显杂乱）
                             break;
                         case '.':
                             SpawnFloor(pos, fi, r, c, parent);
@@ -605,12 +681,10 @@ namespace Game.Bootstrap
                             SpawnTrap(pos, fi, trapSpr, parent);
                             break;
                         case 'l':
-                            // 小熔岩格已废弃：只生成普通地板，不再放 LavaVent
-                            SpawnFloor(pos, fi, r, c, parent);
+                            SpawnLava(pos, fi, r, c, parent);   // 可走岩浆：踩入掉血、敌人绕开
                             break;
                         case 'x':
-                            SpawnFloor(pos, fi, r, c, parent);
-                            SpawnDecoration(pos, fi, parent);
+                            SpawnFloor(pos, fi, r, c, parent);   // 装饰道具已移除（问题3/4/5：无作用、显杂乱）
                             break;
                     }
                 }
@@ -633,13 +707,16 @@ namespace Game.Bootstrap
         {
             if (isUnderWall) return; // 墙体下无需地板
 
-            int variation = ((c * 7 + r * 13) & 0x7FFFFFFF) % 5; // 0-4
-            int tileIndex = 48 + variation; // Kenney 确认的石地板组
-
-            Sprite spr = TilesetLoader.IsAvailable
-                ? TilesetLoader.Get(tileIndex)
-                : MakeFallbackFloor(fi);
-
+            // 优先用 docs 准备好的整块地板图（白色不染色、无 5 变体 → 不再杂乱）
+            Sprite spr   = GetFloorTile(fi);
+            Color  color = Color.white;
+            if (spr == null)
+            {
+                // 回退：旧的 Kenney 瓦片 + 5 变体 + 主题染色
+                int variation = ((c * 7 + r * 13) & 0x7FFFFFFF) % 5;
+                spr   = TilesetLoader.IsAvailable ? TilesetLoader.Get(48 + variation) : MakeFallbackFloor(fi);
+                color = FloorTint(fi);
+            }
             if (spr == null) return;
 
             var go = new GameObject("F");
@@ -648,7 +725,7 @@ namespace Game.Bootstrap
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sprite       = spr;
             sr.sortingOrder = 0;
-            sr.color        = FloorTint(fi);
+            sr.color        = color;
         }
 
         // ── 陷阱（含已有MonoBehaviour：FlamePillar / IceSpikeTrap / VoidRift）
@@ -657,7 +734,7 @@ namespace Game.Bootstrap
             var go = new GameObject("Trap");
             go.transform.SetParent(parent, true);
             go.transform.position = pos;
-            go.transform.localScale = new Vector3(0.85f, 0.85f, 1f);
+            go.transform.localScale = new Vector3(1f, 1f, 1f);   // 陷阱格 = 1×1 正方形整格，对齐网格
 
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sprite       = baseSpr;
@@ -678,6 +755,28 @@ namespace Game.Bootstrap
                     go.AddComponent<Game.AI.NavHazardRegistrar>().radius = 1.4f;
                     break;
             }
+        }
+
+        // ── 可走岩浆地块（第一层）：渲染岩浆图 + 触发掉血 + NavGrid 危险（敌人绕开）──
+        static void SpawnLava(Vector3 pos, int fi, int r, int c, Transform parent)
+        {
+            var spr = GetLavaTile();
+            if (spr == null) { SpawnFloor(pos, fi, r, c, parent); return; }   // 缺图回退地板
+            var go = new GameObject("Lava");
+            go.transform.SetParent(parent, true);
+            go.transform.position = pos;
+            var bs = spr.bounds.size;                                   // 强制渲染为 1×1 世界单位
+            float sx = bs.x > 0.001f ? 1f / bs.x : 1f;
+            float sy = bs.y > 0.001f ? 1f / bs.y : 1f;
+            go.transform.localScale = new Vector3(sx, sy, 1f);
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite       = spr;
+            sr.sortingOrder = 0;
+            var col = go.AddComponent<BoxCollider2D>();
+            col.isTrigger = true;
+            col.size      = new Vector2(0.95f / sx, 0.95f / sy);        // 世界 ≈ 0.95×0.95
+            go.AddComponent<Game.AI.LavaTile>();
+            go.AddComponent<Game.AI.NavHazardRegistrar>().radius = 0.5f;
         }
 
         // ── 装饰道具（Kenney 素材，有主题着色）──────────────────────────────
@@ -722,10 +821,10 @@ namespace Game.Bootstrap
             go.layer = 9;
             go.transform.SetParent(parent, true);
             go.transform.position = pos;
-            go.transform.localScale = new Vector3(0.72f, 0.88f, 1f);
+            go.transform.localScale = new Vector3(1f, 1f, 1f);   // 正方形整格（1×1）
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sprite       = spr;
-            sr.sortingOrder = 2;
+            sr.sortingOrder = 4;   // 高于危险格(3)：石柱永远盖在危险格之上，不被覆盖（问题6）
             var col = go.AddComponent<BoxCollider2D>();
             col.size = new Vector2(0.85f, 0.85f);
         }
@@ -781,12 +880,16 @@ namespace Game.Bootstrap
         // ── 精灵缓存获取 ──────────────────────────────────────────────────────
         static Sprite GetWall(int fi)
         {
-            if (_wallSprites[fi] == null) _wallSprites[fi] = MakeWall(fi);
+            if (_wallSprites[fi] == null) _wallSprites[fi] = LoadTileSprite(_wallTileNames[fi]) ?? MakeWall(fi);
             return _wallSprites[fi];
         }
         static Sprite GetPillar(int fi)
         {
-            if (_pillarSprites[fi] == null) _pillarSprites[fi] = MakePillar(fi);
+            if (_pillarSprites[fi] == null)
+            {
+                string name = fi == 1 ? "IcePillar" : "Pillar";   // 第二层石柱用冰柱
+                _pillarSprites[fi] = LoadTileSprite(name) ?? MakePillar(fi);
+            }
             return _pillarSprites[fi];
         }
         static Sprite GetTorch(int fi)
@@ -796,7 +899,7 @@ namespace Game.Bootstrap
         }
         static Sprite GetTrap(int fi)
         {
-            if (_trapSprites[fi] == null) _trapSprites[fi] = MakeTrapMark(fi);
+            if (_trapSprites[fi] == null) _trapSprites[fi] = GetHazardTile(fi) ?? MakeTrapMark(fi);
             return _trapSprites[fi];
         }
 

@@ -46,6 +46,7 @@ namespace Game.Bootstrap
         private MapInfo _mapInfo;
         private int _mapVariant;
         private bool _arenaIsRect;          // 当前竞技场几何是否为规整矩形（商店/Boss 房）
+        private bool _arenaIsClean;         // 商店房：纯地板+墙壁，无柱/陷阱/岩浆等任何地块
         private HeroData _currentHero;
 
         private GameObject _arenaRoot;
@@ -173,6 +174,8 @@ namespace Game.Bootstrap
         public const float TrueEndingCutsceneDuration   = 6.5f;
         /// 王冠结局占位动画时长（秒）。击败「王国之罪」后的终章
         public const float CrownEndingCutsceneDuration  = 8.5f;
+        // 多帧结局 CG：每超过 1 帧额外增加的过场秒数（每帧展示时长）
+        public const float EndingSecondsPerExtraFrame   = 2.2f;
 
         /// 过场开始时触发的全局 hook：动画系统可订阅此事件按当前结局类型播放
         /// (isTrueEnding, durationSeconds) -> 由订阅者使用
@@ -184,10 +187,13 @@ namespace Game.Bootstrap
         public enum EndingTier { Normal, Truth, Crown }
 
         private EndingTier _endingTier;
+        private int        _debugEndingIdx;   // 调试：F9 循环结局档位用
         private bool       _isTrueEnding;   // 兼容旧逻辑：Truth/Crown 都视作 true
         private int        _endingTruthCount;
-        private float      _cutsceneStartTime;
-        private float      _cutsceneDuration;
+        private float      _cutsceneDuration;   // 仅用于结局开始事件通知（音频淡入等）
+        private int        _cutsceneFrame;      // 手动推进的当前帧索引
+        private float      _cutsceneAlpha;      // 当前帧淡入 0→1（切帧归零再淡入，是淡入不是闪烁）
+        private float      _cutsceneReveal;     // 字幕已显现字符数（逐字浮现）
 
         private void TriggerVictory()
         {
@@ -206,23 +212,41 @@ namespace Game.Bootstrap
 
         private void EnterEndingCutscene()
         {
-            _state = State.EndingCutscene;
-            _cutsceneDuration =
-                _endingTier == EndingTier.Crown ? CrownEndingCutsceneDuration :
-                _endingTier == EndingTier.Truth ? TrueEndingCutsceneDuration  :
-                                                  NormalEndingCutsceneDuration;
-            _cutsceneStartTime = Time.unscaledTime;
+            _state          = State.EndingCutscene;
+            _cutsceneFrame  = 0;
+            _cutsceneAlpha  = 0f;
+            _cutsceneReveal = 0f;
+            // 不再自动计时推进：每帧停留，逐字显示字幕，按键才进下一帧 / 结束。
+            // 时长仅用于开始事件通知（音频淡入等），按帧数给个估值。
+            int frameCount    = Mathf.Max(1, GetEndingFrames(_endingTier).Length);
+            _cutsceneDuration = frameCount * 6f;
             OnEndingCutsceneStart?.Invoke(_isTrueEnding, _cutsceneDuration);
-            StartCoroutine(EndingCutsceneRoutine());
         }
 
-        private System.Collections.IEnumerator EndingCutsceneRoutine()
+        // 每帧推进当前帧的「淡入」与「字幕逐字浮现」（由 LateUpdate 每帧调用一次）
+        private void TickEndingCutscene()
         {
-            // unscaledTime 等待，便于过场期间任意调整 Time.timeScale（如 0 让世界冻结）
-            float endAt = Time.unscaledTime + _cutsceneDuration;
-            while (Time.unscaledTime < endAt && _state == State.EndingCutscene)
-                yield return null;
-            FinishEndingCutscene();
+            float dt = Time.unscaledDeltaTime;
+            _cutsceneAlpha = Mathf.MoveTowards(_cutsceneAlpha, 1f, dt / 0.55f);
+            if (_cutsceneAlpha >= 0.55f)
+            {
+                var caps = GetEndingCaptions(_endingTier);
+                int len = _cutsceneFrame < caps.Length ? caps[_cutsceneFrame].Length : 0;
+                _cutsceneReveal = Mathf.MoveTowards(_cutsceneReveal, len, dt * 42f);
+            }
+        }
+
+        // 按键推进：字未显示完→先补完；否则进入下一帧；末帧→结束（同开场动画手感）
+        private void AdvanceEndingCutscene()
+        {
+            var caps = GetEndingCaptions(_endingTier);
+            int len = _cutsceneFrame < caps.Length ? caps[_cutsceneFrame].Length : 0;
+            if (_cutsceneAlpha > 0.5f && _cutsceneReveal < len - 0.5f) { _cutsceneReveal = len; return; }
+            int frameCount = GetEndingFrames(_endingTier).Length;
+            if (_cutsceneFrame >= frameCount - 1) { FinishEndingCutscene(); return; }
+            _cutsceneFrame++;
+            _cutsceneAlpha  = 0f;
+            _cutsceneReveal = 0f;
         }
 
         private void FinishEndingCutscene()
@@ -333,11 +357,13 @@ namespace Game.Bootstrap
             var type = _floorRooms[index];
 
             // 商店房 / Boss 房用规整矩形，其余房型用本层异形几何；仅在 矩形↔异形 切换时重建竞技场
-            bool wantRect = (type == "Shop" || type == "Boss");
-            if (wantRect != _arenaIsRect || _arenaRoot == null)
+            bool wantRect  = (type == "Shop" || type == "Boss");
+            bool wantClean = (type == "Shop");   // 商店：纯地板+墙壁，无任何障碍/危险地块
+            if (wantRect != _arenaIsRect || wantClean != _arenaIsClean || _arenaRoot == null)
             {
-                RebuildArenaGeometry(wantRect);
-                _arenaIsRect = wantRect;
+                RebuildArenaGeometry(wantRect, wantClean);
+                _arenaIsRect  = wantRect;
+                _arenaIsClean = wantClean;
             }
 
             // Reset player to left spawn point（用当前房型几何的出生点）
@@ -377,6 +403,7 @@ namespace Game.Bootstrap
         /// 并填好 SpawnFloor/SpawnRoomIndex/SpawnOffset。
         private void TrySpawnStoryForRoom(int floor, int index)
         {
+            _occupiedStoryCells.Clear();   // 每个房间重置「已占用」格，避免剧情物互相重叠
             foreach (var data in StoryDataAll)
             {
                 if (data == null) continue;
@@ -394,16 +421,73 @@ namespace Game.Bootstrap
 
             var go = new GameObject($"Story_{data.objectId}");
             go.transform.SetParent(_currentRoomRoot.transform);
-            // 异形房：相对出生点的固定偏移可能落墙，吸附到最近可走格以保证剧情物可交互
-            go.transform.position = NearestWalkableWorld(_mapInfo.PlayerSpawn + offsetFromSpawn);
+            // 放大剧情物显示尺寸（细节更清晰）；占位 footprint 同步放大，避免与邻物重叠
+            Vector2 vs = data.visualScale * StoryDisplayBoost;
+            // 按视觉大小找一块「可走 + 无危险 + 不压石柱/墙」且未被其它剧情物占用的格子
+            go.transform.position = NearestSafeStoryCell(_mapInfo.PlayerSpawn + offsetFromSpawn, vs);
 
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sprite       = MakeUnitSquareSprite();
-            sr.sortingOrder = 1;
+            sr.sortingOrder = 5;                // 高于地板/墙(1)/危险格(3)/石柱(4)，剧情物清晰可见
 
             go.AddComponent<BoxCollider2D>();   // 大小在 ApplyData 中由 data 写入
             var si = go.AddComponent<StoryInteractable>();
             si.Data = data;                     // 触发 ApplyData：scale/color/collider/dialogue
+
+            // 若提供了专属贴图（Resources/Story/Sprites/<objectId>.png）则覆盖白盒
+            var spr = Resources.Load<Sprite>("Story/Sprites/" + data.objectId);
+            if (spr != null)
+            {
+                sr.sprite = spr;
+                sr.color  = Color.white;
+                var bs = spr.bounds.size;   // 等比缩放放入 (放大后的)visualScale 框（不拉伸），触发盒贴合可见范围
+                if (bs.x > 0.001f && bs.y > 0.001f)
+                {
+                    float fit = Mathf.Min(vs.x / bs.x, vs.y / bs.y);
+                    go.transform.localScale = new Vector3(fit, fit, 1f);
+                    var box = go.GetComponent<BoxCollider2D>();
+                    if (box != null) box.size = new Vector2(bs.x, bs.y);
+                }
+            }
+        }
+
+        // 剧情物整体放大系数：贴图更大、细节更清晰（占位与碰撞盒同步放大）
+        private const float StoryDisplayBoost = 1.6f;
+
+        // 已被剧情物占用的格（每房间重置），避免多个剧情物落在同一/相邻格
+        private readonly HashSet<Vector2Int> _occupiedStoryCells = new HashSet<Vector2Int>();
+
+        // 找一块按 visualScale 大小都「可走、无危险、不压石柱/墙」且未占用的格子；找不到则兜底到最近可走格。
+        private Vector3 NearestSafeStoryCell(Vector3 desired, Vector2 visualScale)
+        {
+            var start = Game.AI.NavGrid.WorldToCell(desired);
+            int hw = Mathf.Max(1, Mathf.CeilToInt(visualScale.x * 0.5f - 0.5f));   // footprint 半宽(格)
+            int hh = Mathf.Max(1, Mathf.CeilToInt(visualScale.y * 0.5f - 0.5f));   // footprint 半高(格)
+            for (int rad = 0; rad < 16; rad++)
+            for (int dy = -rad; dy <= rad; dy++)
+            for (int dx = -rad; dx <= rad; dx++)
+            {
+                if (rad > 0 && Mathf.Abs(dx) != rad && Mathf.Abs(dy) != rad) continue;   // 只扫当前环
+                int c = start.x + dx, r = start.y + dy;
+                if (_occupiedStoryCells.Contains(new Vector2Int(c, r))) continue;
+                if (!StoryFootprintClear(c, r, hw, hh)) continue;
+                _occupiedStoryCells.Add(new Vector2Int(c, r));
+                var w = Game.AI.NavGrid.CellToWorld(new Vector2Int(c, r));
+                return new Vector3(w.x, w.y, 0f);
+            }
+            return NearestWalkableWorld(desired);   // 兜底
+        }
+
+        // footprint 内每格都必须可走（非墙/石柱）且无危险格
+        private bool StoryFootprintClear(int c, int r, int hw, int hh)
+        {
+            for (int dy = -hh; dy <= hh; dy++)
+            for (int dx = -hw; dx <= hw; dx++)
+            {
+                if (!Game.AI.NavGrid.IsWalkable(c + dx, r + dy)) return false;
+                if (Game.AI.NavGrid.HazardAt(c + dx, r + dy) != 0) return false;
+            }
+            return true;
         }
 
         // --------------------------------------------------------------------
@@ -729,48 +813,130 @@ namespace Game.Bootstrap
         {
             ShowBanner("Shop — approach and press E to buy (can skip)");
             OpenRightDoor();
+            DeactivateRoomHazards();   // 商店房不出现任何危险格（任意一层）
+            // 商店为「纯地板+墙壁」的规整房间：不再摆放任何石柱/陷阱/岩浆。
 
-            // 商店装饰：优先读取 SO，缺失时回退到程序化默认值
-            var decor = Resources.Load<ShopDecorData>("Shop/Default");
-            if (decor != null)
+            // 可视化布局预制体：Scene/Prefab 视图里可拖拽各锚点；缺失则回退到代码内置坐标。
+            var layout = SpawnShopLayout();
+            var decor  = Resources.Load<ShopDecorData>("Shop/Default");   // 仅取武器大小/发光等数据
+
+            // 商人：预制体自带贴图；无布局时回退到运行时贴图/方块
+            if (layout == null || layout.shopkeeper == null)
             {
-                SpawnDecorGroup(decor.shopkeeper);
-                SpawnDecorGroup(decor.shelf);
-                foreach (var extra in decor.extraDecor) SpawnDecorGroup(extra);
-            }
-            else
-            {
-                SpawnShopShelf(new Vector3(0f, 1.0f, 0f), width: 13.5f);
-                SpawnShopkeeper(new Vector3(0f, 3.2f, 0f));
+                if (SpawnShopSprite("Shop/Sprites/shopkeeper", new Vector3(0f, 4.5f, 0f), worldHeight: 3.6f, order: 6) == null)
+                    SpawnShopkeeper(new Vector3(0f, 3.2f, 0f));
             }
 
             int floorIdx   = Mathf.Clamp(CurrentFloor - 1, 0, ShopRarityTable.Length - 1);
             int[] rarities = ShopRarityTable[floorIdx];
             float priceScale = 1f + (CurrentFloor - 1) * 0.3f;
 
-            // 武器排：起点 / 间距 / 大小 / 排序 全部来自 SO（缺失则用代码默认）
-            Vector3 wStart  = decor != null ? decor.weaponRowStart : new Vector3(-5.5f, 1.5f, 0f);
-            float   wSpace  = decor != null ? decor.weaponSpacing  : 2.2f;
+            // 武器陈列：优先用布局锚点（货架贴图已在预制体里）；缺失回退到等距排布 + 即时货架
+            Vector3 wStart  = new Vector3(-5.5f, 1.5f, 0f);
+            float   wSpace  = 2.2f;
             for (int i = 0; i < rarities.Length; i++)
             {
+                Vector3 slot;
+                if (layout != null && layout.weaponSlots != null &&
+                    i < layout.weaponSlots.Length && layout.weaponSlots[i] != null)
+                {
+                    slot = layout.weaponSlots[i].position;
+                }
+                else
+                {
+                    slot = wStart + new Vector3(i * wSpace, 0f, 0f);
+                    SpawnShelfSegment(new Vector3(slot.x, slot.y - 0.15f, 0f), wSpace * 0.92f, 1.7f);
+                }
                 int   ri    = rarities[i];
                 int   price = Mathf.RoundToInt(WeaponBasePrice[ri] * priceScale);
-                SpawnShopWeaponPedestal(wStart + new Vector3(i * wSpace, 0f, 0f),
-                    GetWeaponOfRarity(ri), price, decor);
+                SpawnShopWeaponPedestal(slot, GetWeaponOfRarity(ri), price, decor);
             }
 
-            // Forge, talent, and enchant pedestals in the lower row
+            // Forge / Talent / Enchant / Potion 台座（位置取布局锚点，缺失回退默认坐标）
             int uses = Mathf.Min(CurrentFloor, 2);
             int forgePrice   = Mathf.RoundToInt((20 + CurrentFloor * 5) * priceScale);
             int enchantPrice = Mathf.RoundToInt((30 + CurrentFloor * 5) * priceScale);
             int talentPrice  = Mathf.RoundToInt(30 * priceScale);
+            int potionPrice  = Mathf.RoundToInt(25 * priceScale);
 
-            SpawnActionPedestal(new Vector3(-3f, -1.5f, 0f), ActionPedestal.ActionType.Forge,   forgePrice,   uses);
-            SpawnTalentDrawPedestal(new Vector3(0f, -1.5f, 0f), talentPrice);
-            SpawnActionPedestal(new Vector3( 3f, -1.5f, 0f), ActionPedestal.ActionType.Enchant, enchantPrice, uses);
+            Vector3 pForge   = layout != null ? layout.Pos(layout.forge,      new Vector3(-3f, -1.5f, 0f)) : new Vector3(-3f, -1.5f, 0f);
+            Vector3 pTalent  = layout != null ? layout.Pos(layout.talentDraw, new Vector3( 0f, -1.5f, 0f)) : new Vector3( 0f, -1.5f, 0f);
+            Vector3 pEnchant = layout != null ? layout.Pos(layout.enchant,    new Vector3( 3f, -1.5f, 0f)) : new Vector3( 3f, -1.5f, 0f);
+            Vector3 pPotion  = layout != null ? layout.Pos(layout.potion,     new Vector3( 0f, -3.0f, 0f)) : new Vector3( 0f, -3.0f, 0f);
 
-            int potionPrice = Mathf.RoundToInt(25 * priceScale);
-            SpawnHealthPotionPedestal(new Vector3(0f, -3.0f, 0f), potionPrice);
+            SpawnActionPedestal(pForge, ActionPedestal.ActionType.Forge,   forgePrice,   uses);
+            SpawnTalentDrawPedestal(pTalent, talentPrice);
+            SpawnActionPedestal(pEnchant, ActionPedestal.ActionType.Enchant, enchantPrice, uses);
+            SpawnHealthPotionPedestal(pPotion, potionPrice);
+        }
+
+        // 实例化商店可视化布局预制体到当前房间（位于房间中心）；缺失返回 null。
+        private ShopLayout SpawnShopLayout()
+        {
+            var prefab = Resources.Load<GameObject>("Shop/ShopLayout");
+            if (prefab == null || _currentRoomRoot == null) return null;
+            var inst = Instantiate(prefab, _currentRoomRoot.transform);
+            inst.transform.localPosition = Vector3.zero;
+            inst.transform.localRotation = Quaternion.identity;
+            return inst.GetComponent<ShopLayout>();
+        }
+
+        // 在商人外围用石柱摆一个对称图案（1×1 吸附网格；位于上方，不挡下方台座/购买）
+        private void SpawnShopPillars()
+        {
+            if (_currentRoomRoot == null) return;
+            var pillarSpr = Resources.Load<Sprite>("Tiles/Pillar");
+            Vector2[] spots =
+            {
+                new Vector2(-6f, 4.5f), new Vector2(6f, 4.5f),   // 两侧（齐商人）
+                new Vector2(-6f, 2.5f), new Vector2(6f, 2.5f),   // 两侧下
+                new Vector2(-4f, 6.9f), new Vector2(4f, 6.9f),   // 身后外
+                new Vector2( 0f, 6.9f),                          // 身后正中（高于商人头顶，不遮挡）
+            };
+            foreach (var s in spots)
+            {
+                var go = new GameObject("ShopPillar");
+                go.transform.SetParent(_currentRoomRoot.transform, true);
+                go.transform.position   = new Vector3(s.x, s.y, 0f);
+                go.transform.localScale = new Vector3(1f, 1f, 1f);
+                var sr = go.AddComponent<SpriteRenderer>();
+                sr.sprite       = pillarSpr != null ? pillarSpr : MakeUnitSquareSprite();
+                sr.sortingOrder = 2;
+                go.AddComponent<BoxCollider2D>().size = new Vector2(0.85f, 0.85f);
+            }
+        }
+
+        // 在指定位置放一张商店精灵（按目标世界高度等比缩放）；缺图返回 null。
+        private GameObject SpawnShopSprite(string resource, Vector3 pos, float worldHeight, int order)
+        {
+            var spr = Resources.Load<Sprite>(resource);
+            if (spr == null) return null;
+            var go = new GameObject(resource.Substring(resource.LastIndexOf('/') + 1));
+            go.transform.SetParent(_currentRoomRoot.transform, true);
+            go.transform.position = pos;
+            var bs = spr.bounds.size;
+            float s = bs.y > 0.001f ? worldHeight / bs.y : 1f;
+            go.transform.localScale = new Vector3(s, s, 1f);
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite       = spr;
+            sr.sortingOrder = order;
+            return go;
+        }
+
+        // 单段武器货架：在指定位置铺一段货架图（按目标宽高拉伸），渲染在武器之后。缺图回退木板货架。
+        private void SpawnShelfSegment(Vector3 pos, float width, float height)
+        {
+            var spr = Resources.Load<Sprite>("Shop/Sprites/shelf");
+            if (spr == null) { SpawnShopShelf(pos, width); return; }
+            var go = new GameObject("ShopShelf");
+            go.transform.SetParent(_currentRoomRoot.transform, true);
+            go.transform.position = pos;
+            var bs = spr.bounds.size;
+            go.transform.localScale = new Vector3(width  / Mathf.Max(0.001f, bs.x),
+                                                  height / Mathf.Max(0.001f, bs.y), 1f);
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite       = spr;
+            sr.sortingOrder = 3;   // 在武器(order 8)之后
         }
 
         // ── 商店视觉装饰 ─────────────────────────────────────────────────
@@ -1564,9 +1730,30 @@ namespace Game.Bootstrap
             if (_currentRoomRoot == null) return;
             switch (CurrentFloor)
             {
-                case 1: SpawnFlamePillars();   break;
-                case 2: SpawnIceSpikeTraps();  break;
-                case 3: SpawnVoidRifts();      break;
+                case 1: SpawnFlamePillars();                 break;
+                case 2: StartCoroutine(FrostStormRoutine()); break;
+                case 3: SpawnVoidRifts();                    break;
+            }
+        }
+
+        // 第2层「霜暴」：战斗期间沿玩家位置周期性从天投放 1×1 冰锥（不旋转，可走位躲开）。
+        private System.Collections.IEnumerator FrostStormRoutine()
+        {
+            var room   = _currentRoomRoot;
+            var iceSpr = LoadHazardSprite("Tiles/Hazard_Frost");
+            while (!GameSignals.CombatInProgress) yield return null;          // 等战斗开始
+            while (GameSignals.CombatInProgress && room != null && _player != null)
+            {
+                yield return new WaitForSeconds(Random.Range(1.4f, 2.6f));
+                if (!GameSignals.CombatInProgress || room == null || _player == null) break;
+                Vector2 pp = (Vector2)_player.transform.position
+                           + new Vector2(Random.Range(-1.6f, 1.6f), Random.Range(-1.6f, 1.6f));
+                var cell = new Vector3(Mathf.Floor(pp.x) + 0.5f, Mathf.Floor(pp.y) + 0.5f, 0f);
+                if (!IsHazardSpotValid(cell)) continue;
+                var go = new GameObject("FallingIceSpike");
+                go.transform.SetParent(room.transform, true);
+                go.AddComponent<Game.AI.FallingIceSpike>()
+                  .Init(iceSpr != null ? iceSpr : MakeUnitSquareSprite(), cell);
             }
         }
 
@@ -1577,6 +1764,18 @@ namespace Game.Bootstrap
             if (!Game.AI.NavGrid.IsWalkable(cell.x, cell.y)) return false;
             if (Game.AI.NavGrid.HazardAt(cell.x, cell.y) != 0) return false;
             if (_altarPos.HasValue && Vector2.Distance(p, (Vector2)_altarPos.Value) < 1.2f) return false;
+            return true;
+        }
+
+        // 检查以 center 为中心、size×size 的整个 footprint 是否都可放危险（无墙/石柱）。
+        // 用于 2×2 火柱 / 3×3 虚空，避免压在石柱/墙之上（问题6）。
+        private bool IsHazardAreaClear(Vector2 center, int size)
+        {
+            if (size <= 1) return IsHazardSpotValid(center);
+            float h = (size - 1) * 0.5f;
+            for (float dx = -h; dx <= h + 0.01f; dx += 1f)
+            for (float dy = -h; dy <= h + 0.01f; dy += 1f)
+                if (!IsHazardSpotValid(new Vector2(center.x + dx, center.y + dy))) return false;
             return true;
         }
 
@@ -1614,22 +1813,23 @@ namespace Game.Bootstrap
                 new Vector2(-5.8f,  2.8f), new Vector2(5.8f,  2.8f),
                 new Vector2(-5.8f, -2.8f), new Vector2(5.8f, -2.8f),
             };
-            foreach (var p in positions)
+            foreach (var p0 in positions)
             {
-                if (!IsHazardSpotValid(p)) continue;   // 跳过墙体/静态危险格/祭坛
+                var p = new Vector2(Mathf.Round(p0.x), Mathf.Round(p0.y));  // 吸附到 2×2 网格（整数中心 → 占 4 格）
+                if (!IsHazardAreaClear(p, 2)) continue;   // 2×2 footprint 不压石柱/墙（问题6）
                 var go = new GameObject("FlamePillar");
                 go.transform.SetParent(root, true);
                 go.transform.position   = new Vector3(p.x, p.y, 0f);
-                go.transform.localScale = new Vector3(1.8f, 1.8f, 1f);
+                go.transform.localScale = new Vector3(2f, 2f, 1f);          // 2×2 正方整格
 
                 var sr = go.AddComponent<SpriteRenderer>();
-                var lavaSpr     = LoadHazardSprite("Tiles/lava_hazard");
+                var lavaSpr     = LoadHazardSprite("Tiles/Hazard_Inferno"); // docs 熔岩危险格
                 sr.sprite       = lavaSpr != null ? lavaSpr : MakeUnitSquareSprite();
-                sr.color        = new Color(0.45f, 0.08f, 0.04f, 0.80f);
+                sr.color        = lavaSpr != null ? Color.white : new Color(0.45f, 0.08f, 0.04f, 0.80f);
                 sr.sortingOrder = 3;
 
                 go.AddComponent<FlamePillar>();
-                go.AddComponent<Game.AI.NavHazardRegistrar>().radius = 0.9f;
+                go.AddComponent<Game.AI.NavHazardRegistrar>().radius = 1.0f;
             }
         }
 
@@ -1652,16 +1852,18 @@ namespace Game.Bootstrap
             int placed = 0;
             for (int i = 0; i < candidates.Length && placed < count; i++)
             {
-                if (!IsHazardSpotValid(candidates[i])) continue;   // 跳过墙体/静态危险格/祭坛
+                var cp = new Vector2(Mathf.Floor(candidates[i].x) + 0.5f, Mathf.Floor(candidates[i].y) + 0.5f); // 吸附到格中心（1×1）
+                if (!IsHazardSpotValid(cp)) continue;   // 跳过墙体/静态危险格/祭坛
                 placed++;
                 var go = new GameObject("IceSpikeTrap");
                 go.transform.SetParent(root, true);
-                go.transform.position   = new Vector3(candidates[i].x, candidates[i].y, 0f);
-                go.transform.localScale = new Vector3(1.2f, 1.2f, 1f);
+                go.transform.position   = new Vector3(cp.x, cp.y, 0f);
+                go.transform.localScale = new Vector3(1f, 1f, 1f);          // 1×1 正方整格
 
                 var sr = go.AddComponent<SpriteRenderer>();
-                sr.sprite       = MakeUnitSquareSprite();
-                sr.color        = new Color(0.25f, 0.45f, 0.80f, 0.10f);
+                var iceSpr      = LoadHazardSprite("Tiles/Hazard_Frost");   // docs 冰面危险格
+                sr.sprite       = iceSpr != null ? iceSpr : MakeUnitSquareSprite();
+                sr.color        = iceSpr != null ? Color.white : new Color(0.25f, 0.45f, 0.80f, 0.10f);
                 sr.sortingOrder = 3;
 
                 go.AddComponent<IceSpikeTrap>();
@@ -1682,16 +1884,18 @@ namespace Game.Bootstrap
             int placed = 0;
             for (int i = 0; i < candidates.Length && placed < count; i++)
             {
-                if (!IsHazardSpotValid(candidates[i])) continue;   // 跳过墙体/静态危险格/祭坛
+                var cp = new Vector2(Mathf.Floor(candidates[i].x) + 0.5f, Mathf.Floor(candidates[i].y) + 0.5f); // 吸附到格中心
+                if (!IsHazardAreaClear(cp, 3)) continue;   // 3×3 footprint 不压石柱/墙（问题6）
                 placed++;
                 var go = new GameObject("VoidRift");
                 go.transform.SetParent(root, true);
-                go.transform.position   = new Vector3(candidates[i].x, candidates[i].y, 0f);
-                go.transform.localScale = new Vector3(1.2f, 1.2f, 1f);
+                go.transform.position   = new Vector3(cp.x, cp.y, 0f);
+                go.transform.localScale = new Vector3(1f, 1f, 1f);          // 潜伏 1×1（VoidRift 周期扩大到 3×3）
 
                 var sr = go.AddComponent<SpriteRenderer>();
-                sr.sprite       = MakeUnitSquareSprite();
-                sr.color        = new Color(0.55f, 0.05f, 0.75f, 0.90f);
+                var voidSpr     = LoadHazardSprite("Tiles/Hazard_Chaos");   // docs 虚空危险格
+                sr.sprite       = voidSpr != null ? voidSpr : MakeUnitSquareSprite();
+                sr.color        = voidSpr != null ? Color.white : new Color(0.55f, 0.05f, 0.75f, 0.90f);
                 sr.sortingOrder = 3;
 
                 go.AddComponent<VoidRift>();
@@ -1716,6 +1920,19 @@ namespace Game.Bootstrap
             return spr;
         }
 
+        // 战斗胜利后清除一切「定期触发 / 亡语类」危险：火柱、冰刺、虚空裂隙，以及
+        // 复用 LavaPool 组件的岩浆池 / 毒蛛绿色毒池（亡语 AoE）。
+        // 既清掉动态生成的，也清掉地图 't' 格固定存在的危险，避免清场后仍持续喷发或残留伤害。
+        private void DeactivateRoomHazards()
+        {
+            // 熔岩/虚空危险格：不销毁，转入稳定态（停止喷发、不再伤害，保留可见）
+            foreach (var h in FindObjectsByType<Game.AI.FlamePillar>(FindObjectsSortMode.None))  h.Stabilize();
+            foreach (var h in FindObjectsByType<Game.AI.VoidRift>(FindObjectsSortMode.None))     h.Stabilize();
+            foreach (var h in FindObjectsByType<Game.AI.IceSpikeTrap>(FindObjectsSortMode.None)) Destroy(h.gameObject);
+            foreach (var h in FindObjectsByType<Game.AI.LavaPool>(FindObjectsSortMode.None))        Destroy(h.gameObject); // 含绿色毒池
+            foreach (var h in FindObjectsByType<Game.AI.FallingIceSpike>(FindObjectsSortMode.None)) Destroy(h.gameObject); // 霜暴冰锥
+        }
+
         // 分两波刷怪（55%/45%）；每波从房间四壁边缘生成，第一波不出精英
         private void SpawnRoomWave(int totalCount, System.Action onAllDead, bool multiWave = true)
         {
@@ -1726,6 +1943,7 @@ namespace Game.Bootstrap
             System.Action onCleared = () =>
             {
                 GameSignals.CombatInProgress = false;
+                DeactivateRoomHazards();   // 清场后立即停止/清除一切定期触发与亡语类危险
                 onAllDead?.Invoke();
             };
 
@@ -2187,29 +2405,79 @@ namespace Game.Bootstrap
             return _kgSprite;
         }
 
-        // 三档结局 CG（Resources/Endings/Ending_{Crown|Truth|Normal}.png）。
-        // 缓存（含 null）避免每帧 Resources.Load；缺图时过场自动回退为纯黑+标题。
-        private static readonly Dictionary<EndingTier, Texture2D> _endingCG =
-            new Dictionary<EndingTier, Texture2D>();
-        private static Texture2D GetEndingCG(EndingTier tier)
+        // 三档结局 CG，支持「多帧动画」：Resources/Endings/Ending_{tier}_1.._N.png 顺序播放。
+        // 若没有编号帧，则回退到单张旧图 Ending_{tier}.png（向后兼容）。缺图时过场为纯黑+标题。
+        private const int MaxEndingFrames = 12;
+        private static readonly Dictionary<EndingTier, Texture2D[]> _endingFrames =
+            new Dictionary<EndingTier, Texture2D[]>();
+        private static Texture2D[] GetEndingFrames(EndingTier tier)
         {
-            if (_endingCG.TryGetValue(tier, out var t)) return t;
-            string name = tier == EndingTier.Crown ? "Ending_Crown"
-                        : tier == EndingTier.Truth ? "Ending_Truth"
-                        :                            "Ending_Normal";
-            t = Resources.Load<Texture2D>($"Endings/{name}");
-            _endingCG[tier] = t; // 可能为 null，仍缓存
-            return t;
+            if (_endingFrames.TryGetValue(tier, out var arr)) return arr;
+            string baseName = tier == EndingTier.Crown ? "Ending_Crown"
+                            : tier == EndingTier.Truth ? "Ending_Truth"
+                            :                            "Ending_Normal";
+            var list = new List<Texture2D>();
+            for (int i = 1; i <= MaxEndingFrames; i++)
+            {
+                var t = Resources.Load<Texture2D>($"Endings/{baseName}_{i}");
+                if (t == null) break;     // 帧必须连续编号
+                list.Add(t);
+            }
+            if (list.Count == 0)          // 回退到单张旧图
+            {
+                var single = Resources.Load<Texture2D>($"Endings/{baseName}");
+                if (single != null) list.Add(single);
+            }
+            arr = list.ToArray();
+            _endingFrames[tier] = arr;    // 可能为空数组，仍缓存
+            return arr;
+        }
+
+        // 各结局每帧字幕解释（与编号帧一一对应；帧多于字幕时多出的帧不显示字幕）
+        private static readonly string[] NormalCaptions =
+        {
+            "You climb back into a pale, broken dawn.\nThe air still tastes of ash, but the screaming underground has finally gone quiet.",
+            "Far above, the black rift in the sky knits slowly shut,\nand the last embers of the disaster drift down like dying snow.",
+            "The town stirs again — half-frozen, half-burned, its people none the wiser.\nThey will never know what was buried here, nor what it cost to seal it.",
+            "You walk on, the dungeon sealed behind you and the truth still beneath it.\nThe world is saved, for now — and 'for now' is all anyone is ever given.",
+        };
+        private static readonly string[] TruthCaptions =
+        {
+            "You stand before the shattered Realmcore,\nits cracked light pulsing like a heart that refuses to stop beating.",
+            "Its glow spills the memories the kingdom tried to bury:\nthe forced awakening, the cover-up, the names struck from every record.",
+            "Ember-light finds your face, and at last the pieces fall into place.\nYou were never a hero — only the ember they could not put out.",
+            "You speak the name beneath the ash and claim it as your own.\nThe three realms exhale, and for the first time in an age, grow still.",
+        };
+        private static readonly string[] CrownCaptions =
+        {
+            "Upon the throne sits the crowned beast — the Kingdom's Guilt made flesh,\nfattened on every lie told to keep the disaster hidden.",
+            "Your blade meets the beast at last, and the throne hall erupts in sparks.\nEvery lie they buried burns away in the white heat of a single, falling blow.",
+            "Your blow lands true. The heavy iron-and-gold crown topples from its brow\nand shatters across the stone, ringing like a cracked and broken bell.",
+            "Light pours through the wound in the world, and the realms begin to heal.\nThe crown has fallen; the name returns; the long silence is over at last.",
+        };
+        private static string[] GetEndingCaptions(EndingTier tier) =>
+            tier == EndingTier.Crown ? CrownCaptions :
+            tier == EndingTier.Truth ? TruthCaptions :
+                                       NormalCaptions;
+
+        // 全屏绘制一张结局帧（ScaleAndCrop 铺满）按给定不透明度
+        private static void DrawCGFull(Texture2D tex, float alpha)
+        {
+            if (tex == null || alpha <= 0.001f) return;
+            var prev = GUI.color;
+            GUI.color = new Color(1f, 1f, 1f, alpha);
+            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), tex, ScaleMode.ScaleAndCrop);
+            GUI.color = prev;
         }
 
         private TalentPickup SpawnTalentOrb(TalentData data, Color color)
         {
             var go = new GameObject("Talent_" + data.talentName);
             go.transform.SetParent(_currentRoomRoot.transform, true);
-            go.transform.localScale = new Vector3(0.55f, 0.55f, 1f);
+            go.transform.localScale = new Vector3(0.95f, 0.95f, 1f);   // 大一点的光球
 
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite       = InteractableSprites.Gem();   // 灰度宝石，由下方 sr.color 按天赋色着色
+            sr.sprite       = InteractableSprites.Orb();    // 放射辉光光球，由下方 sr.color 按天赋色着色
             sr.color        = color;
             sr.sortingOrder = 7;
 
@@ -2288,6 +2556,20 @@ namespace Game.Bootstrap
         // 摄像机跟随玩家，并夹紧到地图边界
         private void LateUpdate()
         {
+#if UNITY_EDITOR
+            // 调试快捷键（仅编辑器）：F9 直接跳到结局过场，循环 Normal→Truth→Crown，便于预览多帧+字幕。
+            var dbgKb = UnityEngine.InputSystem.Keyboard.current;
+            if (dbgKb != null && dbgKb.f9Key.wasPressedThisFrame)
+            {
+                _endingTier   = (EndingTier)(_debugEndingIdx++ % 3);
+                _isTrueEnding = _endingTier != EndingTier.Normal;
+                _endingTruthCount = _persistent != null && _persistent.TruthFlags != null ? _persistent.TruthFlags.Count : 0;
+                ShowBanner($"[DEBUG] Ending preview: {_endingTier}  (F9 to cycle)");
+                EnterEndingCutscene();
+                return;
+            }
+#endif
+            if (_state == State.EndingCutscene) { TickEndingCutscene(); return; }
             if (_state != State.Playing || _player == null || Camera.main == null) return;
             var cam   = Camera.main;
             float hh  = cam.orthographicSize;
@@ -2310,16 +2592,16 @@ namespace Game.Bootstrap
 
         // 按房型重建竞技场几何：商店/Boss → 规整矩形；其余 → 本层异形布局。
         // _mapVariant 同层恒定 + 生成确定性 → 同层每次重建得到一致的异形布局。
-        private void RebuildArenaGeometry(bool forceRect)
+        private void RebuildArenaGeometry(bool forceRect, bool clean = false)
         {
             if (_arenaRoot != null) { Destroy(_arenaRoot); _arenaRoot = null; }
             _arenaRoot = new GameObject("Arena");
-            _mapInfo   = LoadRoomPrefab(CurrentFloor, _mapVariant, _arenaRoot.transform, forceRect);
+            _mapInfo   = LoadRoomPrefab(CurrentFloor, _mapVariant, _arenaRoot.transform, forceRect, clean);
             ArenaHalfW = _mapInfo.HalfW;
             ArenaHalfH = _mapInfo.HalfH;
         }
 
-        private MapInfo LoadRoomPrefab(int floor, int variant, Transform parent, bool forceRect = false)
+        private MapInfo LoadRoomPrefab(int floor, int variant, Transform parent, bool forceRect = false, bool clean = false)
         {
             // 程序化布局：跳过静态房间预制体，运行时生成（每局不同）。
             // Build 内部用同一份 rows 同时铺设几何并重建 NavGrid → 渲染与寻路同源。
@@ -2331,7 +2613,7 @@ namespace Game.Bootstrap
                     FloorBackground.Create(theme, parent, MapDims.TileW + 4f, MapDims.TileH + 4f);
                 else
                     FloorBackground.Create(floor, parent, MapDims.TileW + 4f, MapDims.TileH + 4f);
-                return MapBuilder.Build(floor, variant, parent, createBackground: false, forceRect: forceRect);
+                return MapBuilder.Build(floor, variant, parent, createBackground: false, forceRect: forceRect, clean: clean);
             }
 
             string letter = _variantLetters[variant % 3];
@@ -2466,15 +2748,19 @@ namespace Game.Bootstrap
             DrawActiveSynergiesPanel();
             DrawBossHPBar();
 
-            // 提示横幅
+            // 提示横幅（高度按换行后文字自适应，长句不再溢出/截断）
             if (Time.time < _bannerUntil && !string.IsNullOrEmpty(_bannerMessage))
             {
-                float bY = Screen.height * 0.15f;
-                FillRect(new Rect(Screen.width * 0.2f, bY - 4, Screen.width * 0.6f, 44), new Color(0f, 0f, 0f, 0.62f));
-                FillRect(new Rect(Screen.width * 0.2f, bY - 4, Screen.width * 0.6f, 2), new Color(0.95f, 0.8f, 0.2f, 0.8f));
-                GUI.Label(new Rect(0, bY, Screen.width, 36),
-                    _bannerMessage,
-                    MkLabel(22, TextAnchor.MiddleCenter, FontStyle.Bold, new Color(1f, 0.92f, 0.35f)));
+                float bandX = Screen.width * 0.2f, bandW = Screen.width * 0.6f;
+                const float padX = 16f, padY = 8f;
+                var style = MkLabel(22, TextAnchor.MiddleCenter, FontStyle.Bold, new Color(1f, 0.92f, 0.35f));
+                style.wordWrap = true;
+                float textH = style.CalcHeight(new GUIContent(_bannerMessage), bandW - padX * 2f);
+                float boxH  = Mathf.Max(40f, textH + padY * 2f);
+                float bY    = Screen.height * 0.15f - 4f;
+                FillRect(new Rect(bandX, bY, bandW, boxH), new Color(0f, 0f, 0f, 0.62f));
+                FillRect(new Rect(bandX, bY, bandW, 2f),   new Color(0.95f, 0.8f, 0.2f, 0.8f));
+                GUI.Label(new Rect(bandX + padX, bY + padY, bandW - padX * 2f, boxH - padY * 2f), _bannerMessage, style);
             }
 
             if (_pendingTalent != null) DrawTalentReplacementOverlay();
@@ -2945,82 +3231,104 @@ namespace Game.Bootstrap
         //   0.15 — 0.30  : 标题淡入
         //   0.30 — 0.85  : 标题保持（hold）
         //   0.85 — 1.00  : 整体淡出（黑幕 + 标题 alpha 1 → 0）
+        // 结局过场（手动推进 / 逐字字幕，手感与开场动画一致）：
+        //   每帧停留不闪烁；图片淡入后字幕逐字浮现；点击/空格/回车推进，Esc 直接结束。
         private void DrawEndingCutscene()
         {
-            float elapsed  = Mathf.Max(0f, Time.unscaledTime - _cutsceneStartTime);
-            float progress = _cutsceneDuration > 0f ? Mathf.Clamp01(elapsed / _cutsceneDuration) : 1f;
+            float sw = Screen.width, sh = Screen.height;
 
-            var full = new Rect(0, 0, Screen.width, Screen.height);
+            // 全屏黑底（CG 之下；缺图时即纯黑过场）
+            FillRect(new Rect(0, 0, sw, sh), Color.black);
 
-            // 黑底：开头淡入到全黑，之后保持（作为 CG 之下的底；CG 缺失时即原纯黑过场）
-            float blackBaseAlpha = progress < 0.15f ? Mathf.SmoothStep(0f, 1f, progress / 0.15f) : 1f;
-            FillRect(full, new Color(0f, 0f, 0f, blackBaseAlpha));
-
-            // 结局 CG：0.15→0.30 淡入、0.30→0.85 保持、0.85→1.0 淡出回黑
-            var cg = GetEndingCG(_endingTier);
-            if (cg != null && progress >= 0.15f)
+            // 当前帧：等比铺满，按淡入 alpha 叠加（切帧时 alpha 归零再淡入 → 是淡入不是闪烁）
+            var frames     = GetEndingFrames(_endingTier);
+            int frameCount = frames.Length;
+            float head     = Mathf.Clamp01(_cutsceneAlpha);
+            if (frameCount > 0)
             {
-                float cgAlpha =
-                    progress < 0.30f ? Mathf.SmoothStep(0f, 1f, (progress - 0.15f) / 0.15f) :
-                    progress < 0.85f ? 1f :
-                                       Mathf.SmoothStep(1f, 0f, (progress - 0.85f) / 0.15f);
-                var prevCol = GUI.color;
-                GUI.color = new Color(1f, 1f, 1f, cgAlpha);
-                GUI.DrawTexture(full, cg, ScaleMode.ScaleAndCrop);
-                GUI.color = prevCol;
-                // 标题区压暗带，保证文字在亮部场景上仍可读
-                FillRect(new Rect(0, Screen.height * 0.40f, Screen.width, Screen.height * 0.18f),
-                         new Color(0f, 0f, 0f, 0.38f * cgAlpha));
+                int idx = Mathf.Clamp(_cutsceneFrame, 0, frameCount - 1);
+                DrawCGFull(frames[idx], head);
             }
 
-            // 标题 alpha：中段淡入并保持，结尾随黑幕同步淡出
-            float titleAlpha =
-                progress < 0.15f ? 0f :
-                progress < 0.30f ? Mathf.SmoothStep(0f, 1f, (progress - 0.15f) / 0.15f) :
-                progress < 0.85f ? 1f :
-                                   Mathf.SmoothStep(1f, 0f, (progress - 0.85f) / 0.15f);
+            // 标题（中部，随首帧淡入后常驻）
+            EndingTitle(out string title, out Color tint);
+            FillRect(new Rect(0, sh * 0.40f, sw, sh * 0.16f), new Color(0f, 0f, 0f, 0.34f * head));
+            GUI.Label(new Rect(0, sh * 0.45f, sw, 60), title,
+                MkLabel(28, TextAnchor.MiddleCenter, FontStyle.Italic,
+                        new Color(tint.r, tint.g, tint.b, head)));
 
-            if (titleAlpha > 0.001f)
+            // 底部字幕条：逐字浮现（与开场一致）
+            var    caps = GetEndingCaptions(_endingTier);
+            string cap  = _cutsceneFrame < caps.Length ? caps[_cutsceneFrame] : "";
+            float  boxH = Mathf.Clamp(sh * 0.26f, 120f, 220f);
+            FillRect(new Rect(0, sh - boxH, sw, boxH),  new Color(0f, 0f, 0f, 0.62f * head));
+            FillRect(new Rect(0, sh - boxH, sw, 2f),    new Color(0.85f, 0.7f, 0.35f, 0.55f * head));
+
+            int    shown = Mathf.Clamp(Mathf.FloorToInt(_cutsceneReveal), 0, cap.Length);
+            float  pad   = Mathf.Max(28f, sw * 0.12f);
+            var subStyle = MkLabel(Mathf.Clamp(Mathf.RoundToInt(sh * 0.030f), 15, 26),
+                                   TextAnchor.UpperCenter, FontStyle.Normal,
+                                   new Color(0.96f, 0.93f, 0.85f, head));
+            subStyle.wordWrap = true;
+            GUI.Label(new Rect(pad, sh - boxH + 22f, sw - pad * 2f, boxH - 56f),
+                      cap.Substring(0, shown), subStyle);
+
+            // 进度点
+            DrawEndingDots(frameCount, sw, sh);
+
+            // 推进/结束提示（字幕显示完后闪烁）
+            bool revealed = shown >= cap.Length;
+            if (revealed && head > 0.9f)
             {
-                string title;
-                Color  baseTint;
-                switch (_endingTier)
-                {
-                    case EndingTier.Crown:
-                        title    = "The crown falls; the name returns.";
-                        baseTint = new Color(1f,    0.86f, 0.55f);
-                        break;
-                    case EndingTier.Truth:
-                        title    = "Remember the name beneath.";
-                        baseTint = new Color(0.92f, 0.78f, 1f);
-                        break;
-                    default:
-                        title    = "The world closes its eyes, for now.";
-                        baseTint = new Color(0.85f, 0.85f, 0.78f);
-                        break;
-                }
-                var tint = new Color(baseTint.r, baseTint.g, baseTint.b, titleAlpha);
-                GUI.Label(new Rect(0, Screen.height * 0.46f, Screen.width, 60), title,
-                    MkLabel(28, TextAnchor.MiddleCenter, FontStyle.Italic, tint));
+                float blink = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 4f);
+                string hint = _cutsceneFrame >= frameCount - 1 ? "Click / Space  ▶  End" : "Click / Space  ▶";
+                GUI.Label(new Rect(sw - 320f, sh - 34f, 300f, 22f), hint,
+                    MkLabel(13, TextAnchor.MiddleRight, FontStyle.Normal,
+                            new Color(0.8f, 0.85f, 1f, 0.35f + 0.55f * blink)));
             }
 
-            // 极淡的跳过提示（仅在黑幕完全展开时显示）
-            if (blackBaseAlpha > 0.95f && progress < 0.85f)
-            {
-                GUI.Label(new Rect(0, Screen.height * 0.88f, Screen.width, 22),
-                    "(Space / Enter to skip)",
-                    MkLabel(12, TextAnchor.MiddleCenter, FontStyle.Normal,
-                        new Color(0.45f, 0.45f, 0.50f, 0.6f)));
-            }
-
-            // 跳过键
+            // 输入：点击/空格/回车 → 推进；Esc → 直接结束整段
             var e = Event.current;
-            bool skipReq =
-                (e.type == EventType.KeyDown && (e.keyCode == KeyCode.Space ||
-                                                  e.keyCode == KeyCode.Return ||
-                                                  e.keyCode == KeyCode.Escape)) ||
-                (e.type == EventType.MouseDown && e.button == 0);
-            if (skipReq) FinishEndingCutscene();
+            if (e.type == EventType.KeyDown)
+            {
+                if (e.keyCode == KeyCode.Escape) { FinishEndingCutscene(); e.Use(); return; }
+                if (e.keyCode == KeyCode.Space || e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter)
+                { AdvanceEndingCutscene(); e.Use(); }
+            }
+            else if (e.type == EventType.MouseDown && e.button == 0)
+            {
+                AdvanceEndingCutscene(); e.Use();
+            }
+        }
+
+        private void EndingTitle(out string title, out Color tint)
+        {
+            switch (_endingTier)
+            {
+                case EndingTier.Crown:
+                    title = "The crown falls; the name returns."; tint = new Color(1f,    0.86f, 0.55f); break;
+                case EndingTier.Truth:
+                    title = "Remember the name beneath.";          tint = new Color(0.92f, 0.78f, 1f);    break;
+                default:
+                    title = "The world closes its eyes, for now."; tint = new Color(0.85f, 0.85f, 0.78f); break;
+            }
+        }
+
+        // 底部进度点（当前帧高亮）
+        private void DrawEndingDots(int frameCount, float sw, float sh)
+        {
+            if (frameCount <= 1) return;
+            const float r = 7f, gap = 10f;
+            float total = frameCount * r + (frameCount - 1) * gap;
+            float x = (sw - total) * 0.5f;
+            float y = sh - 30f;
+            for (int i = 0; i < frameCount; i++)
+            {
+                Color c = i == _cutsceneFrame ? new Color(1f, 0.85f, 0.4f, 0.95f)
+                        : i <  _cutsceneFrame ? new Color(0.7f, 0.7f, 0.78f, 0.7f)
+                                              : new Color(0.4f, 0.4f, 0.48f, 0.5f);
+                FillRect(new Rect(x + i * (r + gap), y, r, r), c);
+            }
         }
 
         // 三档结局画面
