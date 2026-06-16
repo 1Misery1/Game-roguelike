@@ -47,6 +47,7 @@ namespace Game.UI
         {
             if (Instance == this) Instance = null;
             if (_open) Time.timeScale = 1f;
+            if (_canvas != null) Destroy(_canvas.gameObject);   // root canvas isn't our child; clean it up
         }
 
         private void Update()
@@ -124,8 +125,11 @@ namespace Game.UI
         // ── UI build ──────────────────────────────────────────────────────────
         private void Build()
         {
+            // Keep this a ROOT overlay canvas (do NOT parent it under this GameObject).
+            // In the Dungeon scene the controller sits on an existing Canvas; nesting a
+            // canvas under another makes it a sub-canvas that inherits the parent rect,
+            // which pushes the centred panels into a corner. A root canvas is screen-driven.
             _canvas = UIFactory.CreateOverlayCanvas("PauseCanvas", sortingOrder: 650);
-            _canvas.transform.SetParent(transform, false);
 
             var dim = UIFactory.Image("Dim", _canvas.transform, new Color(0f, 0f, 0f, 0.7f), raycast: true);
             UIFactory.Stretch(dim.rectTransform);
