@@ -7,6 +7,7 @@ This project was developed with the help of an AI coding assistant (Anthropic's 
 - **Implementation and boilerplate** — turning my designs and instructions into C# (components, systems, scene-building code).
 - **Refactoring** — most notably migrating the entire user interface from Unity's immediate-mode `OnGUI` (IMGUI) to retained-mode **uGUI** (Canvas), and tidying the code afterwards.
 - **Debugging** — diagnosing and fixing runtime issues I found while testing.
+- **Editor automation** — an AI-driven Unity Editor plugin (Coplay, via the Model Context Protocol) was used during development to run builds, inspect and adjust scene objects, and run play-tests.
 - **Drafting comments and documentation.**
 
 ## What is my own work
@@ -22,4 +23,4 @@ The art (pixel sprites and tiles), audio, and font are **third-party assets** us
 
 ## Notes
 
-- AI tool configuration and local working/notes folders (`.claude/`, `Docs/`, `Temp/`) are excluded from version control via `.gitignore` and are not part of the submission.
+- AI tool configuration and tooling, and local working/notes folders (`.claude/`, `Packages/Coplay/`, `Docs/`, `Temp/`) are excluded from version control via `.gitignore` and are not part of the submission.

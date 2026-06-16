@@ -35,6 +35,8 @@ Required packages (auto-installed via `Packages/manifest.json`):
 | Weapon Skill | R | Right Click |
 | Hero Active Skill | F | — |
 | Switch Weapon | Q | — |
+| Interact / Possess hero | E | — |
+| Pause · Settings · Quit | Esc | — |
 
 ---
 
@@ -52,13 +54,15 @@ Required packages (auto-installed via `Packages/manifest.json`):
 
 ```
 Assets/Scripts/
-├─ Data/        ScriptableObjects: Hero, Weapon, Talent, Buff, Skills, Enums
-├─ Core/        GameManager, RunState, PersistentState
-├─ Combat/      StatModifier, CharacterStats, Health, Cooldown, IDamageable
-├─ Player/      PlayerController, PlayerWeaponHandler, HeroSkillHandler
-├─ AI/          15 enemy types + NavGrid pathfinding
-├─ Dungeon/     DungeonGenerator, RoomController (6 room types)
-└─ Systems/     ModifierApplier (applies talent/buff/passive to stats)
+├─ Bootstrap/   GameBootstrap (dungeon run), TrainingBootstrap, MapBuilder
+├─ Core/        GameManager, RunState, PersistentState, GameSignals
+├─ Data/        ScriptableObjects: Hero, Weapon, Talent, Buff, Skills, FloorTheme
+├─ Actors/      Player (controller, weapon/skill handlers) + AI (15 enemy types, NavGrid A*)
+├─ Combat/      CharacterStats, Health, StatModifier, Cooldown, IDamageable
+├─ Dungeon/     procedural layout + room / shop / pedestal interactables
+├─ Narrative/   DialogueBox, ChoiceBox, story items, branching endings
+├─ UI/          code-built uGUI: HUD, weapon panel, pause menu, title, overlays
+└─ Systems/     ModifierApplier (talent / buff / passive → stats)
 ```
 
 ---
@@ -80,13 +84,15 @@ Assets/Scripts/
 - [x] Shop room with upgrade / forge options
 - [x] Multiple hero archetypes with unique active skills
 - [x] Pixel-art sprites for heroes, enemies, weapons (32×32)
-- [ ] Sound effects and background music
-- [ ] Proper scene transitions (main menu → floor → game over)
+- [x] Sound effects and background music (combat SFX + per-floor BGM)
+- [x] Proper scene transitions (title → camp → dungeon → ending)
+- [x] Shared ESC pause menu (resume / settings + volume / main menu / quit)
+- [x] Training arena to test a hero's weapons and skills before a run
 
 ### Could-Have *(nice extras if the core is stable and tested)*
 - [ ] Animated sprite sequences for heroes and enemies
-- [ ] Achievement / unlock progression system
-- [ ] Run statistics screen at end of run
+- [x] Hero unlock / cross-run progression (recovered truths carry over)
+- [x] Run statistics / recap screen at end of run
 - [ ] Additional enemy variants per floor
 - [ ] Mobile touch controls
 
@@ -107,10 +113,10 @@ Assets/Scripts/
 | W6–W9: Multi-floor dungeon + 6 room types + hero variety | Done | ✅ |
 | W9–W12: Pixel-art sprites — heroes (8), enemies (15), weapons (26) | Done | ✅ |
 | W12–W13: Difficulty curve, wave balance, Hades-style progression | Done | ✅ |
-| W13–W14: Sound design, music, scene transitions | In Progress | 🔄 |
-| W14–W15: Playtesting, bug fixes, final build | Next | ⬜ |
+| W13–W14: Sound design, music, scene transitions | Done | ✅ |
+| W14–W15: Playtesting, bug fixes, pause/HUD polish, final build | Done | ✅ |
 
-Branch strategy: feature branches merged to `main` via PR after each milestone.
+Process: work is planned and tracked through **GitHub Issues** and a **project board** ("Game Roguelike Roadmap"); commits land on `main` and reference the issues they close.
 
 ---
 
@@ -126,11 +132,18 @@ Branch strategy: feature branches merged to `main` via PR after each milestone.
 
 ---
 
-## What I Will Build Next
+## Recent Additions
 
-1. **Sound system** — integrate background music per floor and one-shot SFX for attacks, hits, and deaths using Unity's AudioManager pattern
-2. **Scene transitions** — main menu → hero select → dungeon → game-over/win screen with proper async loading
-3. **Playtesting pass** — fix edge cases in weapon skill interactions, ensure all 15 enemies have correct AI behaviour on every floor
+- **Audio system** — combat SFX and per-floor background music (AudioManager).
+- **Full scene flow** — title menu → camp → dungeon → ending cutscenes, with a shared **ESC pause menu** (resume / settings + master volume / return to menu / quit to desktop).
+- **Training arena** — try a hero's weapons and skills before committing to a run.
+- **Branching narrative** — dialogue, player choices, story items, and three endings (Normal / Truth / Crown) including a hidden final boss.
+
+## Known Limitations / Future Work
+
+- Per-sprite asset provenance is best-effort inferred, not a per-file audit (see [`ATTRIBUTIONS.md`](ATTRIBUTIONS.md)); the Gervais/DCSS tile licence still needs confirming.
+- No sprite-sheet animation yet — directional sprites are static; ending cutscenes use multi-frame stills.
+- Accessibility options (colour-blind palette, full keybinding remap) are not yet implemented.
 
 ---
 
