@@ -1,18 +1,16 @@
-# 2D Anime Roguelike — Dungeon Action Game
+# Embers of the Three Realms (三界余烬)
 
 A 2D top-down roguelike action game built with **Unity 2022.3 LTS**.  
-Select a hero, descend into a procedurally generated dungeon, collect weapons, choose talents, and defeat bosses — each run is unique.
+You are a nameless ember-spirit descending through three collapsing realms — Inferno, the Frost Realm, and the Chaos Abyss — possessing the bodies of fallen heroes, fighting through procedurally generated rooms, and uncovering the truth the kingdom buried: the real monster was never the Void.
 
 ---
 
 ## Game Idea
 
-The player picks one of several anime-styled heroes and enters a multi-floor dungeon.  
-Each room is cleared by defeating waves of enemies. Between rooms the player collects weapons, visits a shop, and picks talents/buffs to build a run-specific power fantasy.  
-Death resets the run. Only hero unlocks carry over (roguelike fairness).
+You begin as an ember-spirit in a **camp (hub)**, where hero selection is *diegetic* — you walk up to a fallen hero's pedestal and **possess** it, then descend. Each floor is a procedurally generated sequence of combat rooms → shop → boss; you collect weapons, pick talents, and forge / enchant / heal at the shop to build a run-specific loadout. Investigating story objects and making choices uncovers a branching truth and leads to one of several endings (Normal / Truth / Crown), including a hidden final boss, *Kingdom's Guilt*. Death resets the run; hero unlocks and recovered truths carry over.
 
 **Core Loop:**  
-Select Hero → Enter Dungeon → Combat Rooms → Collect Weapons / Talents → Boss Fight → Win or Die → Unlock Heroes → Restart
+Camp (possess a hero) → Enter Dungeon → Combat Rooms → Collect Weapons / Talents → Shop → Boss → Win or Die → Unlock Heroes & Truths → Restart
 
 ---
 
@@ -133,6 +131,12 @@ Branch strategy: feature branches merged to `main` via PR after each milestone.
 1. **Sound system** — integrate background music per floor and one-shot SFX for attacks, hits, and deaths using Unity's AudioManager pattern
 2. **Scene transitions** — main menu → hero select → dungeon → game-over/win screen with proper async loading
 3. **Playtesting pass** — fix edge cases in weapon skill interactions, ensure all 15 enemies have correct AI behaviour on every floor
+
+---
+
+## AI Assistance
+
+AI coding tools were used during development (implementation, refactoring, and debugging — under my design and direction). See **[AI_USAGE.md](AI_USAGE.md)** for an honest breakdown of what was AI-assisted versus original design and decision work.
 
 ---
 

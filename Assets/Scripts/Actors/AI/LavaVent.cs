@@ -5,8 +5,8 @@ using UnityEngine;
 
 namespace Game.AI
 {
-    /// 熔岩喷发格（替代旧 LavaTile）
-    /// 三阶状态机：Idle（缓慢呼吸光）→ Warning（快速橙黄脉冲 + 抖动）→ Erupting（白热核心 + 岩浆弹 + 伤害）
+    /// Lava-eruption tile.
+    /// Three-stage state machine: Idle (slow breathing glow) → Warning (fast orange pulse + shake) → Erupting (white-hot core + lava bolts + damage)
     /// 仅在 Erupting 阶段造成伤害，DPS 低于旧版持续扣血。
     [RequireComponent(typeof(SpriteRenderer))]
     public class LavaVent : MonoBehaviour
@@ -191,6 +191,7 @@ namespace Game.AI
 
         void OnTriggerEnter2D(Collider2D other)
         {
+            if (EnemyTag.IsFlyingEnemy(other)) return;   // 飞行怪免疫熔岩喷发
             var d = other.GetComponent<IDamageable>();
             if (d != null) _targets.Add(d);
         }

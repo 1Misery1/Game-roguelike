@@ -12,7 +12,7 @@ namespace Game.Core
         public PersistentState Persistent { get; private set; }
 
         [SerializeField] private string menuSceneName     = "Hub";
-        [SerializeField] private string dungeonSceneName  = "Test";
+        [SerializeField] private string dungeonSceneName  = "Dungeon";
         [SerializeField] private string trainingSceneName = "Training";
 
         /// 进入训练场时所附身的英雄（训练场只用它生成可操控的真身，不开启正式 Run）。

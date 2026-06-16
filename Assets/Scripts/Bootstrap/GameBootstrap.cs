@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Game.AI;
 using Game.Combat;
 using Game.Core;
@@ -59,6 +59,15 @@ namespace Game.Bootstrap
         private DamageNumbers _damageNumbers;
         private string _bannerMessage;
         private float  _bannerUntil;
+
+        // HUD. RefreshHud() pushes data into it each frame.
+        private Game.UI.HudView _hud;
+        private Game.UI.OverlayView _overlay;   // full-screen overlays (FloorComplete transition + talent replacement)
+        private bool _trShown;                   // 天赋替换弹窗当前是否显示
+        private State _esShownFor = State.Playing; // 结算屏当前为哪个状态显示(Playing=未显示)
+        private readonly List<Game.UI.HudView.Chip> _talentChips  = new List<Game.UI.HudView.Chip>();
+        private readonly List<Game.UI.HudView.Chip> _itemChips    = new List<Game.UI.HudView.Chip>();
+        private readonly List<Game.UI.HudView.Chip> _synergyChips = new List<Game.UI.HudView.Chip>();
 
         private Health _bossHealth;
         private string _bossName;
@@ -188,6 +197,11 @@ namespace Game.Bootstrap
 
         private EndingTier _endingTier;
         private int        _debugEndingIdx;   // 调试：F9 循环结局档位用
+#if UNITY_EDITOR
+        // 调试后门：按过 F10（强制隐藏 Boss）后，F9 结局预览直接锁定王冠结局「王国之罪」。
+        // 详见 Docs/DEBUG_BACKDOORS.md，发布前清除。
+        private bool       _debugForceCrownEnding;
+#endif
         private bool       _isTrueEnding;   // 兼容旧逻辑：Truth/Crown 都视作 true
         private int        _endingTruthCount;
         private float      _cutsceneDuration;   // 仅用于结局开始事件通知（音频淡入等）
@@ -319,13 +333,14 @@ namespace Game.Bootstrap
 
         private List<string> GenerateFloor()
         {
-            var   pool       = GetFloorRoomPool();
-            float total      = 0f;
+            var rooms = new List<string>();
+
+            var   pool   = GetFloorRoomPool();
+            float total  = 0f;
             foreach (var e in pool) total += e.weight;
 
             // Combat room count increases per floor: Floor1=4, Floor2=5, Floor3=6
-            int combatCount  = nonBossRoomCount + (CurrentFloor - 1);
-            var rooms        = new List<string>();
+            int combatCount = nonBossRoomCount + (CurrentFloor - 1);
             for (int i = 0; i < combatCount; i++)
             {
                 float roll = Random.value * total;
@@ -358,7 +373,8 @@ namespace Game.Bootstrap
 
             // 商店房 / Boss 房用规整矩形，其余房型用本层异形几何；仅在 矩形↔异形 切换时重建竞技场
             bool wantRect  = (type == "Shop" || type == "Boss");
-            bool wantClean = (type == "Shop");   // 商店：纯地板+墙壁，无任何障碍/危险地块
+            // 纯地板+外墙、无任何障碍/危险地块：商店；以及最终层 Boss 房（决战场地要空旷）
+            bool wantClean = (type == "Shop") || (type == "Boss" && CurrentFloor >= maxFloor);
             if (wantRect != _arenaIsRect || wantClean != _arenaIsClean || _arenaRoot == null)
             {
                 RebuildArenaGeometry(wantRect, wantClean);
@@ -538,6 +554,9 @@ namespace Game.Bootstrap
             // 受击反馈：白闪 + 击退 + 命中停顿 + HP 着色
             if (enemy.GetComponent<EnemyHitFeedback>() == null)
                 enemy.AddComponent<EnemyHitFeedback>();
+            // 卡墙兜底：被击退穿模到墙外时拉回最近可走格
+            if (enemy.GetComponent<EnemyStuckRecovery>() == null)
+                enemy.AddComponent<EnemyStuckRecovery>();
             // 头顶血条
             if (enemy.GetComponent<EnemyHealthBar>() == null)
                 enemy.AddComponent<EnemyHealthBar>();
@@ -629,7 +648,7 @@ namespace Game.Bootstrap
                 float x  = -3f + i * 3f;
                 var go   = new GameObject("WeaponChoice_" + weapon.Data.weaponName);
                 go.transform.SetParent(_currentRoomRoot.transform, true);
-                go.transform.position   = NearestWalkableWorld(new Vector3(x, -1.5f, 0f));
+                go.transform.position   = NearestSafeWorld(new Vector3(x, -1.5f, 0f));
                 go.transform.localScale = new Vector3(0.65f, 0.65f, 1f);
 
                 var sr = go.AddComponent<SpriteRenderer>();
@@ -754,7 +773,7 @@ namespace Game.Bootstrap
                 pickups.Add(SpawnTalentOrb(talent, def.color));
             }
             for (int i = 0; i < pickups.Count; i++)
-                pickups[i].transform.position = NearestWalkableWorld(new Vector3(-3.5f + 3.5f * i, 0f, 0f));
+                pickups[i].transform.position = NearestSafeWorld(new Vector3(-3.5f + 3.5f * i, 0f, 0f));
 
             var snapshot = new List<TalentPickup>(pickups);
             foreach (var p in snapshot)
@@ -1279,6 +1298,7 @@ namespace Game.Bootstrap
                 _bossName   = null;
                 PlayerPassiveEvents.RaisePlayerKilledEnemy();
                 Destroy(boss);
+                DeactivateRoomHazards();   // Boss 战结束：清掉残留岩浆池/危险格
 
                 // 最终层 Boss 击败：若已满足隐藏 Boss 条件且尚未召唤过 → 进入「王国之罪」战
                 if (CurrentFloor >= maxFloor)
@@ -1328,12 +1348,14 @@ namespace Game.Bootstrap
             Game.Narrative.DialogueBox.Get().Play(lines, () =>
             {
                 // 复用 ChaosLord 实体外观；统计/缩放/颜色/AI 全部按 KingdomGuilt SO 覆盖
-                var boss   = EnemyFactory.SpawnChaosLord(NearestWalkableWorld(new Vector3(0f, 2.5f, 0f)),
+                // 固定生成在房间正中心（KingdomGuiltAI 会冻结刚体，全程不移动）
+                var boss   = EnemyFactory.SpawnChaosLord(NearestWalkableWorld(new Vector3(0f, 0f, 0f)),
                                  _player.transform, _currentRoomRoot.transform);
                 boss.name  = "Kingdom_Guilt";
 
                 var kg = BossStatsRegistry.Get("kingdom_guilt");
-                float kgScaleMul = kg != null ? (kg.visualScale / 1.4f) : 1.6f; // 1.4 是 ChaosLord 默认缩放
+                // ×1.3：在原立绘缩放基础上再增大一号（最终 Boss 体型更具压迫感）
+                float kgScaleMul = (kg != null ? (kg.visualScale / 1.4f) : 1.6f) * 1.3f;
                 boss.transform.localScale *= kgScaleMul;
                 var sr = boss.GetComponent<SpriteRenderer>();
                 var kgSprite = LoadKingdomGuiltSprite();
@@ -1392,6 +1414,7 @@ namespace Game.Bootstrap
                     _bossName   = null;
                     PlayerPassiveEvents.RaisePlayerKilledEnemy();
                     if (boss != null) Destroy(boss);
+                    DeactivateRoomHazards();   // 隐藏 Boss 战结束：清掉残留岩浆池/危险格
                     // 通关隐藏 Boss → 永久记 truth_final_boss_defeated
                     _persistent.AddTruthFlag("truth_final_boss_defeated");
                     TriggerVictory();
@@ -1802,6 +1825,25 @@ namespace Game.Bootstrap
                 }
             }
             return desired;
+        }
+
+        // 与 NearestWalkableWorld 相同，但额外要求该格「无危险（岩浆/毒池/冰刺等）」。
+        // 用于武器/天赋等奖励落点，避免生成在岩浆等地形杀上。找不到安全格则退回最近可走格。
+        private Vector3 NearestSafeWorld(Vector3 desired)
+        {
+            var cell = Game.AI.NavGrid.WorldToCell(desired);
+            for (int rad = 0; rad < 14; rad++)
+            for (int dy = -rad; dy <= rad; dy++)
+            for (int dx = -rad; dx <= rad; dx++)
+            {
+                if (rad > 0 && Mathf.Abs(dx) != rad && Mathf.Abs(dy) != rad) continue;   // 只扫当前环
+                int c = cell.x + dx, r = cell.y + dy;
+                if (!Game.AI.NavGrid.IsWalkable(c, r)) continue;
+                if (Game.AI.NavGrid.HazardAt(c, r) != 0) continue;
+                var w = Game.AI.NavGrid.CellToWorld(new Vector2Int(c, r));
+                return new Vector3(w.x, w.y, 0f);
+            }
+            return NearestWalkableWorld(desired);   // 全是危险/不可走时的兜底
         }
 
         // 第1层：四角炼狱火柱（周期性喷火，预警橙色闪烁）
@@ -2460,16 +2502,6 @@ namespace Game.Bootstrap
             tier == EndingTier.Truth ? TruthCaptions :
                                        NormalCaptions;
 
-        // 全屏绘制一张结局帧（ScaleAndCrop 铺满）按给定不透明度
-        private static void DrawCGFull(Texture2D tex, float alpha)
-        {
-            if (tex == null || alpha <= 0.001f) return;
-            var prev = GUI.color;
-            GUI.color = new Color(1f, 1f, 1f, alpha);
-            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), tex, ScaleMode.ScaleAndCrop);
-            GUI.color = prev;
-        }
-
         private TalentPickup SpawnTalentOrb(TalentData data, Color color)
         {
             var go = new GameObject("Talent_" + data.talentName);
@@ -2561,15 +2593,64 @@ namespace Game.Bootstrap
             var dbgKb = UnityEngine.InputSystem.Keyboard.current;
             if (dbgKb != null && dbgKb.f9Key.wasPressedThisFrame)
             {
-                _endingTier   = (EndingTier)(_debugEndingIdx++ % 3);
+                // 后门：按过 F10（隐藏 Boss）后，F9 直接预览「王国之罪」王冠结局；否则循环三档
+                if (_debugForceCrownEnding) _endingTier = EndingTier.Crown;
+                else                        _endingTier = (EndingTier)(_debugEndingIdx++ % 3);
                 _isTrueEnding = _endingTier != EndingTier.Normal;
                 _endingTruthCount = _persistent != null && _persistent.TruthFlags != null ? _persistent.TruthFlags.Count : 0;
-                ShowBanner($"[DEBUG] Ending preview: {_endingTier}  (F9 to cycle)");
+                ShowBanner($"[DEBUG] Ending preview: {_endingTier}  ({(_debugForceCrownEnding ? "F10 backdoor → Crown" : "F9 to cycle")})");
                 EnterEndingCutscene();
                 return;
             }
+            // F10：直接调出隐藏 Boss「王国之罪」战斗（无需集旗/通关，仅编辑器）。
+            if (dbgKb != null && dbgKb.f10Key.wasPressedThisFrame && _player != null)
+            {
+                DebugForceHiddenBoss();
+                return;
+            }
 #endif
-            if (_state == State.EndingCutscene) { TickEndingCutscene(); return; }
+            // HUD: only shown and refreshed while Playing; hidden in other states (summary / cutscene use overlays).
+            EnsureHud();
+            _hud.SetVisible(_state == State.Playing);
+            if (_state == State.Playing) RefreshHud();
+
+            // uGUI 覆盖层：层间过渡(FloorComplete)。其余状态隐藏。
+            EnsureOverlay();
+            bool floorComplete = _state == State.FloorComplete;
+            _overlay.SetFloorCompleteVisible(floorComplete);
+            if (floorComplete) RefreshFloorCompleteOverlay();
+
+            // 天赋替换弹窗(Playing 且有待定天赋时弹出一次,选择/取消后自动收起)
+            bool wantTR = _state == State.Playing && _pendingTalent != null;
+            if (wantTR && !_trShown)
+            {
+                var labels = new List<string>();
+                foreach (var at in _activeTalents)
+                    labels.Add($"Replace: {at.Data.talentName}  ({(at.IsPermanent ? "Permanent" : at.RoomsLeft + " rooms left")})");
+                _overlay.ShowTalentReplacement(_pendingTalent.talentName, _pendingTalent.description, labels,
+                    idx => ReplaceTalentAt(idx), () => _pendingTalent = null);
+                _trShown = true;
+            }
+            else if (!wantTR && _trShown) { _overlay.HideTalentReplacement(); _trShown = false; }
+
+            // 结算屏(胜利/死亡):进入该状态时构建一次;死亡时每帧刷新倒计时。
+            if (_state == State.Victory || _state == State.Death)
+            {
+                if (_esShownFor != _state) { ShowEndScreenOverlay(); _esShownFor = _state; }
+                if (_state == State.Death)
+                    _overlay.SetEndScreenCountdown($"Returning to menu in {Mathf.Max(0f, _deathReturnAt - Time.time):0.0}s…");
+            }
+            else if (_esShownFor != State.Playing) { _overlay.HideEndScreen(); _esShownFor = State.Playing; }
+
+            // 结局过场(uGUI):推进淡入/逐字 + 输入 + 推送显示
+            _overlay.SetCutsceneVisible(_state == State.EndingCutscene);
+            if (_state == State.EndingCutscene)
+            {
+                TickEndingCutscene();
+                HandleCutsceneInput();
+                RefreshCutsceneOverlay();
+                return;
+            }
             if (_state != State.Playing || _player == null || Camera.main == null) return;
             var cam   = Camera.main;
             float hh  = cam.orthographicSize;
@@ -2580,6 +2661,31 @@ namespace Game.Bootstrap
             float cy  = Mathf.Clamp(py, -ArenaHalfH + hh, ArenaHalfH - hh);
             cam.transform.position = new Vector3(cx, cy, cam.transform.position.z);
         }
+
+#if UNITY_EDITOR
+        // 调试：一键调出隐藏 Boss「王国之罪」战斗——跳到最终层、重建 Boss 矩形竞技场、立即召唤，
+        // 跳过 4 真相旗与三层流程。仅编辑器内可用（F10）。打赢同样记 truth_final_boss_defeated → 王冠结局。
+        private void DebugForceHiddenBoss()
+        {
+            if (_player == null) return;
+            if (_state == State.EndingCutscene) return;
+
+            _debugForceCrownEnding = true;                 // 后门：之后按 F9 直接预览王冠结局
+            CurrentFloor = maxFloor;                       // 用最终层缩放
+            RebuildArenaGeometry(forceRect: true, clean: true); // Boss 房：规整矩形 + 纯地板外墙
+            _arenaIsRect = true; _arenaIsClean = true;
+            SetFloorBackground();
+
+            if (_currentRoomRoot != null) Destroy(_currentRoomRoot);
+            _currentRoomRoot = new GameObject("Room_DebugHiddenBoss");
+            _player.transform.position = _mapInfo.PlayerSpawn;
+
+            _hiddenBossSpawned = false;
+            _state = State.Playing;
+            ShowBanner("[DEBUG] Summoning Kingdom's Guilt…  (F10)");
+            SpawnHiddenBoss();                              // 含 4 句战前铭文，对话结束后实体登场
+        }
+#endif
 
         private static readonly string[] _variantLetters = { "A", "B", "C" };
 
@@ -2700,319 +2806,299 @@ namespace Game.Bootstrap
             }
         }
 
-        private void FillRect(Rect r, Color c)
-        {
-            var prev = GUI.color;
-            GUI.color = c;
-            GUI.DrawTexture(r, WhitePixel);
-            GUI.color = prev;
-        }
-
-        // ── 横条进度条 ──────────────────────────────────────────────
-        private void DrawBar(float x, float y, float w, float h, float ratio,
-                             Color bg, Color fill, Color border)
-        {
-            FillRect(new Rect(x - 1, y - 1, w + 2, h + 2), border);
-            FillRect(new Rect(x, y, w, h), bg);
-            if (ratio > 0f) FillRect(new Rect(x, y, w * Mathf.Clamp01(ratio), h), fill);
-        }
-
         // ─────────────────────────────────────────────────────────────
-        //  OnGUI 入口
+        //  HUD data push
         // ─────────────────────────────────────────────────────────────
-        private void OnGUI()
+        private void EnsureHud()
         {
-            UIFonts.ApplyToSkin();   // 全局 IMGUI 字体统一为方舟像素体
-            switch (_state)
-            {
-                case State.Playing:        DrawHUD();                                                  break;
-                case State.FloorComplete:  DrawFloorComplete();                                        break;
-                case State.EndingCutscene: DrawEndingCutscene();                                       break;
-                case State.Victory:        DrawVictoryScreen();                                        break;
-                case State.Death:          DrawEndScreen("Defeated",  new Color(1f, 0.3f,  0.3f), false); break;
-            }
+            if (_hud != null) return;
+            _hud = new GameObject("HudView").AddComponent<Game.UI.HudView>();
         }
 
-        // ─────────────────────────────────────────────────────────────
-        //  战斗 HUD
-        // ─────────────────────────────────────────────────────────────
-        private void DrawHUD()
+        private void EnsureOverlay()
         {
-            DrawTopBar();
-            DrawPlayerHPBar();
-            DrawGoldDisplay();
-            DrawHeroSkillHUD();
-            DrawWeaponHUD();
-            DrawTalentStatus();
-            DrawStoryItemsPanel();
-            DrawActiveSynergiesPanel();
-            DrawBossHPBar();
-
-            // 提示横幅（高度按换行后文字自适应，长句不再溢出/截断）
-            if (Time.time < _bannerUntil && !string.IsNullOrEmpty(_bannerMessage))
-            {
-                float bandX = Screen.width * 0.2f, bandW = Screen.width * 0.6f;
-                const float padX = 16f, padY = 8f;
-                var style = MkLabel(22, TextAnchor.MiddleCenter, FontStyle.Bold, new Color(1f, 0.92f, 0.35f));
-                style.wordWrap = true;
-                float textH = style.CalcHeight(new GUIContent(_bannerMessage), bandW - padX * 2f);
-                float boxH  = Mathf.Max(40f, textH + padY * 2f);
-                float bY    = Screen.height * 0.15f - 4f;
-                FillRect(new Rect(bandX, bY, bandW, boxH), new Color(0f, 0f, 0f, 0.62f));
-                FillRect(new Rect(bandX, bY, bandW, 2f),   new Color(0.95f, 0.8f, 0.2f, 0.8f));
-                GUI.Label(new Rect(bandX + padX, bY + padY, bandW - padX * 2f, boxH - padY * 2f), _bannerMessage, style);
-            }
-
-            if (_pendingTalent != null) DrawTalentReplacementOverlay();
+            if (_overlay != null) return;
+            _overlay = new GameObject("OverlayView").AddComponent<Game.UI.OverlayView>();
+            _overlay.SetFloorCompleteCallbacks(
+                onHeal: () =>
+                {
+                    int hCost = 30 + CurrentFloor * 10;
+                    if (_playerHealth != null && RunCoins >= hCost && _playerHealth.Ratio < 0.999f)
+                    {
+                        RunCoins -= hCost;
+                        _playerHealth.Heal(_playerHealth.Max * 0.5f);
+                    }
+                },
+                onAdvance: AdvanceFloor,
+                onMenu:    ReturnToMenu);
         }
 
-        // 顶部细条：楼层/房间信息 + 操作提示
-        private void DrawTopBar()
+        private void RefreshFloorCompleteOverlay()
         {
-            FillRect(new Rect(0, 0, Screen.width, 28), new Color(0f, 0f, 0f, 0.62f));
-            string roomT = _currentRoomIndex < _floorRooms.Count ? _floorRooms[_currentRoomIndex] : "—";
-            string info = $"{GetFloorName()} · Room {_currentRoomIndex + 1}/{_floorRooms.Count} · {GetRoomDisplayName(roomT)} · Difficulty ×{FloorScale:0.00}";
-            GUI.Label(new Rect(10, 3, Screen.width * 0.55f, 22), info,
-                MkLabel(13, TextAnchor.MiddleLeft, FontStyle.Normal, new Color(0.85f, 0.85f, 0.85f)));
-            GUI.Label(new Rect(0, 3, Screen.width - 10, 22),
-                "WASD Move  Space/LMB Attack  R/RMB Skill  F Hero Skill  Q Swap Weapon  E Interact  Green door to advance",
-                MkLabel(11, TextAnchor.MiddleRight, FontStyle.Normal, new Color(0.52f, 0.52f, 0.58f)));
+            int   hCost   = 30 + CurrentFloor * 10;
+            bool  showHp  = _playerHealth != null;
+            float cur     = showHp ? _playerHealth.Current : 0f;
+            float max     = showHp ? _playerHealth.Max     : 1f;
+            float ratio   = showHp ? _playerHealth.Ratio   : 0f;
+            bool  canHeal = showHp && RunCoins >= hCost && ratio < 0.999f;
+            _overlay.RefreshFloorComplete(GetFloorName(), CurrentFloor, clearReward, RunCoins,
+                cur, max, ratio, hCost, canHeal, showHp);
         }
 
-        // 底部中央：玩家血量条
-        private void DrawPlayerHPBar()
+        // Assemble the end-of-run summary screen data.
+        private void ShowEndScreenOverlay()
         {
-            if (_playerHealth == null) return;
-            float barW = 480f;
-            float barH = 28f;
-            float barX = (Screen.width - barW) * 0.5f;
-            float barY = Screen.height - 48f;
+            string stats = $"Floor reached: {CurrentFloor} / {maxFloor}\nKills: {_enemiesKilled}    Total DMG: {Mathf.RoundToInt(_totalDamageDealt):N0}    Coins: {RunCoins}";
 
-            float ratio = _playerHealth.Ratio;
-            Color fill = ratio > 0.6f ? Color.Lerp(new Color(0.85f, 0.7f, 0.08f), new Color(0.18f, 0.82f, 0.28f), (ratio - 0.6f) / 0.4f)
-                       : ratio > 0.25f ? Color.Lerp(new Color(0.88f, 0.18f, 0.1f), new Color(0.85f, 0.7f, 0.08f), (ratio - 0.25f) / 0.35f)
-                       :                 new Color(0.88f, 0.12f, 0.08f);
-
-            // 外框
-            FillRect(new Rect(barX - 2, barY - 2, barW + 4, barH + 4), new Color(0f, 0f, 0f, 0.8f));
-            FillRect(new Rect(barX - 1, barY - 1, barW + 2, barH + 2), new Color(0.35f, 0.35f, 0.35f, 0.6f));
-
-            DrawBar(barX, barY, barW, barH, ratio,
-                new Color(0.16f, 0.05f, 0.05f),
-                fill,
-                new Color(0f, 0f, 0f, 0f));
-
-            // 血量分段刻度线
-            int segs = 5;
-            for (int s = 1; s < segs; s++)
+            if (_state == State.Death)
             {
-                float sx = barX + barW * s / segs;
-                FillRect(new Rect(sx - 0.5f, barY, 1, barH), new Color(0f, 0f, 0f, 0.35f));
+                _overlay.ShowEndScreen("Defeated", new Color(1f, 0.3f, 0.3f), false,
+                    null, null, null, stats, null, null,
+                    null, null, ReturnToMenu);
+                return;
             }
 
-            // 血量文字
-            var hpS = MkLabel(13, TextAnchor.MiddleCenter, FontStyle.Bold, Color.white);
-            GUI.Label(new Rect(barX, barY, barW, barH),
-                $"♥  {Mathf.CeilToInt(_playerHealth.Current)} / {Mathf.CeilToInt(_playerHealth.Max)}", hpS);
+            string title, subtitle, footnote; Color color;
+            switch (_endingTier)
+            {
+                case EndingTier.Crown:
+                    title = "Truth · Crown"; color = new Color(1f, 0.86f, 0.55f);
+                    subtitle = "The monster wears the crown, seated upon the ground — and you cast it down from the throne.";
+                    footnote = $"Kingdom's Guilt exposed.  (Truths known {_endingTruthCount} / 10)"; break;
+                case EndingTier.Truth:
+                    title = "Truth · Embers"; color = new Color(0.92f, 0.78f, 1f);
+                    subtitle = "The world is saved, for now.";
+                    footnote = $"The name beneath can no longer be ignored.  (Truths known {_endingTruthCount} / 10)"; break;
+                default:
+                    title = "Victory"; color = new Color(1f, 0.92f, 0.2f);
+                    subtitle = "The world is saved, for now.";
+                    footnote = $"But the name beneath remains unremembered.  (Truths known {_endingTruthCount} / 10)"; break;
+            }
+            string cleared = $"All {maxFloor} floors cleared!  +{clearReward} unlock currency  (total: {_persistent.UnlockCurrency})";
+            BuildRecapStrings(out string leftRecap, out string rightRecap);
+
+            _overlay.ShowEndScreen(title, color, true, subtitle, cleared, footnote, stats,
+                leftRecap, rightRecap, RestartRun, ReturnToMenu, null);
         }
 
-        // 血条左侧金币
-        private void DrawGoldDisplay()
+        // 把本周目抉择/道具/协同拼成两列富文本(含颜色),供结算屏显示。
+        private void BuildRecapStrings(out string left, out string right)
         {
-            float barW = 480f;
-            float barX = (Screen.width - barW) * 0.5f;
-            float barY = Screen.height - 48f;
-            float goldX = barX - 128f;
-            FillRect(new Rect(goldX - 4, barY - 2, 120, 32), new Color(0f, 0f, 0f, 0.65f));
-            GUI.Label(new Rect(goldX, barY + 4, 114, 22),
-                $"◈  {RunCoins}",
-                MkLabel(16, TextAnchor.MiddleCenter, FontStyle.Bold, new Color(1f, 0.88f, 0.2f)));
+            left = right = "";
+            var run = GameManager.Instance?.Run;
+            if (run == null) return;
 
-            // 虚空污染指示（金币条左侧）
-            DrawCorruptionIndicator(goldX - 168f, barY);
-        }
+            string Hex(Color c) => ColorUtility.ToHtmlStringRGB(c);
+            Color pure    = new Color(0.60f, 0.85f, 0.95f);
+            Color tainted = new Color(0.93f, 0.62f, 0.95f);
+            Color none    = new Color(0.55f, 0.55f, 0.58f);
 
-        // 周目虚空污染：阶梯式颜色 + 进度条，让玩家直观看到抉择代价
-        private void DrawCorruptionIndicator(float x, float y)
-        {
-            int corruption = GameManager.Instance?.Run?.VoidCorruption ?? 0;
-            if (corruption < 0) corruption = 0;
+            var entries = new (string flag, string label, Color color, string tag)[] {
+                ("f1_door_struck",             "Sealed Lift Door · Break Open",    tainted, "[Tainted]"),
+                ("f1_door_oath",               "Sealed Lift Door · Leave in Silence", pure, "[Pure]"),
+                ("f2_lake_witnessed_directly", "Frozen Lake · Gaze Directly",      pure,    "[Pure]"),
+                ("f2_lake_shattered",          "Frozen Lake · Shatter",            tainted, "[Tainted]"),
+                ("f3_mirror_confronted_self",  "Black Mirror · Confront",          tainted, "[Tainted]"),
+                ("f3_mirror_refused_self",     "Black Mirror · Turn Away",         pure,    "[Pure]"),
+                ("f3_throne_sat",              "Broken Throne · Sit Upon It",      tainted, "[Tainted]"),
+                ("f3_throne_toppled",          "Broken Throne · Topple",           pure,    "[Pure]"),
+            };
 
-            // 阈值：0 净 / 1-4 沾染 / 5-9 深陷 / 10+ 虚空附体
-            string tierName;
-            Color  tierColor;
-            float  fillRatio;
-            const int MaxShown = 12;
-            if (corruption == 0)
+            var lb = new System.Text.StringBuilder();
+            int picked = 0;
+            foreach (var e in entries)
             {
-                tierName  = "Clear";
-                tierColor = new Color(0.55f, 0.75f, 0.85f);
-                fillRatio = 0f;
+                if (!run.HasStoryFlag(e.flag)) continue;
+                lb.AppendLine($"<color=#{Hex(e.color)}>·  {e.label}   <i>{e.tag}</i></color>");
+                picked++;
             }
-            else if (corruption < 5)
-            {
-                tierName  = "Tainted";
-                tierColor = new Color(0.78f, 0.62f, 0.92f);
-                fillRatio = corruption / (float)MaxShown;
-            }
-            else if (corruption < 10)
-            {
-                tierName  = "Sinking";
-                tierColor = new Color(0.62f, 0.32f, 0.85f);
-                fillRatio = corruption / (float)MaxShown;
-            }
+            if (picked == 0) lb.AppendLine($"<color=#{Hex(none)}><i>(No choices made this run)</i></color>");
+            lb.AppendLine();
+            int corr = run.VoidCorruption;
+            Color cc = corr >= 10 ? new Color(0.95f, 0.30f, 0.85f) :
+                       corr >= 5  ? new Color(0.78f, 0.55f, 0.92f) :
+                       corr >= 1  ? new Color(0.78f, 0.78f, 0.92f) :
+                                    new Color(0.55f, 0.85f, 0.95f);
+            lb.AppendLine($"<color=#{Hex(cc)}><b>Final void corruption: {corr}</b></color>");
+            left = lb.ToString();
+
+            var rb = new System.Text.StringBuilder();
+            if (run.StoryItems == null || run.StoryItems.Count == 0)
+                rb.AppendLine($"<color=#{Hex(none)}><i>(None)</i></color>");
             else
-            {
-                tierName  = "Possessed";
-                tierColor = new Color(0.92f, 0.18f, 0.85f);
-                fillRatio = 1f;
-            }
-
-            FillRect(new Rect(x - 4f, y - 2f, 160f, 32f), new Color(0f, 0f, 0f, 0.65f));
-
-            // 进度条
-            float barFullW = 90f;
-            FillRect(new Rect(x + 60f, y + 12f, barFullW, 6f), new Color(1f, 1f, 1f, 0.10f));
-            FillRect(new Rect(x + 60f, y + 12f, barFullW * Mathf.Clamp01(fillRatio), 6f), tierColor);
-
-            // 文字标签
-            GUI.Label(new Rect(x, y + 4f, 60f, 22f), $"◊ {tierName}",
-                MkLabel(14, TextAnchor.MiddleLeft, FontStyle.Bold, tierColor));
-            GUI.Label(new Rect(x + 60f, y + 0f, barFullW, 14f), $"Void {corruption}",
-                MkLabel(11, TextAnchor.MiddleCenter, FontStyle.Normal,
-                    new Color(tierColor.r, tierColor.g, tierColor.b, 0.95f)));
+                foreach (var item in run.StoryItems)
+                {
+                    string flavor = Game.Systems.StoryItemDatabase.TryGet(item, out var def) ? def.flavorTag : "";
+                    rb.AppendLine($"<color=#EBD68C>✦ {item}</color>  <color=#AEAEC0><i>{flavor}</i></color>");
+                }
+            rb.AppendLine();
+            rb.AppendLine($"<color=#{Hex(new Color(1f, 0.78f, 0.92f))}><b>── Active Synergies ──</b></color>");
+            bool anySyn = false;
+            foreach (var s in Game.Systems.StoryItemSynergyDatabase.All)
+                if (Game.Systems.StoryItemSynergyDatabase.IsActive(run, s.id))
+                {
+                    anySyn = true;
+                    rb.AppendLine($"<color=#{Hex(new Color(1f, 0.72f, 0.92f))}>★ {s.displayName}</color>");
+                    rb.AppendLine($"   <color=#D1AED1><i>{s.flavor}</i></color>");
+                }
+            if (!anySyn) rb.AppendLine($"<color=#{Hex(none)}><i>(No item synergies triggered)</i></color>");
+            right = rb.ToString();
         }
 
-        // 武器 HUD（右下角）
-        private void DrawWeaponHUD()
+        // ── 结局过场(uGUI 推送)──────────────────────────────────────────────
+        private static readonly Dictionary<Texture2D, Sprite> _cgSprites = new Dictionary<Texture2D, Sprite>();
+        private static Sprite CutsceneSprite(Texture2D tex)
         {
-            if (_player == null) return;
-            var handler = _player.GetComponent<PlayerWeaponHandler>();
-            if (handler == null) return;
-
-            float panelW = 360f;
-            float panelX = Screen.width - panelW - 8f;
-            bool hasSkill = handler.ActiveWeapon?.Data?.HasSkill == true;
-            float panelH = hasSkill ? 118f : 92f;
-            float panelY = Screen.height - panelH - 8f;
-
-            FillRect(new Rect(panelX - 6, panelY - 6, panelW + 12, panelH + 12), new Color(0f, 0f, 0f, 0.72f));
-            FillRect(new Rect(panelX - 6, panelY - 6, panelW + 12, 2), new Color(0.5f, 0.5f, 0.6f, 0.4f));
-
-            for (int i = 0; i < 2; i++)
-            {
-                var wi      = handler.Slots[i];
-                bool active = handler.ActiveSlotIndex == i;
-                float slotY = panelY + i * 44f;
-                float slotH = 40f;
-
-                // 激活背景高亮
-                if (active) FillRect(new Rect(panelX, slotY, panelW, slotH), new Color(0.18f, 0.22f, 0.38f, 0.7f));
-
-                // 左侧激活竖条
-                if (active) FillRect(new Rect(panelX, slotY + 4, 3, slotH - 8), new Color(0.45f, 0.75f, 1f));
-
-                Color rc = wi == null ? new Color(0.45f, 0.45f, 0.5f) : WeaponData.GetRarityColor(wi.Data.rarity);
-                if (!active) rc *= 0.65f;
-
-                // 武器图标 30×30
-                var iconR = new Rect(panelX + 7f, slotY + 5f, 30f, 30f);
-                if (wi != null)
-                {
-                    FillRect(iconR, new Color(0.08f, 0.08f, 0.1f));
-                    var spr = WeaponSprites.Get(wi.Data.weaponName);
-                    if (spr != null) GUI.DrawTexture(iconR, spr.texture);
-                    else FillRect(iconR, rc * 0.5f);
-                }
-                else FillRect(iconR, new Color(0.2f, 0.2f, 0.22f));
-
-                float tx = panelX + 41f;
-                float tw = panelW - 45f;
-
-                if (wi == null)
-                {
-                    GUI.Label(new Rect(tx, slotY + 11, tw, 18),
-                        $"{(active ? "▶ " : "   ")}Slot {i + 1}  [Empty]",
-                        MkLabel(12, TextAnchor.MiddleLeft, FontStyle.Normal, new Color(0.38f, 0.38f, 0.42f)));
-                }
-                else
-                {
-                    GUI.Label(new Rect(tx, slotY + 2, tw, 18),
-                        $"{(active ? "▶ " : "   ")}{wi.ShortName}  {wi.EffectiveDamage:0} dmg  {wi.Data.attackSpeed:0.0}/s",
-                        MkLabel(active ? 13 : 11, TextAnchor.MiddleLeft, active ? FontStyle.Bold : FontStyle.Normal, rc));
-                    string upg = wi.Data.CanEnchant
-                        ? $"Forge+{wi.UpgradeLevel}/{wi.Data.maxUpgradeLevel} Ench+{wi.EnchantLevel}/{wi.Data.maxEnchantLevel}"
-                        : $"Forge+{wi.UpgradeLevel}/{wi.Data.maxUpgradeLevel}";
-                    GUI.Label(new Rect(tx, slotY + 22, tw, 16),
-                        $"HP+{wi.HPBonus:0}  {upg}{WeaponSpecialLabel(wi)}",
-                        MkLabel(10, TextAnchor.MiddleLeft, FontStyle.Normal, rc * 0.82f));
-                }
-            }
-
-            if (hasSkill)
-            {
-                float skillY = panelY + 92f;
-                bool  ready  = handler.SkillReady;
-                float fill   = 1f - handler.SkillCooldownRatio;
-                Color barFill = ready ? new Color(0.25f, 0.8f, 0.28f) : new Color(0.25f, 0.4f, 0.85f);
-                DrawBar(panelX, skillY, panelW, 22f, fill,
-                    new Color(0.12f, 0.12f, 0.18f), barFill, new Color(0f, 0f, 0f, 0f));
-                string skillLbl = ready
-                    ? $"[R] {handler.ActiveWeapon.Data.skill.skillName}  ✦ Ready!"
-                    : $"[R] {handler.ActiveWeapon.Data.skill.skillName}  CD {handler.SkillCooldownRemaining:0.0}s";
-                GUI.Label(new Rect(panelX, skillY, panelW, 22),
-                    skillLbl,
-                    MkLabel(11, TextAnchor.MiddleCenter, FontStyle.Normal, ready ? new Color(0.55f, 1f, 0.55f) : new Color(0.75f, 0.8f, 1f)));
-            }
+            if (tex == null) return null;
+            if (_cgSprites.TryGetValue(tex, out var s)) return s;
+            s = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f);
+            _cgSprites[tex] = s;
+            return s;
         }
 
-        // 英雄技能 HUD（左下，HP条左侧上方）
-        private void DrawHeroSkillHUD()
+        private void RefreshCutsceneOverlay()
         {
-            if (_player == null) return;
-            var sk = _player.GetComponent<HeroActiveSkillHandler>();
-            if (sk == null || sk.SkillType == HeroSkillType.None) return;
+            var frames     = GetEndingFrames(_endingTier);
+            int frameCount = frames.Length;
+            float head     = Mathf.Clamp01(_cutsceneAlpha);
 
-            float barW = 200f;
-            float barX = (Screen.width - 480f) * 0.5f - barW - 14f;
-            float barY = Screen.height - 48f;
+            Sprite cg = frameCount > 0 ? CutsceneSprite(frames[Mathf.Clamp(_cutsceneFrame, 0, frameCount - 1)]) : null;
 
-            FillRect(new Rect(barX - 4, barY - 2, barW + 8, 32), new Color(0f, 0f, 0f, 0.65f));
+            EndingTitle(out string title, out Color tint);
+            var caps = GetEndingCaptions(_endingTier);
+            string cap   = _cutsceneFrame < caps.Length ? caps[_cutsceneFrame] : "";
+            int shown    = Mathf.Clamp(Mathf.FloorToInt(_cutsceneReveal), 0, cap.Length);
+            string hint  = _cutsceneFrame >= frameCount - 1 ? "Click / Space  ▶  End" : "Click / Space  ▶";
 
-            bool  ready   = sk.IsReady;
-            float fill    = 1f - sk.CooldownRatio;
-            Color bFill   = ready ? new Color(0.9f, 0.75f, 0.1f) : new Color(0.55f, 0.45f, 0.18f);
-            DrawBar(barX, barY + 14f, barW, 12f, fill,
-                new Color(0.22f, 0.18f, 0.06f), bFill, new Color(0f, 0f, 0f, 0f));
-            GUI.Label(new Rect(barX, barY + 2, barW, 14),
-                ready ? $"[F] {sk.SkillName}  ✦ Ready!" : $"[F] {sk.SkillName}  {sk.CooldownRemaining:0.0}s",
-                MkLabel(11, TextAnchor.MiddleCenter, FontStyle.Bold,
-                    ready ? new Color(1f, 0.9f, 0.25f) : new Color(0.7f, 0.62f, 0.35f)));
+            _overlay.RefreshCutscene(cg, head, title, tint, cap.Substring(0, shown),
+                frameCount, _cutsceneFrame, hint, shown >= cap.Length && head > 0.9f);
         }
 
-        // 天赋状态（左侧竖排小标签）
-        private void DrawTalentStatus()
+        private void HandleCutsceneInput()
         {
-            if (_activeTalents.Count == 0) return;
-            float chipW = 200f;
-            float chipH = 28f;
-            float chipX = 8f;
-            float startY = 36f;
-            FillRect(new Rect(chipX - 4, startY - 4, chipW + 8, _activeTalents.Count * (chipH + 4) + 4), new Color(0f, 0f, 0f, 0.55f));
-            for (int i = 0; i < _activeTalents.Count; i++)
+            var kb = UnityEngine.InputSystem.Keyboard.current;
+            if (kb != null)
             {
-                var at  = _activeTalents[i];
-                float y = startY + i * (chipH + 4);
+                if (kb.escapeKey.wasPressedThisFrame) { FinishEndingCutscene(); return; }
+                if (kb.spaceKey.wasPressedThisFrame || kb.enterKey.wasPressedThisFrame ||
+                    kb.numpadEnterKey.wasPressedThisFrame) { AdvanceEndingCutscene(); return; }
+            }
+            var ms = UnityEngine.InputSystem.Mouse.current;
+            if (ms != null && ms.leftButton.wasPressedThisFrame) AdvanceEndingCutscene();
+        }
+
+        private void RefreshHud()
+        {
+            // 金币 / 虚空污染（最先刷新:即使后续某部件异常,金币显示也不受影响）
+            _hud.SetGold(RunCoins);
+            _hud.SetCorruption(GameManager.Instance?.Run?.VoidCorruption ?? 0);
+
+            // 玩家血条
+            if (_playerHealth != null) _hud.SetHp(_playerHealth.Current, _playerHealth.Max);
+
+            // 顶栏
+            string roomT = _currentRoomIndex < _floorRooms.Count ? _floorRooms[_currentRoomIndex] : "—";
+            _hud.SetTopBar($"{GetFloorName()} · Room {_currentRoomIndex + 1}/{_floorRooms.Count} · {GetRoomDisplayName(roomT)} · Difficulty ×{FloorScale:0.00}");
+
+            // 英雄技能
+            var sk = _player != null ? _player.GetComponent<HeroActiveSkillHandler>() : null;
+            if (sk != null && sk.SkillType != HeroSkillType.None)
+                _hud.SetHeroSkill(true, sk.SkillName, sk.IsReady, sk.CooldownRemaining, sk.CooldownRatio);
+            else
+                _hud.SetHeroSkill(false, null, false, 0f, 0f);
+
+            // 武器面板
+            var handler = _player != null ? _player.GetComponent<PlayerWeaponHandler>() : null;
+            if (handler != null)
+            {
+                bool   hasSkill = handler.ActiveWeapon?.Data?.HasSkill == true;
+                bool   ready    = handler.SkillReady;
+                float  fill     = 1f - handler.SkillCooldownRatio;
+                string label    = hasSkill
+                    ? (ready ? $"[R] {handler.ActiveWeapon.Data.skill.skillName}  ✦ Ready!"
+                             : $"[R] {handler.ActiveWeapon.Data.skill.skillName}  CD {handler.SkillCooldownRemaining:0.0}s")
+                    : null;
+                _hud.SetWeapon(true, BuildWeaponSlot(handler, 0), BuildWeaponSlot(handler, 1),
+                               hasSkill, ready, fill, label);
+            }
+            else _hud.SetWeapon(false, default, default, false, false, 0f, null);
+
+            // 左上角：天赋
+            _talentChips.Clear();
+            foreach (var at in _activeTalents)
+            {
                 Color c = at.IsPermanent ? new Color(0.95f, 0.88f, 0.35f) : new Color(1f, 0.68f, 0.28f);
-                FillRect(new Rect(chipX, y, 3, chipH), c);
-                GUI.Label(new Rect(chipX + 6, y, chipW - 6, 16),
-                    $"{at.Data.talentName}",
-                    MkLabel(12, TextAnchor.MiddleLeft, FontStyle.Bold, c));
-                GUI.Label(new Rect(chipX + 6, y + 14, chipW - 6, 13),
-                    at.IsPermanent ? at.Data.description : $"{at.Data.description}  [{at.RoomsLeft} rooms]",
-                    MkLabel(10, TextAnchor.MiddleLeft, FontStyle.Normal, new Color(0.75f, 0.75f, 0.75f)));
+                _talentChips.Add(new Game.UI.HudView.Chip
+                {
+                    color    = c,
+                    title    = at.Data.talentName,
+                    subtitle = at.IsPermanent ? at.Data.description : $"{at.Data.description}  [{at.RoomsLeft} rooms]",
+                });
             }
+            _hud.SetTalents(_talentChips);
+
+            // 左上角：剧情道具
+            _itemChips.Clear();
+            var run = GameManager.Instance?.Run;
+            if (run != null && run.StoryItems != null)
+            {
+                foreach (var item in run.StoryItems)
+                {
+                    string flavor = Game.Systems.StoryItemDatabase.TryGet(item, out var def) ? def.flavorTag : null;
+                    _itemChips.Add(new Game.UI.HudView.Chip
+                    {
+                        color = ClassifyStoryItemColor(item), title = $"✦ {item}", subtitle = flavor,
+                    });
+                }
+            }
+            _hud.SetItems(_itemChips);
+
+            // 左上角：道具协同
+            _synergyChips.Clear();
+            if (run != null)
+            {
+                foreach (var s in Game.Systems.StoryItemSynergyDatabase.All)
+                    if (Game.Systems.StoryItemSynergyDatabase.IsActive(run, s.id))
+                        _synergyChips.Add(new Game.UI.HudView.Chip
+                        {
+                            color = new Color(1f, 0.72f, 0.92f), title = $"★ {s.displayName}", subtitle = s.flavor,
+                        });
+            }
+            _hud.SetSynergies(_synergyChips);
+
+            // Boss 血条
+            if (_bossHealth != null) _hud.SetBoss(true, _bossName, _bossHealth.Current, _bossHealth.Max);
+            else                     _hud.SetBoss(false, null, 0f, 0f);
+
+            // 提示横幅
+            bool bannerOn = Time.time < _bannerUntil && !string.IsNullOrEmpty(_bannerMessage);
+            _hud.SetBanner(bannerOn, _bannerMessage);
         }
+
+        private Game.UI.HudView.WeaponSlot BuildWeaponSlot(PlayerWeaponHandler handler, int i)
+        {
+            var wi     = handler.Slots[i];
+            bool active = handler.ActiveSlotIndex == i;
+            var slot   = new Game.UI.HudView.WeaponSlot { occupied = wi != null, active = active };
+            if (wi == null)
+            {
+                slot.color = new Color(0.38f, 0.38f, 0.42f);
+                slot.line1 = $"{(active ? "▶ " : "   ")}Slot {i + 1}  [Empty]";
+                slot.line2 = null;
+                return slot;
+            }
+            Color rc = WeaponData.GetRarityColor(wi.Data.rarity);
+            if (!active) rc *= 0.65f;
+            slot.color = rc;
+            slot.icon  = WeaponSprites.Get(wi.Data.weaponName);
+            slot.line1 = $"{(active ? "▶ " : "   ")}{wi.ShortName}  {wi.EffectiveDamage:0} dmg  {wi.Data.attackSpeed:0.0}/s";
+            string upg = wi.Data.CanEnchant
+                ? $"Forge+{wi.UpgradeLevel}/{wi.Data.maxUpgradeLevel} Ench+{wi.EnchantLevel}/{wi.Data.maxEnchantLevel}"
+                : $"Forge+{wi.UpgradeLevel}/{wi.Data.maxUpgradeLevel}";
+            slot.line2 = $"HP+{wi.HPBonus:0}  {upg}{WeaponSpecialLabel(wi)}";
+            return slot;
+        }
+
 
         // 本周目持有的剧情道具（左侧栏，置于天赋之下）
         // 净化系=青；污染系=紫；纯叙事=米黄
@@ -3030,276 +3116,6 @@ namespace Game.Bootstrap
             return new Color(0.92f, 0.84f, 0.55f);
         }
 
-        private void DrawStoryItemsPanel()
-        {
-            var run = GameManager.Instance?.Run;
-            if (run == null || run.StoryItems == null || run.StoryItems.Count == 0) return;
-
-            float chipW = 230f;
-            float chipH = 30f;
-            float chipX = 8f;
-            // 接在天赋面板下方；无天赋时直接从 36 起
-            float startY = 36f + _activeTalents.Count * (28f + 4f);
-            if (_activeTalents.Count > 0) startY += 14f;
-
-            int n = run.StoryItems.Count;
-            float panelH = 22f + n * (chipH + 4f);
-            FillRect(new Rect(chipX - 4f, startY - 4f, chipW + 8f, panelH), new Color(0f, 0f, 0f, 0.62f));
-            FillRect(new Rect(chipX - 4f, startY - 4f, chipW + 8f, 2f), new Color(0.92f, 0.78f, 0.40f, 0.6f));
-
-            GUI.Label(new Rect(chipX + 6f, startY - 1f, chipW, 16f), $"✦ Items ({n})",
-                MkLabel(12, TextAnchor.MiddleLeft, FontStyle.Bold, new Color(0.92f, 0.84f, 0.55f)));
-
-            startY += 18f;
-            for (int i = 0; i < n; i++)
-            {
-                var item = run.StoryItems[i];
-                float y  = startY + i * (chipH + 4f);
-                Color c  = ClassifyStoryItemColor(item);
-
-                FillRect(new Rect(chipX, y, 3f, chipH), c);
-                GUI.Label(new Rect(chipX + 8f, y, chipW - 10f, 16f), $"✦ {item}",
-                    MkLabel(12, TextAnchor.MiddleLeft, FontStyle.Bold, c));
-
-                if (Game.Systems.StoryItemDatabase.TryGet(item, out var def) && !string.IsNullOrEmpty(def.flavorTag))
-                    GUI.Label(new Rect(chipX + 8f, y + 15f, chipW - 10f, 14f), def.flavorTag,
-                        MkLabel(10, TextAnchor.MiddleLeft, FontStyle.Normal,
-                            new Color(c.r * 0.78f, c.g * 0.78f, c.b * 0.85f)));
-            }
-        }
-
-        // 本周目已激活的道具协同（紧贴道具栏下方）
-        private void DrawActiveSynergiesPanel()
-        {
-            var run = GameManager.Instance?.Run;
-            if (run == null) return;
-
-            // 收集已激活协同
-            var active = new System.Collections.Generic.List<Game.Systems.StoryItemSynergyDatabase.SynergyDef>();
-            foreach (var s in Game.Systems.StoryItemSynergyDatabase.All)
-                if (Game.Systems.StoryItemSynergyDatabase.IsActive(run, s.id))
-                    active.Add(s);
-            if (active.Count == 0) return;
-
-            // 位置：紧跟道具栏（道具栏顶 = 36 + talents + 14；占 22 + items*34）
-            int itemCount = run.StoryItems != null ? run.StoryItems.Count : 0;
-            float anchor  = 36f + _activeTalents.Count * 32f;
-            if (_activeTalents.Count > 0) anchor += 14f;
-            if (itemCount > 0)            anchor += 22f + itemCount * 34f + 8f;
-
-            float chipW = 250f;
-            float chipH = 34f;
-            float chipX = 8f;
-            int   n     = active.Count;
-            float panelH = 22f + n * (chipH + 4f);
-
-            FillRect(new Rect(chipX - 4f, anchor - 4f, chipW + 8f, panelH), new Color(0f, 0f, 0f, 0.62f));
-            FillRect(new Rect(chipX - 4f, anchor - 4f, chipW + 8f, 2f),     new Color(1f, 0.55f, 0.85f, 0.7f));
-
-            GUI.Label(new Rect(chipX + 6f, anchor - 1f, chipW, 16f), $"★ Synergies ({n})",
-                MkLabel(12, TextAnchor.MiddleLeft, FontStyle.Bold, new Color(1f, 0.78f, 0.92f)));
-
-            anchor += 18f;
-            for (int i = 0; i < n; i++)
-            {
-                var s = active[i];
-                float y = anchor + i * (chipH + 4f);
-                Color c = new Color(1f, 0.72f, 0.92f);
-                FillRect(new Rect(chipX, y, 3f, chipH), c);
-                GUI.Label(new Rect(chipX + 8f, y, chipW - 10f, 16f), $"★ {s.displayName}",
-                    MkLabel(12, TextAnchor.MiddleLeft, FontStyle.Bold, c));
-                GUI.Label(new Rect(chipX + 8f, y + 16f, chipW - 10f, 16f), s.flavor,
-                    MkLabel(10, TextAnchor.MiddleLeft, FontStyle.Normal, new Color(0.82f, 0.68f, 0.82f)));
-            }
-        }
-
-        // Boss血量条（顶部居中，宽大醒目）
-        private void DrawBossHPBar()
-        {
-            if (_bossHealth == null) return;
-            float barW  = Mathf.Min(600f, Screen.width * 0.52f);
-            float barH  = 20f;
-            float barX  = (Screen.width - barW) * 0.5f;
-            float barY  = 36f;
-            float ratio = Mathf.Clamp01(_bossHealth.Current / _bossHealth.Max);
-
-            FillRect(new Rect(barX - 8, barY - 26, barW + 16, barH + 34), new Color(0f, 0f, 0f, 0.72f));
-            FillRect(new Rect(barX - 8, barY - 26, barW + 16, 2), new Color(0.8f, 0.2f, 0.2f, 0.7f));
-
-            GUI.Label(new Rect(0, barY - 22, Screen.width, 18),
-                _bossName ?? "BOSS",
-                MkLabel(14, TextAnchor.MiddleCenter, FontStyle.Bold, new Color(1f, 0.35f, 0.35f)));
-
-            DrawBar(barX, barY, barW, barH, ratio,
-                new Color(0.2f, 0.06f, 0.06f),
-                Color.Lerp(new Color(0.75f, 0.12f, 0.12f), new Color(0.95f, 0.35f, 0.1f), ratio),
-                new Color(0.5f, 0.1f, 0.1f, 0.8f));
-
-            // 分段刻度
-            for (int s = 1; s <= 4; s++)
-                FillRect(new Rect(barX + barW * s / 5f - 0.5f, barY, 1, barH), new Color(0f, 0f, 0f, 0.45f));
-
-            var hpS = MkLabel(11, TextAnchor.MiddleCenter, FontStyle.Normal, Color.white);
-            GUI.Label(new Rect(barX, barY, barW, barH),
-                $"{Mathf.CeilToInt(_bossHealth.Current):N0} / {Mathf.CeilToInt(_bossHealth.Max):N0}", hpS);
-        }
-
-        // 天赋替换覆盖层
-        private void DrawTalentReplacementOverlay()
-        {
-            FillRect(new Rect(0, 0, Screen.width, Screen.height), new Color(0f, 0f, 0f, 0.75f));
-            float cx = Screen.width * 0.5f, cy = Screen.height * 0.5f;
-            GUI.Label(new Rect(0, cy - 105, Screen.width, 38),
-                $"Talent slots full  ·  New: {_pendingTalent.talentName}",
-                MkLabel(24, TextAnchor.MiddleCenter, FontStyle.Bold, new Color(1f, 0.88f, 0.22f)));
-            GUI.Label(new Rect(0, cy - 62, Screen.width, 26),
-                _pendingTalent.description,
-                MkLabel(15, TextAnchor.MiddleCenter, FontStyle.Normal, new Color(0.88f, 0.88f, 0.88f)));
-            GUI.Label(new Rect(0, cy - 30, Screen.width, 22),
-                "Choose a talent to replace, or cancel to discard the new one",
-                MkLabel(14, TextAnchor.MiddleCenter, FontStyle.Normal, new Color(0.7f, 0.7f, 0.7f)));
-
-            float btnW = 300f, btnH = 46f;
-            var btnS = new GUIStyle(GUI.skin.button) { fontSize = 15 };
-            for (int i = 0; i < _activeTalents.Count; i++)
-            {
-                var at = _activeTalents[i];
-                string dur = at.IsPermanent ? "Permanent" : $"{at.RoomsLeft} rooms left";
-                if (GUI.Button(new Rect(cx - btnW * 0.5f, cy + 10 + i * (btnH + 8), btnW, btnH),
-                    $"Replace: {at.Data.talentName}  ({dur})", btnS))
-                    ReplaceTalentAt(i);
-            }
-            float cancelY = cy + 10 + _activeTalents.Count * (btnH + 8) + 12;
-            if (GUI.Button(new Rect(cx - btnW * 0.5f, cancelY, btnW, 38), "Cancel  (discard new talent)", btnS))
-                _pendingTalent = null;
-        }
-
-        // 层间过渡画面
-        private void DrawFloorComplete()
-        {
-            FillRect(new Rect(0, 0, Screen.width, Screen.height), new Color(0.04f, 0.06f, 0.04f, 0.88f));
-            FillRect(new Rect(Screen.width * 0.1f, Screen.height * 0.12f, Screen.width * 0.8f, 3), new Color(0.3f, 0.95f, 0.45f, 0.7f));
-
-            GUI.Label(new Rect(0, Screen.height * 0.15f, Screen.width, 70),
-                $"Floor {CurrentFloor}  ·  {GetFloorName()}  Cleared!",
-                MkLabel(46, TextAnchor.MiddleCenter, FontStyle.Bold, new Color(0.35f, 1f, 0.5f)));
-
-            GUI.Label(new Rect(0, Screen.height * 0.28f, Screen.width, 28),
-                $"Gained  +{clearReward}  unlock currency    Coins: {RunCoins}",
-                MkLabel(18, TextAnchor.MiddleCenter, FontStyle.Normal, Color.white));
-
-            GUI.Label(new Rect(0, Screen.height * 0.35f, Screen.width, 24),
-                $"Next floor difficulty: ×{1f + CurrentFloor * 0.25f:0.00}  (enemy HP & ATK scale up)",
-                MkLabel(15, TextAnchor.MiddleCenter, FontStyle.Normal, new Color(1f, 0.78f, 0.45f)));
-
-            if (_playerHealth != null)
-            {
-                float r = _playerHealth.Ratio;
-                Color hc = r > 0.5f ? new Color(0.25f, 0.95f, 0.4f) : r > 0.25f ? new Color(1f, 0.85f, 0.12f) : new Color(1f, 0.3f, 0.3f);
-                GUI.Label(new Rect(0, Screen.height * 0.42f, Screen.width, 26),
-                    $"HP: {Mathf.CeilToInt(_playerHealth.Current)} / {Mathf.CeilToInt(_playerHealth.Max)}  ({r * 100:0}%)",
-                    MkLabel(16, TextAnchor.MiddleCenter, FontStyle.Normal, hc));
-
-                // 回血按钮
-                int hCost = 30 + CurrentFloor * 10;
-                GUI.enabled = RunCoins >= hCost && r < 0.999f;
-                if (GUI.Button(new Rect(Screen.width * 0.5f - 175, Screen.height * 0.49f, 350, 40),
-                    $"Spend {hCost} coins  restore 50% HP",
-                    new GUIStyle(GUI.skin.button) { fontSize = 14 }))
-                {
-                    RunCoins -= hCost;
-                    _playerHealth.Heal(_playerHealth.Max * 0.5f);
-                }
-                GUI.enabled = true;
-            }
-
-            var btn = new GUIStyle(GUI.skin.button) { fontSize = 20, fontStyle = FontStyle.Bold };
-            float btnCx = Screen.width * 0.5f;
-            if (GUI.Button(new Rect(btnCx - 145, Screen.height * 0.57f, 290, 52), $"Enter Floor {CurrentFloor + 1}  ▶", btn))
-                AdvanceFloor();
-            if (GUI.Button(new Rect(btnCx - 145, Screen.height * 0.57f + 62, 290, 46), "Back to Menu", btn))
-                ReturnToMenu();
-        }
-
-        // 结算/死亡画面
-        // 周目结局过场基线动画：纯黑幕 fade-in → 静默 hold → fade-out。
-        // 真实动画接入后由订阅 OnEndingCutsceneStart 的系统覆盖；本占位提供
-        // 最小可信的视觉过渡，避免战斗画面突然切到结算 UI。
-        //
-        // 时间线（progress = elapsed / duration）：
-        //   0.00 — 0.15  : 黑幕淡入（alpha 0 → 1）
-        //   0.15 — 0.30  : 标题淡入
-        //   0.30 — 0.85  : 标题保持（hold）
-        //   0.85 — 1.00  : 整体淡出（黑幕 + 标题 alpha 1 → 0）
-        // 结局过场（手动推进 / 逐字字幕，手感与开场动画一致）：
-        //   每帧停留不闪烁；图片淡入后字幕逐字浮现；点击/空格/回车推进，Esc 直接结束。
-        private void DrawEndingCutscene()
-        {
-            float sw = Screen.width, sh = Screen.height;
-
-            // 全屏黑底（CG 之下；缺图时即纯黑过场）
-            FillRect(new Rect(0, 0, sw, sh), Color.black);
-
-            // 当前帧：等比铺满，按淡入 alpha 叠加（切帧时 alpha 归零再淡入 → 是淡入不是闪烁）
-            var frames     = GetEndingFrames(_endingTier);
-            int frameCount = frames.Length;
-            float head     = Mathf.Clamp01(_cutsceneAlpha);
-            if (frameCount > 0)
-            {
-                int idx = Mathf.Clamp(_cutsceneFrame, 0, frameCount - 1);
-                DrawCGFull(frames[idx], head);
-            }
-
-            // 标题（中部，随首帧淡入后常驻）
-            EndingTitle(out string title, out Color tint);
-            FillRect(new Rect(0, sh * 0.40f, sw, sh * 0.16f), new Color(0f, 0f, 0f, 0.34f * head));
-            GUI.Label(new Rect(0, sh * 0.45f, sw, 60), title,
-                MkLabel(28, TextAnchor.MiddleCenter, FontStyle.Italic,
-                        new Color(tint.r, tint.g, tint.b, head)));
-
-            // 底部字幕条：逐字浮现（与开场一致）
-            var    caps = GetEndingCaptions(_endingTier);
-            string cap  = _cutsceneFrame < caps.Length ? caps[_cutsceneFrame] : "";
-            float  boxH = Mathf.Clamp(sh * 0.26f, 120f, 220f);
-            FillRect(new Rect(0, sh - boxH, sw, boxH),  new Color(0f, 0f, 0f, 0.62f * head));
-            FillRect(new Rect(0, sh - boxH, sw, 2f),    new Color(0.85f, 0.7f, 0.35f, 0.55f * head));
-
-            int    shown = Mathf.Clamp(Mathf.FloorToInt(_cutsceneReveal), 0, cap.Length);
-            float  pad   = Mathf.Max(28f, sw * 0.12f);
-            var subStyle = MkLabel(Mathf.Clamp(Mathf.RoundToInt(sh * 0.030f), 15, 26),
-                                   TextAnchor.UpperCenter, FontStyle.Normal,
-                                   new Color(0.96f, 0.93f, 0.85f, head));
-            subStyle.wordWrap = true;
-            GUI.Label(new Rect(pad, sh - boxH + 22f, sw - pad * 2f, boxH - 56f),
-                      cap.Substring(0, shown), subStyle);
-
-            // 进度点
-            DrawEndingDots(frameCount, sw, sh);
-
-            // 推进/结束提示（字幕显示完后闪烁）
-            bool revealed = shown >= cap.Length;
-            if (revealed && head > 0.9f)
-            {
-                float blink = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 4f);
-                string hint = _cutsceneFrame >= frameCount - 1 ? "Click / Space  ▶  End" : "Click / Space  ▶";
-                GUI.Label(new Rect(sw - 320f, sh - 34f, 300f, 22f), hint,
-                    MkLabel(13, TextAnchor.MiddleRight, FontStyle.Normal,
-                            new Color(0.8f, 0.85f, 1f, 0.35f + 0.55f * blink)));
-            }
-
-            // 输入：点击/空格/回车 → 推进；Esc → 直接结束整段
-            var e = Event.current;
-            if (e.type == EventType.KeyDown)
-            {
-                if (e.keyCode == KeyCode.Escape) { FinishEndingCutscene(); e.Use(); return; }
-                if (e.keyCode == KeyCode.Space || e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter)
-                { AdvanceEndingCutscene(); e.Use(); }
-            }
-            else if (e.type == EventType.MouseDown && e.button == 0)
-            {
-                AdvanceEndingCutscene(); e.Use();
-            }
-        }
 
         private void EndingTitle(out string title, out Color tint)
         {
@@ -3312,227 +3128,6 @@ namespace Game.Bootstrap
                 default:
                     title = "The world closes its eyes, for now."; tint = new Color(0.85f, 0.85f, 0.78f); break;
             }
-        }
-
-        // 底部进度点（当前帧高亮）
-        private void DrawEndingDots(int frameCount, float sw, float sh)
-        {
-            if (frameCount <= 1) return;
-            const float r = 7f, gap = 10f;
-            float total = frameCount * r + (frameCount - 1) * gap;
-            float x = (sw - total) * 0.5f;
-            float y = sh - 30f;
-            for (int i = 0; i < frameCount; i++)
-            {
-                Color c = i == _cutsceneFrame ? new Color(1f, 0.85f, 0.4f, 0.95f)
-                        : i <  _cutsceneFrame ? new Color(0.7f, 0.7f, 0.78f, 0.7f)
-                                              : new Color(0.4f, 0.4f, 0.48f, 0.5f);
-                FillRect(new Rect(x + i * (r + gap), y, r, r), c);
-            }
-        }
-
-        // 三档结局画面
-        private void DrawVictoryScreen()
-        {
-            switch (_endingTier)
-            {
-                case EndingTier.Crown:
-                    DrawEndScreen("Truth · Crown", new Color(1f, 0.86f, 0.55f, 1f), true,
-                        "The monster wears the crown, seated upon the ground — and you cast it down from the throne.",
-                        $"Kingdom's Guilt exposed.  (Truths known {_endingTruthCount} / 10)");
-                    break;
-                case EndingTier.Truth:
-                    DrawEndScreen("Truth · Embers", new Color(0.92f, 0.78f, 1f, 1f), true,
-                        "The world is saved, for now.",
-                        $"The name beneath can no longer be ignored.  (Truths known {_endingTruthCount} / 10)");
-                    break;
-                default:
-                    DrawEndScreen("Victory", new Color(1f, 0.92f, 0.2f, 1f), true,
-                        "The world is saved, for now.",
-                        $"But the name beneath remains unremembered.  (Truths known {_endingTruthCount} / 10)");
-                    break;
-            }
-        }
-
-        private void DrawEndScreen(string title, Color color, bool victory, string subtitle = null, string footnote = null)
-        {
-            FillRect(new Rect(0, 0, Screen.width, Screen.height), new Color(0f, 0f, 0f, 0.72f));
-            GUI.Label(new Rect(0, Screen.height * 0.12f, Screen.width, 86),
-                title, MkLabel(62, TextAnchor.MiddleCenter, FontStyle.Bold, color));
-
-            if (victory)
-            {
-                if (!string.IsNullOrEmpty(subtitle))
-                    GUI.Label(new Rect(0, Screen.height * 0.215f, Screen.width, 30), subtitle,
-                        MkLabel(20, TextAnchor.MiddleCenter, FontStyle.Italic, new Color(0.92f, 0.86f, 0.7f)));
-
-                GUI.Label(new Rect(0, Screen.height * 0.265f, Screen.width, 30),
-                    $"All {maxFloor} floors cleared!  +{clearReward} unlock currency  (total: {_persistent.UnlockCurrency})",
-                    MkLabel(18, TextAnchor.MiddleCenter, FontStyle.Normal, Color.white));
-
-                if (!string.IsNullOrEmpty(footnote))
-                    GUI.Label(new Rect(0, Screen.height * 0.305f, Screen.width, 28), footnote,
-                        MkLabel(16, TextAnchor.MiddleCenter, FontStyle.Normal, new Color(0.78f, 0.78f, 0.85f)));
-            }
-
-            // 死亡时显示倒计时
-            if (!victory)
-            {
-                float remaining = Mathf.Max(0f, _deathReturnAt - Time.time);
-                GUI.Label(new Rect(0, Screen.height * 0.27f, Screen.width, 26),
-                    $"Returning to menu in {remaining:0.0}s…",
-                    MkLabel(15, TextAnchor.MiddleCenter, FontStyle.Italic, new Color(0.75f, 0.55f, 0.55f)));
-            }
-
-            float sy = Screen.height * (victory ? 0.36f : 0.32f);
-            var ss = MkLabel(15, TextAnchor.MiddleCenter, FontStyle.Normal, new Color(0.82f, 0.82f, 0.82f));
-            GUI.Label(new Rect(0, sy,       Screen.width, 24), $"Floor reached: {CurrentFloor} / {maxFloor}", ss);
-            GUI.Label(new Rect(0, sy + 26,  Screen.width, 24), $"Kills: {_enemiesKilled}    Total DMG: {Mathf.RoundToInt(_totalDamageDealt):N0}    Coins: {RunCoins}", ss);
-
-            // 胜利结算追加：本周目抉择回顾 + 道具收藏
-            if (victory) DrawChoiceAndLootRecap();
-
-            float btnY = Screen.height * (victory ? 0.78f : 0.58f);
-            var bs = new GUIStyle(GUI.skin.button) { fontSize = 18 };
-            if (!victory)
-            {
-                if (GUI.Button(new Rect(Screen.width * 0.5f - 140, btnY, 280, 44), "Return to Menu Now", bs))
-                    ReturnToMenu();
-            }
-            else
-            {
-                if (GUI.Button(new Rect(Screen.width * 0.5f - 290, btnY, 270, 44), "Try Again",    bs)) RestartRun();
-                if (GUI.Button(new Rect(Screen.width * 0.5f + 20,  btnY, 270, 44), "Back to Menu", bs)) ReturnToMenu();
-            }
-        }
-
-        // 在胜利画面中段绘制本周目玩家做出的抉择 + 持有的剧情道具
-        private void DrawChoiceAndLootRecap()
-        {
-            var run = GameManager.Instance?.Run;
-            if (run == null) return;
-
-            float topY    = Screen.height * 0.44f;
-            float colW    = Screen.width  * 0.34f;
-            float leftX   = Screen.width  * 0.11f;
-            float rightX  = Screen.width  * 0.55f;
-            float lineH   = 22f;
-            Color hdrCol  = new Color(0.95f, 0.86f, 0.55f);
-            Color pure    = new Color(0.60f, 0.85f, 0.95f); // 净化系（青）
-            Color tainted = new Color(0.93f, 0.62f, 0.95f); // 污染系（紫）
-            Color none    = new Color(0.55f, 0.55f, 0.58f);
-
-            // ── 左列：本周目抉择 ────────────────────────────────────────
-            GUI.Label(new Rect(leftX, topY, colW, 24), "── Your Choices ──",
-                MkLabel(16, TextAnchor.MiddleCenter, FontStyle.Bold, hdrCol));
-
-            var entries = new (string flag, string label, Color color, string tag)[] {
-                ("f1_door_struck",             "Sealed Lift Door  ·  Break Open",     tainted, "[Tainted]"),
-                ("f1_door_oath",               "Sealed Lift Door  ·  Leave in Silence",  pure,    "[Pure]"),
-                ("f2_lake_witnessed_directly", "Frozen Lake  ·  Gaze Directly",        pure,    "[Pure]"),
-                ("f2_lake_shattered",          "Frozen Lake  ·  Shatter",        tainted, "[Tainted]"),
-                ("f3_mirror_confronted_self",  "Black Mirror  ·  Confront",        tainted, "[Tainted]"),
-                ("f3_mirror_refused_self",     "Black Mirror  ·  Turn Away",     pure,    "[Pure]"),
-                ("f3_throne_sat",              "Broken Throne  ·  Sit Upon It",     tainted, "[Tainted]"),
-                ("f3_throne_toppled",          "Broken Throne  ·  Topple",        pure,    "[Pure]"),
-            };
-
-            float y = topY + 28f;
-            int picked = 0;
-            foreach (var e in entries)
-            {
-                if (!run.HasStoryFlag(e.flag)) continue;
-                GUI.Label(new Rect(leftX + 16f, y, colW - 70f, 22f), $"·  {e.label}",
-                    MkLabel(13, TextAnchor.MiddleLeft, FontStyle.Normal, e.color));
-                GUI.Label(new Rect(leftX + colW - 58f, y, 50f, 22f), e.tag,
-                    MkLabel(11, TextAnchor.MiddleLeft, FontStyle.Italic, e.color));
-                y += lineH;
-                picked++;
-            }
-            if (picked == 0)
-                GUI.Label(new Rect(leftX, y, colW, 22f), "(No choices made this run)",
-                    MkLabel(13, TextAnchor.MiddleCenter, FontStyle.Italic, none));
-
-            // 污染最终值
-            int corruption = run.VoidCorruption;
-            GUI.Label(new Rect(leftX, topY + 28f + lineH * 8.5f, colW, 22f),
-                $"Final void corruption: {corruption}",
-                MkLabel(13, TextAnchor.MiddleCenter, FontStyle.Bold,
-                    corruption >= 10 ? new Color(0.95f, 0.30f, 0.85f) :
-                    corruption >= 5  ? new Color(0.78f, 0.55f, 0.92f) :
-                    corruption >= 1  ? new Color(0.78f, 0.78f, 0.92f) :
-                                       new Color(0.55f, 0.85f, 0.95f)));
-
-            // ── 右列：剧情道具 ────────────────────────────────────────
-            GUI.Label(new Rect(rightX, topY, colW, 24), "── Your Collection ──",
-                MkLabel(16, TextAnchor.MiddleCenter, FontStyle.Bold, hdrCol));
-
-            y = topY + 28f;
-            if (run.StoryItems == null || run.StoryItems.Count == 0)
-            {
-                GUI.Label(new Rect(rightX, y, colW, 22f), "(None)",
-                    MkLabel(13, TextAnchor.MiddleCenter, FontStyle.Italic, none));
-                y += lineH;
-            }
-            else
-            {
-                foreach (var item in run.StoryItems)
-                {
-                    string flavor = Game.Systems.StoryItemDatabase.TryGet(item, out var def) ? def.flavorTag : "";
-                    GUI.Label(new Rect(rightX + 8f, y, 132f, 22f), $"✦ {item}",
-                        MkLabel(13, TextAnchor.MiddleLeft, FontStyle.Bold, new Color(0.92f, 0.84f, 0.55f)));
-                    if (!string.IsNullOrEmpty(flavor))
-                        GUI.Label(new Rect(rightX + 142f, y, colW - 142f, 22f), flavor,
-                            MkLabel(11, TextAnchor.MiddleLeft, FontStyle.Italic, new Color(0.68f, 0.68f, 0.75f)));
-                    y += lineH;
-                }
-            }
-
-            // ── 右列下半：已激活协同 ──────────────────────────────────
-            y += 8f; // 与道具列表保持视觉间距
-            var activeSyn = new System.Collections.Generic.List<Game.Systems.StoryItemSynergyDatabase.SynergyDef>();
-            foreach (var s in Game.Systems.StoryItemSynergyDatabase.All)
-                if (Game.Systems.StoryItemSynergyDatabase.IsActive(run, s.id))
-                    activeSyn.Add(s);
-
-            Color synHdr = new Color(1f, 0.78f, 0.92f);
-            GUI.Label(new Rect(rightX, y, colW, 22f), "── Active Synergies ──",
-                MkLabel(16, TextAnchor.MiddleCenter, FontStyle.Bold, synHdr));
-            y += 26f;
-
-            if (activeSyn.Count == 0)
-            {
-                GUI.Label(new Rect(rightX, y, colW, 22f), "(No item synergies triggered)",
-                    MkLabel(13, TextAnchor.MiddleCenter, FontStyle.Italic, none));
-            }
-            else
-            {
-                Color synLine = new Color(1f, 0.72f, 0.92f);
-                foreach (var s in activeSyn)
-                {
-                    GUI.Label(new Rect(rightX + 8f, y, colW - 16f, 22f), $"★ {s.displayName}",
-                        MkLabel(13, TextAnchor.MiddleLeft, FontStyle.Bold, synLine));
-                    GUI.Label(new Rect(rightX + 8f, y + 16f, colW - 16f, 18f), s.flavor,
-                        MkLabel(11, TextAnchor.MiddleLeft, FontStyle.Italic,
-                            new Color(0.82f, 0.68f, 0.82f)));
-                    y += 36f;
-                }
-            }
-        }
-
-        // 样式工厂（避免大量重复 new GUIStyle）
-        private static GUIStyle MkLabel(int size, TextAnchor align, FontStyle style, Color color)
-        {
-            var s = new GUIStyle(GUI.skin.label)
-            {
-                fontSize  = size,
-                alignment = align,
-                fontStyle = style,
-            };
-            s.normal.textColor = color;
-            var f = UIFonts.UI;
-            if (f != null) s.font = f;
-            return s;
         }
 
         private static string WeaponSpecialLabel(WeaponInstance wi)

@@ -60,7 +60,7 @@ namespace Game.Factories
             var go = MakeBase("Bat", pos, 0.55f, new Color(0.35f, 0.2f, 0.5f),
                 hp: 18f, atk: 0f, def: 0f, spd: 7.0f, parent: parent, EnemyType.Bat);
             go.GetComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Kinematic;
-            var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.Bat;
+            var tag = go.AddComponent<EnemyTag>(); tag.type = EnemyType.Bat; tag.Flying = true;
             var ai  = go.AddComponent<BatAI>();
             ai.target        = player;
             ai.orbitRadius   = 4.5f;

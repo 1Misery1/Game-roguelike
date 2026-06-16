@@ -1,17 +1,19 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
+using UnityEngine.InputSystem;
 
 namespace Game.UI
 {
-    /// 开场过场动画：依次展示 6 张剧情背景 + 英文旁白，点击 / 空格推进，可跳过（Esc / Skip）。
-    /// 纯 IMGUI 全屏绘制，风格与营地一致。播放期间 HubController 通过 IsActive 冻结输入与 HUD。
-    /// 由 HubController 在「首次进入营地」时自动唤起，或由篝火交互手动重温。
+    /// Opening cutscene: 6 story frames + narration; click/space advances, Esc/Skip exits.
+    /// Auto-played by HubController on first entry to the camp, or replayed from the campfire.
+    /// While playing, HubController freezes input and HUD via IsActive.
     public class IntroController : MonoBehaviour
     {
         private const string SeenKey   = "EmbersIntroSeen_v1";
         private const int    FrameCount = 6;
 
-        /// 英文旁白（每帧 1～2 句，\n 手动换行）。
         private static readonly string[] Narration =
         {
             "Long ago, a proud kingdom rose upon a buried wonder.\nNow only ash and silence remain — and a single ember that will not die.",
@@ -22,16 +24,10 @@ namespace Game.UI
             "But an ember can rekindle the fallen. Take their form.\nTake up their blade. Descend — and finish what they began.",
         };
 
-        /// 播放中标志：营地据此冻结移动 / 交互 / HUD，避免穿透。
         public static bool IsActive { get; private set; }
-
-        /// 是否已看过开场（首次进营地用来决定是否自动播放）。
         public static bool HasSeen => PlayerPrefs.GetInt(SeenKey, 0) != 0;
-
-        /// 清除「已看过」标记（重置存档时调用，使下次进营地重新播放）。
         public static void ClearSeen() { PlayerPrefs.DeleteKey(SeenKey); PlayerPrefs.Save(); }
 
-        /// 生成并播放开场动画。onComplete 在播完 / 跳过后回调。markSeen=true 时播完写入「已看过」。
         public static IntroController Play(Action onComplete = null, bool markSeen = true)
         {
             var go = new GameObject("IntroController");
@@ -43,12 +39,18 @@ namespace Game.UI
 
         private Texture2D[] _frames;
         private int    _index;
-        private float  _alpha;        // 当前帧淡入 0→1
-        private float  _reveal;       // 旁白已显现字符数
+        private float  _alpha;    // 当前帧淡入 0→1
+        private float  _reveal;   // 旁白已显现字符数
         private bool   _markSeen = true;
         private bool   _done;
         private Action _onComplete;
-        private GUIStyle _textStyle, _hintStyle;
+
+        // uGUI
+        private Canvas _canvas;
+        private Image  _cg, _capBorder;
+        private Text   _caption, _hint;
+        private readonly List<Image> _dots = new List<Image>();
+        private readonly Dictionary<Texture2D, Sprite> _sprites = new Dictionary<Texture2D, Sprite>();
 
         private void Awake()
         {
@@ -56,14 +58,14 @@ namespace Game.UI
             _frames = new Texture2D[FrameCount];
             for (int i = 0; i < FrameCount; i++)
                 _frames[i] = Resources.Load<Texture2D>($"Intro/Frame{i + 1}");
+            BuildUI();
         }
 
         private void Start()
         {
-            // 素材缺失则不卡死，直接结束。
             bool any = false;
             foreach (var t in _frames) if (t != null) { any = true; break; }
-            if (!any) Finish();
+            if (!any) Finish();   // 素材缺失则不卡死,直接结束。
         }
 
         private void Update()
@@ -72,20 +74,28 @@ namespace Game.UI
             _alpha = Mathf.MoveTowards(_alpha, 1f, Time.unscaledDeltaTime / 0.55f);
             if (_alpha >= 0.55f)
                 _reveal = Mathf.MoveTowards(_reveal, CurrentText.Length, Time.unscaledDeltaTime * 46f);
+            HandleInput();
+            Refresh();
         }
 
         private string CurrentText =>
             _index >= 0 && _index < Narration.Length ? Narration[_index] : "";
 
-        // 推进：文字未显示完→先补完；否则进入下一帧；末帧→结束。
+        private void HandleInput()
+        {
+            var kb = Keyboard.current;
+            if (kb == null) return;
+            if (kb.escapeKey.wasPressedThisFrame) { Finish(); return; }
+            if (kb.spaceKey.wasPressedThisFrame || kb.enterKey.wasPressedThisFrame ||
+                kb.numpadEnterKey.wasPressedThisFrame) Advance();
+            // 鼠标点击推进由全屏背景按钮处理(避免与 Skip 按钮冲突)
+        }
+
+        // 推进:文字未显示完→先补完;否则进入下一帧;末帧→结束。
         private void Advance()
         {
             if (_done) return;
-            if (_reveal < CurrentText.Length - 0.5f && _alpha > 0.5f)
-            {
-                _reveal = CurrentText.Length;
-                return;
-            }
+            if (_reveal < CurrentText.Length - 0.5f && _alpha > 0.5f) { _reveal = CurrentText.Length; return; }
             if (_index >= FrameCount - 1) { Finish(); return; }
             _index++;
             _alpha  = 0f;
@@ -102,141 +112,106 @@ namespace Game.UI
             Destroy(gameObject);
         }
 
-        private void OnGUI()
+        // ── 每帧刷新显示 ──────────────────────────────────────────────────────
+        private void Refresh()
         {
-            if (_done) return;
-            GUI.depth = -1000;                 // 压在营地 HUD 之上
-            UIFonts.ApplyToSkin();
-            EnsureStyles();
+            float a = Mathf.Clamp01(_alpha);
 
-            float sw = Screen.width, sh = Screen.height;
+            var sp = ToSprite(_index >= 0 && _index < _frames.Length ? _frames[_index] : null);
+            _cg.enabled = sp != null;
+            if (sp != null) { _cg.sprite = sp; _cg.color = new Color(1f, 1f, 1f, a); }
 
-            // 整屏黑底（同时遮住背后的营地）
-            Fill(new Rect(0, 0, sw, sh), Color.black);
-
-            // 当前帧：等比适配 + 黑边，按淡入 alpha 叠加
-            var tex = _index >= 0 && _index < _frames.Length ? _frames[_index] : null;
-            if (tex != null)
-            {
-                float scale = Mathf.Min(sw / tex.width, sh / tex.height);
-                float w = tex.width * scale, h = tex.height * scale;
-                var imgRect = new Rect((sw - w) * 0.5f, (sh - h) * 0.5f, w, h);
-                var prev = GUI.color;
-                GUI.color = new Color(1f, 1f, 1f, Mathf.Clamp01(_alpha));
-                GUI.DrawTexture(imgRect, tex, ScaleMode.ScaleToFit);
-                GUI.color = prev;
-            }
-
-            // 底部旁白条
-            float boxH = Mathf.Clamp(sh * 0.26f, 120f, 220f);
-            var boxRect = new Rect(0, sh - boxH, sw, boxH);
-            Fill(boxRect, new Color(0f, 0f, 0f, 0.62f));
-            Fill(new Rect(0, sh - boxH, sw, 2f), new Color(0.85f, 0.7f, 0.35f, 0.55f * _alpha));
-
-            float pad = Mathf.Max(28f, sw * 0.12f);
+            _capBorder.color = new Color(0.85f, 0.7f, 0.35f, 0.55f * a);
             int shown = Mathf.Clamp(Mathf.FloorToInt(_reveal), 0, CurrentText.Length);
-            string txt = CurrentText.Substring(0, shown);
-            var tprev = GUI.color;
-            GUI.color = new Color(0.96f, 0.93f, 0.85f, Mathf.Clamp01(_alpha));
-            GUI.Label(new Rect(pad, sh - boxH + 22f, sw - pad * 2f, boxH - 56f), txt, _textStyle);
-            GUI.color = tprev;
+            _caption.text  = CurrentText.Substring(0, shown);
+            _caption.color = new Color(0.96f, 0.93f, 0.85f, a);
 
-            // 进度点 + 推进提示（文字显示完后闪烁）
-            DrawDots(new Rect(0, sh - 30f, sw, 18f));
-            bool revealed = shown >= CurrentText.Length;
-            if (revealed && _alpha > 0.9f)
+            for (int i = 0; i < _dots.Count; i++)
+                _dots[i].color = i == _index ? new Color(1f, 0.85f, 0.4f, 0.95f)
+                               : i <  _index ? new Color(0.7f, 0.7f, 0.78f, 0.7f)
+                                             : new Color(0.4f, 0.4f, 0.48f, 0.5f);
+
+            bool showHint = shown >= CurrentText.Length && _alpha > 0.9f;
+            _hint.gameObject.SetActive(showHint);
+            if (showHint)
             {
                 float blink = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 4f);
-                var hprev = GUI.color;
-                GUI.color = new Color(0.8f, 0.85f, 1f, 0.35f + 0.55f * blink);
-                string hint = _index >= FrameCount - 1 ? "Click / Space  ▶  Begin" : "Click / Space  ▶";
-                GUI.Label(new Rect(sw - 320f, sh - 34f, 300f, 22f), hint, _hintStyle);
-                GUI.color = hprev;
-            }
-
-            // 跳过按钮（右上）
-            var skipRect = new Rect(sw - 96f, 14f, 82f, 26f);
-            Fill(skipRect, new Color(0f, 0f, 0f, 0.45f));
-            if (GUI.Button(skipRect, GUIContent.none, GUIStyle.none)) { Finish(); return; }
-            GUI.Label(skipRect, "Skip  ⏭", _hintStyle);
-
-            // 全局输入：点击 / 空格 / 回车推进；Esc 跳过
-            var e = Event.current;
-            if (e.type == EventType.KeyDown)
-            {
-                if (e.keyCode == KeyCode.Escape) { Finish(); e.Use(); return; }
-                if (e.keyCode == KeyCode.Space || e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter)
-                { Advance(); e.Use(); }
-            }
-            else if (e.type == EventType.MouseDown && e.button == 0)
-            {
-                Advance(); e.Use();
+                _hint.text  = _index >= FrameCount - 1 ? "Click / Space  ▶  Begin" : "Click / Space  ▶";
+                _hint.color = new Color(0.8f, 0.85f, 1f, 0.35f + 0.55f * blink);
             }
         }
 
-        private void DrawDots(Rect area)
+        private Sprite ToSprite(Texture2D tex)
         {
-            const float r = 7f, gap = 10f;
-            float total = FrameCount * r + (FrameCount - 1) * gap;
-            float x = (area.width - total) * 0.5f;
-            float y = area.y + (area.height - r) * 0.5f;
+            if (tex == null) return null;
+            if (_sprites.TryGetValue(tex, out var s)) return s;
+            s = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f);
+            _sprites[tex] = s;
+            return s;
+        }
+
+        // ── 构建 ──────────────────────────────────────────────────────────────
+        private void BuildUI()
+        {
+            _canvas = UIFactory.CreateOverlayCanvas("IntroCanvas", sortingOrder: 900);  // 压在营地 HUD 之上
+            _canvas.transform.SetParent(transform, false);
+            var root = _canvas.transform;
+
+            // 全屏黑底 + 点击推进(背景按钮)
+            var bg = UIFactory.Image("Bg", root, Color.black, raycast: true);
+            UIFactory.Stretch(bg.rectTransform);
+            var bgBtn = bg.gameObject.AddComponent<Button>();
+            bgBtn.transition = Selectable.Transition.None;
+            bgBtn.onClick.AddListener(() => { if (!_done) Advance(); });
+
+            _cg = UIFactory.Image("CG", root, new Color(1f, 1f, 1f, 0f));
+            UIFactory.Stretch(_cg.rectTransform);
+            _cg.preserveAspect = true;   // 等比适配(letterbox)
+
+            var capBg = UIFactory.Image("CapBg", root, new Color(0f, 0f, 0f, 0.62f));
+            var cbg = capBg.rectTransform;
+            cbg.anchorMin = new Vector2(0f, 0f); cbg.anchorMax = new Vector2(1f, 0.26f);
+            cbg.offsetMin = Vector2.zero; cbg.offsetMax = Vector2.zero;
+
+            _capBorder = UIFactory.Image("CapBorder", root, new Color(0f, 0f, 0f, 0f));
+            var cb = _capBorder.rectTransform;
+            cb.anchorMin = new Vector2(0f, 0.26f); cb.anchorMax = new Vector2(1f, 0.26f);
+            cb.pivot = new Vector2(0.5f, 1f); cb.sizeDelta = new Vector2(0f, 2f); cb.anchoredPosition = Vector2.zero;
+
+            _caption = UIFactory.Label("Caption", capBg.transform, "", 20, TextAnchor.UpperCenter, FontStyle.Normal, Color.white, wrap: true);
+            UIFactory.Stretch(_caption.rectTransform, left: 80f, right: 80f, top: 18f, bottom: 28f);
+
+            var dots = UIFactory.Rect("Dots", root);
+            dots.anchorMin = dots.anchorMax = new Vector2(0.5f, 0f); dots.pivot = new Vector2(0.5f, 0f);
+            dots.anchoredPosition = new Vector2(0f, 8f); dots.sizeDelta = new Vector2(300f, 12f);
+            var hlg = dots.gameObject.AddComponent<HorizontalLayoutGroup>();
+            hlg.spacing = 10f; hlg.childAlignment = TextAnchor.MiddleCenter;
+            hlg.childControlWidth = false; hlg.childControlHeight = false;
+            hlg.childForceExpandWidth = false; hlg.childForceExpandHeight = false;
             for (int i = 0; i < FrameCount; i++)
             {
-                Color c = i == _index ? new Color(1f, 0.85f, 0.4f, 0.95f)
-                        : i <  _index ? new Color(0.7f, 0.7f, 0.78f, 0.7f)
-                                      : new Color(0.4f, 0.4f, 0.48f, 0.5f);
-                Fill(new Rect(x + i * (r + gap), y, r, r), c);
+                var d = UIFactory.Image($"Dot{i}", dots, Color.white);
+                d.rectTransform.sizeDelta = new Vector2(7f, 7f);
+                _dots.Add(d);
             }
-        }
 
-        private void EnsureStyles()
-        {
-            if (_textStyle == null)
-            {
-                _textStyle = new GUIStyle(GUI.skin.label)
-                {
-                    alignment = TextAnchor.UpperCenter,
-                    fontSize  = Mathf.Clamp(Mathf.RoundToInt(Screen.height * 0.030f), 15, 26),
-                    wordWrap  = true,
-                    richText  = false,
-                };
-            }
-            if (_hintStyle == null)
-            {
-                _hintStyle = new GUIStyle(GUI.skin.label)
-                {
-                    alignment = TextAnchor.MiddleCenter,
-                    fontSize  = 13,
-                };
-            }
-        }
+            _hint = UIFactory.Label("Hint", root, "", 13, TextAnchor.MiddleRight, FontStyle.Normal, Color.white);
+            var hr = _hint.rectTransform;
+            hr.anchorMin = hr.anchorMax = new Vector2(1f, 0f); hr.pivot = new Vector2(1f, 0f);
+            hr.sizeDelta = new Vector2(300f, 22f); hr.anchoredPosition = new Vector2(-20f, 12f);
+            _hint.gameObject.SetActive(false);
 
-        private static Texture2D _white;
-        private static Texture2D White
-        {
-            get
-            {
-                if (_white != null) return _white;
-                _white = new Texture2D(1, 1);
-                _white.SetPixel(0, 0, Color.white);
-                _white.Apply();
-                _white.hideFlags = HideFlags.HideAndDontSave;
-                return _white;
-            }
-        }
-
-        private static void Fill(Rect r, Color c)
-        {
-            var prev = GUI.color;
-            GUI.color = c;
-            GUI.DrawTexture(r, White);
-            GUI.color = prev;
+            var skip = UIFactory.Button("Skip", root, Finish, new Color(0f, 0f, 0f, 0.45f));
+            var srt = (RectTransform)skip.transform;
+            srt.anchorMin = srt.anchorMax = new Vector2(1f, 1f); srt.pivot = new Vector2(1f, 1f);
+            srt.sizeDelta = new Vector2(96f, 28f); srt.anchoredPosition = new Vector2(-14f, -14f);
+            var sl = UIFactory.Label("Txt", srt, "Skip  ⏭", 13, TextAnchor.MiddleCenter, FontStyle.Normal, new Color(0.8f, 0.85f, 1f));
+            UIFactory.Stretch(sl.rectTransform);
         }
 
         private void OnDestroy()
         {
-            // 兜底：确保不会因异常销毁而把营地永久冻结。
-            IsActive = false;
+            IsActive = false;   // 兜底:确保不会因异常销毁而把营地永久冻结。
         }
     }
 }

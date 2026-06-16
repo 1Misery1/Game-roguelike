@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 using Game.UI;
 namespace Game.Dungeon
 {
-    // 商店武器展示台 — E键购买，OnGUI显示稀有度/价格/伤害
+    // Weapon shop pedestal — press E to buy; shows rarity / price / damage.
     [RequireComponent(typeof(Collider2D))]
     public class WeaponShopPedestal : MonoBehaviour
     {
@@ -70,56 +70,38 @@ namespace Game.Dungeon
             if (_sr != null) _sr.color = original;
         }
 
-        private void OnGUI()
+        private WorldLabel _label;
+
+        private void LateUpdate()
         {
-            if (_purchased || Weapon == null) return;
-            if (Camera.main == null) return;
-            UIFonts.ApplyToSkin();
+            if (_purchased || Weapon == null) { _label?.Hide(); return; }
+            if (_label == null) _label = gameObject.AddComponent<WorldLabel>();
 
-            Vector3 screen = Camera.main.WorldToScreenPoint(transform.position + Vector3.up * 0.9f);
-            if (screen.z < 0) return;
-            float x = screen.x - 100f;
-            float y = Screen.height - screen.y - 20f;
+            Color rc   = WeaponData.GetRarityColor(Weapon.Data.rarity);
+            string rcHex   = WorldLabel.Hex(rc);
+            string goldHex = WorldLabel.Hex(new Color(1f, 0.85f, 0.3f));
 
-            Color rc = WeaponData.GetRarityColor(Weapon.Data.rarity);
-            var nameStyle = new GUIStyle(GUI.skin.label)
+            string content;
+            if (!_inRange)
             {
-                fontSize = 12, alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold,
-                normal = { textColor = rc }
-            };
-            GUI.Label(new Rect(x, y, 200, 18), Weapon.ShortName, nameStyle);
-
-            var priceStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 11, alignment = TextAnchor.MiddleCenter,
-                normal = { textColor = new Color(1f, 0.85f, 0.3f) }
-            };
-            GUI.Label(new Rect(x, y + 18f, 200, 18),
-                $"[{Price}c]  {Weapon.EffectiveDamage:0} dmg  HP+{Weapon.HPBonus:0}", priceStyle);
-
-            if (Weapon.Data.lifeStealRate > 0f || Weapon.Data.hpCostPerAttack > 0f)
-            {
-                string special = Weapon.Data.lifeStealRate > 0f
-                    ? $"Lifesteal {Weapon.Data.lifeStealRate * 100:0}%"
-                    : $"HP cost {Weapon.Data.hpCostPerAttack:0}/hit";
-                var spStyle = new GUIStyle(GUI.skin.label)
-                {
-                    fontSize = 11, alignment = TextAnchor.MiddleCenter,
-                    normal = { textColor = Weapon.Data.lifeStealRate > 0f ? new Color(1f, 0.4f, 0.4f) : new Color(0.9f, 0.4f, 0.1f) }
-                };
-                GUI.Label(new Rect(x, y + 36f, 200, 16), special, spStyle);
+                content = $"<b><color=#{rcHex}>{Weapon.ShortName}</color></b>\n<color=#{goldHex}>{Price}c</color>";
             }
-
-            if (_inRange)
+            else
             {
-                var hint = new GUIStyle(GUI.skin.label)
+                content = $"<b><color=#{rcHex}>{Weapon.ShortName}</color></b>"
+                    + $"\n<color=#{goldHex}>[{Price}c]   {Weapon.EffectiveDamage:0} dmg   HP+{Weapon.HPBonus:0}</color>";
+                if (Weapon.Data.lifeStealRate > 0f || Weapon.Data.hpCostPerAttack > 0f)
                 {
-                    fontSize = 11, alignment = TextAnchor.MiddleCenter,
-                    normal = { textColor = Color.white }
-                };
-                float hintY = (Weapon.Data.lifeStealRate > 0f || Weapon.Data.hpCostPerAttack > 0f) ? y + 52f : y + 36f;
-                GUI.Label(new Rect(x, hintY, 200, 16), "[E] Buy", hint);
+                    bool lifesteal = Weapon.Data.lifeStealRate > 0f;
+                    string special = lifesteal
+                        ? $"Lifesteal {Weapon.Data.lifeStealRate * 100:0}%"
+                        : $"HP cost {Weapon.Data.hpCostPerAttack:0}/hit";
+                    Color sc = lifesteal ? new Color(1f, 0.4f, 0.4f) : new Color(0.9f, 0.4f, 0.1f);
+                    content += $"\n<color=#{WorldLabel.Hex(sc)}>{special}</color>";
+                }
+                content += "\n<b><color=#B3FFB3>[E] Buy</color></b>";
             }
+            _label.Set(transform.position + Vector3.up * 0.95f, rc, content);
         }
     }
 }

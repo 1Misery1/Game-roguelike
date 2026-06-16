@@ -92,8 +92,8 @@ namespace Game.AI
         static bool CellOk(Vector2 worldPos, Vector2 from, bool avoidHazards)
         {
             var cell = NavGrid.WorldToCell(worldPos);
-            if (!NavGrid.IsWalkable(cell.x, cell.y)) return false;          // 墙/柱：硬挡
-            if (avoidHazards && NavGrid.HazardAt(cell.x, cell.y) > 0)
+            if (!NavGrid.PathWalkable(cell.x, cell.y)) return false;        // 墙/柱：硬挡（IgnoreObstacles 时穿过）
+            if (!NavGrid.IgnoreObstacles && avoidHazards && NavGrid.HazardAt(cell.x, cell.y) > 0)
             {
                 // 仅当自己当前不在危险格时才避让（已身处危险中则允许移动以逃出）
                 var fc = NavGrid.WorldToCell(from);

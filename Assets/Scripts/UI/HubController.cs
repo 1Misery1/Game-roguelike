@@ -64,8 +64,8 @@ namespace Game.UI
 
         private string _msg = "";
         private float  _msgUntil;
-        private GUIStyle _centerStyle;
-        private GUIStyle _msgStyle;     // 提示横幅：自动换行，配合动态高度
+        private HubHudView _hud;
+        private readonly List<HubHudView.StationLabel> _labelBuf = new List<HubHudView.StationLabel>();
 
         private const float TruthTotal = 10f;
         private const float FloorTotal = 3f;
@@ -371,9 +371,80 @@ namespace Game.UI
         // 视角锁定:相机平滑跟随当前操控的对象(游魂或附身的英雄),并夹紧到房间四壁内。
         private void LateUpdate()
         {
+            RefreshHud();
             if (cam == null || player == null) return;
             Vector3 target = CameraTargetFor(player.position);
             cam.transform.position = Vector3.Lerp(cam.transform.position, target, 1f - Mathf.Exp(-camLerp * Time.deltaTime));
+        }
+
+        private void EnsureHud()
+        {
+            if (_hud != null) return;
+            _hud = new GameObject("HubHud").AddComponent<HubHudView>();
+            _hud.SetCamera(cam);
+        }
+
+        // Push camp HUD data to the view each frame.
+        private void RefreshHud()
+        {
+            EnsureHud();
+            if (IntroController.IsActive) { _hud.SetVisible(false); return; }   // 开场动画期间隐藏营地 HUD
+            _hud.SetVisible(true);
+
+            string selName = (_selectedHeroIndex >= 0 && _selectedHeroIndex < _heroes.Length)
+                ? _heroes[_selectedHeroIndex].displayName : "(unpossessed)";
+            _hud.SetTopBar("Embers of the Three Realms — Camp",
+                $"Hero: {selName}    Truths: {_persistent.TruthFlags.Count}/10");
+
+            _labelBuf.Clear();
+            if (player != null)
+                foreach (var s in _stations)
+                {
+                    if (((Vector2)(s.transform.position - player.position)).sqrMagnitude
+                            > labelRevealRadius * labelRevealRadius) continue;
+                    _labelBuf.Add(new HubHudView.StationLabel
+                    {
+                        worldPos = StationLabelWorldPos(s),
+                        name     = StationLabel(s),
+                        status   = StationStatus(s),
+                        near     = s == _near,
+                    });
+                }
+            _hud.SetStationLabels(_labelBuf);
+
+            _hud.SetPrompt(_near != null, _near != null ? $"[E] {PromptFor(_near)}" : null);
+
+            if (_selectedHeroIndex >= 0 && _selectedHeroIndex < _heroes.Length)
+            {
+                var h = _heroes[_selectedHeroIndex];
+                _hud.SetHeroInfo(true,
+                    $"{h.displayName}   [Q] Leave body (back to spirit)\nHP {h.baseMaxHP:0}  ATK {h.baseAttack:0}  DEF {h.baseDefense:0}  ·  Skill: {h.heroSkillName}  ·  Passive: {h.heroPassiveName}");
+            }
+            else _hud.SetHeroInfo(false, null);
+
+            bool bannerOn = Time.unscaledTime < _msgUntil && !string.IsNullOrEmpty(_msg);
+            _hud.SetBanner(bannerOn, _msg);
+        }
+
+        // 名牌在世界中的位置(台座顶端上方一点)。
+        private Vector3 StationLabelWorldPos(HubStation s)
+        {
+            var srs = s.GetComponentsInChildren<SpriteRenderer>();
+            float topY = s.transform.position.y + 0.5f;
+            for (int i = 0; i < srs.Length; i++)
+                if (srs[i].sprite != null) topY = Mathf.Max(topY, srs[i].bounds.max.y);
+            return new Vector3(s.transform.position.x, topY + 0.25f, 0f);
+        }
+
+        // 名牌状态行(沉睡 / 已选);其它台座无状态。
+        private string StationStatus(HubStation s)
+        {
+            if (s.kind == HubStationKind.HeroPedestal && s.heroIndex >= 0 && s.heroIndex < _heroes.Length)
+            {
+                if (!_persistent.IsHeroUnlocked(_heroes[s.heroIndex].heroName)) return "[dormant soul]";
+                if (s.heroIndex == _selectedHeroIndex) return "◀ selected";
+            }
+            return null;
         }
 
         private Vector3 CameraTargetFor(Vector3 focus)
@@ -493,59 +564,6 @@ namespace Game.UI
 
         private void Flash(string msg, float dur) { _msg = msg; _msgUntil = Time.unscaledTime + dur; }
 
-        private void OnGUI()
-        {
-            if (IntroController.IsActive) return;   // 开场动画期间不画营地 HUD，交给 IntroController 全屏接管
-            UIFonts.ApplyToSkin();
-            if (_centerStyle == null)
-                _centerStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter };
-            if (_msgStyle == null)
-                _msgStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, wordWrap = true };
-
-            GUI.color = new Color(0.95f, 0.85f, 0.55f);
-            GUI.Label(new Rect(12, 8, Screen.width - 24, 26), "Embers of the Three Realms — Camp");
-            GUI.color = Color.white;
-            var selName = (_selectedHeroIndex >= 0 && _selectedHeroIndex < _heroes.Length)
-                ? _heroes[_selectedHeroIndex].displayName : "(unpossessed)";
-            GUI.Label(new Rect(Screen.width - 360, 10, 348, 22),
-                $"Hero: {selName}    Truths: {_persistent.TruthFlags.Count}/10");
-
-            // 仅显示玩家附近台座的标签（靠近才浮现，而非一开始全部显示）
-            if (player != null)
-                foreach (var s in _stations)
-                    if (((Vector2)(s.transform.position - player.position)).sqrMagnitude
-                            <= labelRevealRadius * labelRevealRadius)
-                        DrawStationLabel(s);
-
-            if (_near != null)
-            {
-                var r = new Rect(Screen.width * 0.5f - 220, Screen.height - 64, 440, 26);
-                GUI.color = new Color(0f, 0f, 0f, 0.5f); GUI.Box(r, GUIContent.none);
-                GUI.color = new Color(1f, 0.95f, 0.7f); GUI.Label(r, $"[E] {PromptFor(_near)}", _centerStyle);
-                GUI.color = Color.white;
-            }
-
-            if (_selectedHeroIndex >= 0 && _selectedHeroIndex < _heroes.Length)
-            {
-                var h = _heroes[_selectedHeroIndex];
-                GUI.Label(new Rect(12, Screen.height - 92, Screen.width - 24, 60),
-                    $"{h.displayName}   [Q] Leave body (back to spirit)\nHP {h.baseMaxHP:0}  ATK {h.baseAttack:0}  DEF {h.baseDefense:0}  ·  Skill: {h.heroSkillName}  ·  Passive: {h.heroPassiveName}");
-            }
-
-            if (Time.unscaledTime < _msgUntil && !string.IsNullOrEmpty(_msg))
-            {
-                // 横幅高度按换行后的文字实际高度自适应，避免两行字挤进一行框被截断
-                const float boxW = 720f, padX = 18f, padY = 12f;
-                float textH = _msgStyle.CalcHeight(new GUIContent(_msg), boxW - padX * 2f);
-                float boxH  = Mathf.Max(30f, textH + padY * 2f);
-                var r = new Rect(Screen.width * 0.5f - boxW * 0.5f, Screen.height * 0.5f + 120, boxW, boxH);
-                GUI.color = new Color(0f, 0f, 0f, 0.55f); GUI.Box(r, GUIContent.none);
-                GUI.color = new Color(0.95f, 0.9f, 0.8f);
-                GUI.Label(new Rect(r.x + padX, r.y + padY, boxW - padX * 2f, boxH - padY * 2f), _msg, _msgStyle);
-                GUI.color = Color.white;
-            }
-        }
-
         // 台座英文标签（靠近时显示）。忽略场景里可能是中文的 s.title，统一由 kind 给出英文名。
         private string StationLabel(HubStation s)
         {
@@ -581,30 +599,6 @@ namespace Game.UI
                 case HubStationKind.Records:    return "View records";
             }
             return "Interact";
-        }
-
-        private void DrawStationLabel(HubStation s)
-        {
-            if (cam == null) return;
-            // 用所有子 renderer 的世界 bounds 拿到 sprite 真实顶端
-            var srs = s.GetComponentsInChildren<SpriteRenderer>();
-            float topY = s.transform.position.y + 0.5f;
-            for (int i = 0; i < srs.Length; i++)
-                if (srs[i].sprite != null) topY = Mathf.Max(topY, srs[i].bounds.max.y);
-            Vector3 world = new Vector3(s.transform.position.x, topY + 0.25f, 0f);
-            Vector3 sp = cam.WorldToScreenPoint(world);
-            if (sp.z < 0f) return;
-
-            string text = StationLabel(s);
-            if (s.kind == HubStationKind.HeroPedestal && s.heroIndex >= 0 && s.heroIndex < _heroes.Length)
-            {
-                if (!_persistent.IsHeroUnlocked(_heroes[s.heroIndex].heroName)) text += "  [dormant soul]";
-                else if (s.heroIndex == _selectedHeroIndex) text += "  ◀";
-            }
-
-            GUI.color = (s == _near) ? new Color(1f, 0.95f, 0.6f) : new Color(0.85f, 0.85f, 0.9f);
-            GUI.Label(new Rect(sp.x - 90f, Screen.height - sp.y - 16f, 180, 20), text, _centerStyle);
-            GUI.color = Color.white;
         }
     }
 }

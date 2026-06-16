@@ -27,7 +27,7 @@ namespace Game.AI
             foreach (var c in snap)
             {
                 if (c == null) { _inside.Remove(c); continue; }
-                if (c.GetComponent<EnemyTag>() != null) continue;   // 敌人绕开，不受此伤
+                if (EnemyTag.IsFlyingEnemy(c)) continue;   // 飞行怪在空中飞，免疫；地面怪会扣血
                 c.GetComponent<IDamageable>()?.TakeDamage(new DamageInfo
                 {
                     Amount = dmg, Type = DamageType.Magical, Source = null, BypassIFrames = true,

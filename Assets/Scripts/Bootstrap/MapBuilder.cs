@@ -858,6 +858,8 @@ namespace Game.Bootstrap
             _physicsSetup = true;
             Physics2D.IgnoreLayerCollision(8, 8, true);
             Physics2D.IgnoreLayerCollision(0, 8, true);
+            // 敌人(8)与墙/柱(9)实体碰撞;A* 绕墙绕岩浆。被击退穿模到墙外的极少数情况
+            // 由 EnemyStuckRecovery 拉回最近可走格兜底。
             Physics2D.IgnoreLayerCollision(8, 9, false);
             Physics2D.IgnoreLayerCollision(0, 9, false);
         }

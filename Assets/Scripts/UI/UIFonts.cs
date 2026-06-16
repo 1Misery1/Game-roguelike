@@ -2,8 +2,9 @@ using UnityEngine;
 
 namespace Game.UI
 {
-    /// 统一 UI 字体入口：项目所有 IMGUI 文字优先使用方舟像素体。
-    /// 加载顺序：Resources/Fonts/ark-pixel-12px → 系统中文字体兜底（雅黑/黑体）
+    /// Central UI font entry point: all UI text prefers the Ark Pixel font.
+    /// Load order: Resources/Fonts/ark-pixel-12px → system CJK font fallback (YaHei / SimHei).
+    /// Scaling is handled by the CanvasScaler (see UIFactory), so no manual scaling helper is needed.
     public static class UIFonts
     {
         static Font _ark;
@@ -26,20 +27,6 @@ namespace Game.UI
                         new[] { "Microsoft YaHei", "微软雅黑", "SimHei", "黑体" }, 22);
                 return _fallback;
             }
-        }
-
-        /// 给所有 GUI 控件统一刷上像素字体（在 OnGUI 开头调用一次）
-        public static void ApplyToSkin()
-        {
-            if (GUI.skin == null) return;
-            var f = UI;
-            if (f == null) return;
-            if (GUI.skin.label  != null) GUI.skin.label.font  = f;
-            if (GUI.skin.button != null) GUI.skin.button.font = f;
-            if (GUI.skin.box    != null) GUI.skin.box.font    = f;
-            if (GUI.skin.toggle != null) GUI.skin.toggle.font = f;
-            if (GUI.skin.textArea  != null) GUI.skin.textArea.font  = f;
-            if (GUI.skin.textField != null) GUI.skin.textField.font = f;
         }
     }
 }

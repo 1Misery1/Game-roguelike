@@ -66,33 +66,18 @@ namespace Game.Dungeon
             if (_sr != null) _sr.color = original;
         }
 
-        private void OnGUI()
+        private WorldLabel _label;
+
+        private void LateUpdate()
         {
-            if (_purchased || talent == null) return;
-            if (Camera.main == null) return;
-            UIFonts.ApplyToSkin();
+            if (_purchased || talent == null) { _label?.Hide(); return; }
+            if (_label == null) _label = gameObject.AddComponent<WorldLabel>();
 
-            Vector3 screen = Camera.main.WorldToScreenPoint(transform.position + Vector3.up * 0.9f);
-            if (screen.z < 0) return;
-            float x = screen.x - 90f;
-            float y = Screen.height - screen.y - 20f;
-
-            var title = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 14, alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold,
-                normal = { textColor = new Color(1f, 0.85f, 0.3f) }
-            };
-            GUI.Label(new Rect(x, y, 180, 20), $"{talent.talentName}  [{price}c]", title);
-
-            if (_inRange)
-            {
-                var hint = new GUIStyle(GUI.skin.label)
-                {
-                    fontSize = 12, alignment = TextAnchor.MiddleCenter,
-                    normal = { textColor = Color.white }
-                };
-                GUI.Label(new Rect(x, y + 20f, 180, 20), "[E] to buy", hint);
-            }
+            Color accent = new Color(1f, 0.85f, 0.3f);
+            string content = $"<b><color=#{WorldLabel.Hex(accent)}>{talent.talentName}   [{price}c]</color></b>";
+            if (!string.IsNullOrEmpty(talent.description)) content += $"\n<color=#CCD1E6>{talent.description}</color>";
+            if (_inRange) content += "\n<color=#BFFFBF>[E] to buy</color>";
+            _label.Set(transform.position + Vector3.up * 0.9f, accent, content);
         }
     }
 }

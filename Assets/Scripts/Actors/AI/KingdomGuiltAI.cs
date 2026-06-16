@@ -39,6 +39,14 @@ namespace Game.AI
         public float wraithRadius         = 1.5f;
         public float wraithLifetime       = 6f;
 
+        [Header("Encircle — 围绕玩家的延时环形范围攻击")]
+        public float encircleCooldown  = 5.5f;   // 主要攻击：高频
+        public int   encircleCount     = 6;      // 围成一圈的爆点数（留出可冲刺的缝隙）
+        public float encircleRing      = 3.0f;   // 爆点距玩家中心的半径
+        public float encircleAoeRadius = 1.15f;  // 每个爆点的伤害半径（缝隙约 0.7，可穿）
+        public float encircleWindup    = 1.05f;  // 预警延时（玩家可躲）
+        public float encircleDamage    = 28f;
+
         [Header("Crown Toll (corruption-scaled)")]
         public float crownTollCooldown        = 14f;
         public float crownTollBaseDamage      = 25f;
@@ -53,10 +61,11 @@ namespace Game.AI
         Rigidbody2D    _rb;
         CharacterStats _stats;
         Health         _health;
-        float _lastMelee  = -100f;
-        float _lastDecree = -100f;
-        float _lastWraith = -100f;
-        float _lastCrown  = -100f;
+        float _lastMelee    = -100f;
+        float _lastDecree   = -100f;
+        float _lastWraith   = -100f;
+        float _lastCrown    = -100f;
+        float _lastEncircle = -100f;
         bool  _busy;
         bool  _phase2;
 
@@ -65,6 +74,8 @@ namespace Game.AI
             _rb     = GetComponent<Rigidbody2D>();
             _stats  = GetComponent<CharacterStats>();
             _health = GetComponent<Health>();
+            // 最终 Boss 钉在房间中心：改为运动学刚体 → 不被击退、也不主动移动
+            if (_rb != null) { _rb.bodyType = RigidbodyType2D.Kinematic; _rb.velocity = Vector2.zero; }
         }
 
         void Update()
@@ -74,7 +85,9 @@ namespace Game.AI
             if (_busy) return;
 
             float k = _phase2 ? phase2CooldownScale : 1f;
-            if      (Time.time >= _lastCrown  + crownTollCooldown * k)
+            if      (Time.time >= _lastEncircle + encircleCooldown * k)
+                StartCoroutine(CastEncircle());
+            else if (Time.time >= _lastCrown  + crownTollCooldown * k)
                 StartCoroutine(CastCrownToll());
             else if (Time.time >= _lastDecree + decreeCooldown    * k)
                 StartCoroutine(CastDecreeWalls());
@@ -86,17 +99,8 @@ namespace Game.AI
                 DoMelee();
         }
 
-        void FixedUpdate()
-        {
-            if (target == null || _busy) return;
-            float dist = Vector2.Distance(transform.position, target.position);
-            if (dist > meleeRange)
-            {
-                Vector2 dir = ((Vector2)target.position - _rb.position).normalized;
-                float   spd = _stats.Get(StatType.MoveSpeed);
-                _rb.MovePosition(EnemyNavigator.Resolve(_rb.position, _rb.position + dir * spd * Time.fixedDeltaTime));
-            }
-        }
+        // 固定 Boss：不追击、不移动（站在房间中心释放范围攻击）
+        void FixedUpdate() { }
 
         void CheckPhase2()
         {
@@ -199,11 +203,11 @@ namespace Game.AI
 
             GameSignals.PostBanner($"You crowned us too.  (Coronation's Loss charging → {dmg:0} true damage)");
 
-            var warn = SpawnRect(transform.position,
-                crownTollRadius * 2f, crownTollRadius * 2f,
-                new Color(1f, 0.55f, 0.20f, 0.22f));
+            // 圆形预警（撑大+闪烁）→ 命中闪光（特效）
+            AoeTelegraph.Spawn(transform.position, crownTollRadius, crownTollWindup, 0.4f,
+                new Color(1f, 0.5f, 0.15f, 0.45f), new Color(1f, 0.8f, 0.3f, 0.85f), 6);
             yield return new WaitForSeconds(crownTollWindup);
-            if (warn != null) Destroy(warn);
+            Flash(transform.position, crownTollRadius);
 
             foreach (var col in Physics2D.OverlapCircleAll(transform.position, crownTollRadius))
             {
@@ -213,6 +217,52 @@ namespace Game.AI
                 });
             }
             _busy = false;
+        }
+
+        // 围绕玩家的「延时环形范围攻击」：在玩家四周布下一圈预警圆，windup 后同时炸开（带命中闪光）。
+        // 中心留有安全位 → 玩家可向圈内/缝隙处闪避。Boss 全程不动。
+        IEnumerator CastEncircle()
+        {
+            _busy = true;
+            _lastEncircle = Time.time;
+            GameSignals.PostBanner("The realm closes in.");
+            if (target == null) { _busy = false; yield break; }
+
+            Vector2 center = target.position;            // 起手时锁定玩家位置
+            var spots = new List<Vector2>(encircleCount);
+            float baseAng = Random.value * Mathf.PI * 2f;
+            for (int i = 0; i < encircleCount; i++)
+            {
+                float ang = baseAng + i * Mathf.PI * 2f / encircleCount;
+                spots.Add(center + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * encircleRing);
+            }
+
+            // 预警 + 特效（橙红撑大闪烁）
+            foreach (var s in spots)
+                AoeTelegraph.Spawn(s, encircleAoeRadius, encircleWindup, 0.35f,
+                    new Color(0.95f, 0.45f, 0.15f, 0.5f), new Color(1f, 0.85f, 0.4f, 0.85f), 6);
+
+            yield return new WaitForSeconds(encircleWindup);
+
+            foreach (var s in spots)
+            {
+                Flash(s, encircleAoeRadius);             // 命中闪光特效
+                foreach (var col in Physics2D.OverlapCircleAll(s, encircleAoeRadius))
+                {
+                    if (col.gameObject == gameObject) continue;
+                    col.GetComponent<IDamageable>()?.TakeDamage(new DamageInfo {
+                        Amount = encircleDamage, Type = DamageType.Magical, Source = gameObject
+                    });
+                }
+            }
+            _busy = false;
+        }
+
+        // 命中瞬间的明亮闪光特效（warnTime=0 → 直接命中色并快速淡出）
+        static void Flash(Vector2 pos, float radius)
+        {
+            AoeTelegraph.Spawn(pos, radius, 0f, 0.22f,
+                new Color(1f, 0.96f, 0.72f, 0.9f), new Color(1f, 0.96f, 0.72f, 0.9f), 8);
         }
 
         void ApplyKnockback(Collider2D col, float force)

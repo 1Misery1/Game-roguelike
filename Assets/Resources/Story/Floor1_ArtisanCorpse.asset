@@ -18,8 +18,8 @@ MonoBehaviour:
   spawnRoomIndex: 2
   spawnOffset: {x: 3, y: -2, z: 0}
   tintColor: {r: 0.18, g: 0.13, b: 0.1, a: 1}
-  visualScale: {x: 1.2, y: 0.7}
-  colliderSize: {x: 1.2, y: 0.9}
+  visualScale: {x: 1.25, y: 1.25}
+  colliderSize: {x: 2, y: 2}
   branches:
   - note: "\u9996\u6B21-\u65C1\u767D"
     minCount: 1

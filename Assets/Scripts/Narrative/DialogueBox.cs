@@ -1,18 +1,18 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 using UnityEngine.InputSystem;
 using Game.Art;
 using Game.UI;
 namespace Game.Narrative
 {
-    /// 对话框 UI（IMGUI 绘制），全局单例。
-    /// 调用方式：DialogueBox.Get().Play(lines, onComplete)。
-    /// 对话期间 Time.timeScale = 0，冻结战斗；点击 / 空格推进。
+    /// Dialogue box UI, global singleton. DialogueBox.Get().Play(lines, onComplete).
+    /// Time.timeScale = 0 while open (freezes combat); click / space advances. Body text auto-sizes (Best-Fit).
     public class DialogueBox : MonoBehaviour
     {
         public static DialogueBox Instance { get; private set; }
 
-        /// 对话是否正在显示（PlayerController 据此屏蔽输入）
+        /// Whether a dialogue is currently showing (PlayerController uses this to block input).
         public static bool IsActive => Instance != null && Instance._open;
 
         private readonly List<DialogueLine> _lines = new List<DialogueLine>();
@@ -20,10 +20,15 @@ namespace Game.Narrative
         private bool          _open;
         private System.Action _onComplete;
 
-        private Texture2D _bg;
-        private bool      _bgLoaded;
+        // UI components
+        private Canvas _canvas;
+        private Image  _portraitImg;
+        private Text   _nameText;
+        private Text   _bodyText;
+        private Text   _hintText;
+        private bool   _built;
 
-        /// 取得（或按需创建）单例
+        /// Get the singleton (creating it on demand).
         public static DialogueBox Get()
         {
             if (Instance == null)
@@ -54,12 +59,17 @@ namespace Game.Narrative
             _open       = true;
             Game.Core.GameSignals.DialogueActive = true;
             Time.timeScale = 0f;
+
+            EnsureUI();
+            _canvas.gameObject.SetActive(true);
+            Refresh();
         }
 
         private void Advance()
         {
             _index++;
             if (_index >= _lines.Count) Close();
+            else Refresh();
         }
 
         private void Close()
@@ -67,6 +77,7 @@ namespace Game.Narrative
             _open = false;
             Game.Core.GameSignals.DialogueActive = false;
             Time.timeScale = 1f;
+            if (_canvas != null) _canvas.gameObject.SetActive(false);
             var cb = _onComplete;
             _onComplete = null;
             cb?.Invoke();
@@ -82,20 +93,130 @@ namespace Game.Narrative
             if (advance) Advance();
         }
 
-        private Texture2D Background
+        // ── Refresh the current line ──────────────────────────────────────────
+        private void Refresh()
         {
-            get
-            {
-                if (!_bgLoaded)
-                {
-                    _bg = Resources.Load<Texture2D>("UI/dialogue_box");
-                    _bgLoaded = true;
-                }
-                return _bg;
-            }
+            if (_index < 0 || _index >= _lines.Count) return;
+            var line = _lines[_index];
+
+            _nameText.text = line.Speaker;
+            _bodyText.text = line.Text;
+            _hintText.text = _index < _lines.Count - 1
+                ? "▶  Click / Space  Continue" : "▶  Click / Space  End";
+
+            var portrait = ResolvePortrait(line.PortraitKey);
+            _portraitImg.sprite  = portrait;
+            _portraitImg.color   = portrait != null ? Color.white : new Color(1f, 1f, 1f, 0f);
+            _portraitImg.enabled = portrait != null;
         }
 
-        // 英雄立绘缓存（Resources/Portraits/{heroKey}.png）。含 null 缓存，避免每帧 Resources.Load。
+        // ── UI build (one-time) ───────────────────────────────────────────────
+        // Background art is 1672x941; each region uses fractional insets of that frame.
+        private void EnsureUI()
+        {
+            if (_built) return;
+            _built = true;
+
+            _canvas = UIFactory.CreateOverlayCanvas("DialogueCanvas", sortingOrder: 500);
+            _canvas.transform.SetParent(transform, false);
+
+            // Dialogue panel: bottom-centre of the screen, keeping the 1672:941 art ratio.
+            var box = UIFactory.Rect("Box", _canvas.transform);
+            box.anchorMin = new Vector2(0.5f, 0f);
+            box.anchorMax = new Vector2(0.5f, 0f);
+            box.pivot     = new Vector2(0.5f, 0f);
+            const float boxW = 640f, boxH = boxW * (941f / 1672f);   // ≈ 360 reference units
+            box.sizeDelta        = new Vector2(boxW, boxH);
+            box.anchoredPosition = new Vector2(0f, 18f);
+
+            // Background: prefer the texture; fall back to a dark block with top/bottom edges.
+            var bgTex = Resources.Load<Texture2D>("UI/dialogue_box");
+            if (bgTex != null)
+            {
+                var bg = UIFactory.Sprite("Bg", box, ToSprite(bgTex));
+                UIFactory.Stretch(bg.rectTransform);
+            }
+            else
+            {
+                var bg = UIFactory.Image("Bg", box, new Color(0.06f, 0.06f, 0.10f, 0.98f));
+                UIFactory.Stretch(bg.rectTransform);
+                var top = UIFactory.Image("TopLine", box, new Color(0.5f, 0.4f, 0.7f));
+                Frac(top.rectTransform, 0f, 0f, 1f, 0.006f);
+                var bot = UIFactory.Image("BotLine", box, new Color(0.5f, 0.4f, 0.7f));
+                Frac(bot.rectTransform, 0f, 0.994f, 1f, 0.006f);
+            }
+
+            // Portrait on the left (frame x[0.085,0.265], y from top [0.27,0.71]).
+            _portraitImg = UIFactory.Sprite("Portrait", box, null);
+            _portraitImg.preserveAspect = true;
+            Frac(_portraitImg.rectTransform, 0.085f, 0.27f, 0.180f, 0.44f);
+
+            // Name (gold, with shadow) x[0.35,0.91], y from top [0.175,0.305].
+            _nameText = UIFactory.Label("Name", box, "", 18, TextAnchor.MiddleLeft,
+                FontStyle.Bold, new Color(0.99f, 0.84f, 0.40f));
+            Frac(_nameText.rectTransform, 0.35f, 0.175f, 0.56f, 0.13f);
+            AddShadow(_nameText);
+
+            // Divider under the name x[0.35,0.882], y from top 0.325.
+            var div = UIFactory.Image("Divider", box, new Color(0.62f, 0.50f, 0.30f, 0.45f));
+            Frac(div.rectTransform, 0.35f, 0.325f, 0.56f * 0.95f, 0.004f);
+
+            // Body (near-white, auto-scaled to fit without overflow) x[0.35,0.91], y from top [0.375,0.76].
+            _bodyText = UIFactory.Label("Body", box, "", 18, TextAnchor.UpperLeft,
+                FontStyle.Normal, new Color(0.92f, 0.91f, 0.95f), wrap: true);
+            _bodyText.resizeTextForBestFit = true;   // auto-fit the body font
+            _bodyText.resizeTextMinSize    = 12;
+            _bodyText.resizeTextMaxSize    = 18;
+            Frac(_bodyText.rectTransform, 0.35f, 0.375f, 0.56f, 0.385f);
+            AddShadow(_bodyText);
+
+            // Advance hint x[0.35,0.91], y from top [0.79,0.90].
+            _hintText = UIFactory.Label("Hint", box, "", 11, TextAnchor.MiddleRight,
+                FontStyle.Italic, new Color(0.66f, 0.64f, 0.74f));
+            Frac(_hintText.rectTransform, 0.35f, 0.79f, 0.56f, 0.11f);
+        }
+
+        // Portrait: prefer real art (Resources/Portraits/{key}); fall back to a HeroSprites sprite.
+        private Sprite ResolvePortrait(string key)
+        {
+            if (string.IsNullOrEmpty(key)) return null;
+            var art = LoadPortraitArt(key);
+            if (art != null) return ToSprite(art);
+            return HeroSprites.Get(key);
+        }
+
+        // ── Helpers ───────────────────────────────────────────────────────────
+
+        // Set a child RectTransform's anchors from a top-down fractional rect (parent = box).
+        private static void Frac(RectTransform rt, float x, float yTop, float w, float h)
+        {
+            rt.anchorMin = new Vector2(x, 1f - (yTop + h));
+            rt.anchorMax = new Vector2(x + w, 1f - yTop);
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+        }
+
+        private static void AddShadow(Text t)
+        {
+            var s = t.gameObject.AddComponent<Shadow>();
+            s.effectColor    = new Color(0f, 0f, 0f, 0.75f);
+            s.effectDistance = new Vector2(1.5f, -1.5f);
+        }
+
+        // Texture2D → Sprite (cached to avoid rebuilding per line).
+        private static readonly Dictionary<Texture2D, Sprite> _spriteCache =
+            new Dictionary<Texture2D, Sprite>();
+        private static Sprite ToSprite(Texture2D tex)
+        {
+            if (tex == null) return null;
+            if (_spriteCache.TryGetValue(tex, out var s)) return s;
+            s = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height),
+                              new Vector2(0.5f, 0.5f), 100f);
+            _spriteCache[tex] = s;
+            return s;
+        }
+
+        // Hero portrait cache (Resources/Portraits/{heroKey}.png). Caches nulls too, to avoid per-frame Resources.Load.
         private static readonly Dictionary<string, Texture2D> _portraitArt =
             new Dictionary<string, Texture2D>();
         private static Texture2D LoadPortraitArt(string key)
@@ -104,138 +225,6 @@ namespace Game.Narrative
             t = Resources.Load<Texture2D>($"Portraits/{key}");
             _portraitArt[key] = t;
             return t;
-        }
-
-        // ── 布局 ──────────────────────────────────────────────────────────────
-        // 背景图 1672×941。各区域按背景图内框比例标定：
-        //   · 左侧头像内框 ≈ x[0.07~0.28]  y[0.21~0.79]
-        //   · 右侧文字面板 ≈ x[0.32~0.95]  y[0.13~0.87]
-        private void OnGUI()
-        {
-            if (!_open || _index >= _lines.Count) return;
-            var line = _lines[_index];
-
-            // 对话框周围保持透明，不再绘制全屏压暗遮罩
-
-            // 对话框尺寸（保持背景图 1672:941 比例），居于屏幕下方
-            float boxW = Mathf.Min(900f, Screen.width * 0.80f);
-            float boxH = boxW * (941f / 1672f);
-            float boxX = (Screen.width - boxW) * 0.5f;
-            float boxY = Screen.height - boxH - 36f;
-            var   box  = new Rect(boxX, boxY, boxW, boxH);
-
-            var bg = Background;
-            if (bg != null)
-            {
-                GUI.DrawTexture(box, bg, ScaleMode.StretchToFill);
-            }
-            else
-            {
-                // 背景图未导入时的回退绘制
-                FillRect(box, new Color(0.06f, 0.06f, 0.10f, 0.98f));
-                FillRect(new Rect(boxX, boxY, boxW, 2f), new Color(0.5f, 0.4f, 0.7f));
-                FillRect(new Rect(boxX, boxY + boxH - 2f, boxW, 2f), new Color(0.5f, 0.4f, 0.7f));
-            }
-
-            // 左侧头像（嵌入背景图的内框）：优先真立绘（Resources/Portraits/{key}.png），
-            // 缺失时回退到 HeroSprites 程序化精灵。
-            if (!string.IsNullOrEmpty(line.PortraitKey))
-            {
-                var portRect = new Rect(boxX + boxW * 0.085f, boxY + boxH * 0.27f,
-                                        boxW * 0.180f, boxH * 0.44f);
-                var art = LoadPortraitArt(line.PortraitKey);
-                if (art != null)
-                {
-                    GUI.DrawTexture(portRect, art, ScaleMode.ScaleToFit);
-                }
-                else
-                {
-                    var portrait = HeroSprites.Get(line.PortraitKey);
-                    if (portrait != null)
-                        GUI.DrawTexture(portRect, portrait.texture, ScaleMode.ScaleToFit);
-                }
-            }
-
-            // 右侧文字面板
-            float tx = boxX + boxW * 0.35f;
-            float tw = boxW * 0.56f;
-
-            // 名字（楷体，金色）
-            int nameSize = Mathf.RoundToInt(Mathf.Clamp(boxH * 0.052f, 16f, 30f));
-            ShadowLabel(new Rect(tx, boxY + boxH * 0.175f, tw, boxH * 0.13f), line.Speaker,
-                Style(NameFont, nameSize, TextAnchor.MiddleLeft, FontStyle.Bold,
-                      new Color(0.99f, 0.84f, 0.40f)));
-
-            // 名字下分隔线
-            FillRect(new Rect(tx, boxY + boxH * 0.325f, tw * 0.95f, 1f),
-                     new Color(0.62f, 0.50f, 0.30f, 0.45f));
-
-            // 对话正文（雅黑，近白）
-            int bodySize = Mathf.RoundToInt(Mathf.Clamp(boxH * 0.040f, 13f, 22f));
-            var bodyStyle = Style(UIFont, bodySize, TextAnchor.UpperLeft, FontStyle.Normal,
-                                  new Color(0.92f, 0.91f, 0.95f));
-            bodyStyle.wordWrap = true;
-            ShadowLabel(new Rect(tx, boxY + boxH * 0.375f, tw, boxH * 0.37f), line.Text, bodyStyle);
-
-            // 推进提示
-            string hint = _index < _lines.Count - 1 ? "▶  Click / Space  Continue" : "▶  Click / Space  End";
-            int hintSize = Mathf.RoundToInt(Mathf.Clamp(boxH * 0.030f, 11f, 16f));
-            GUI.Label(new Rect(tx, boxY + boxH * 0.79f, tw, boxH * 0.11f), hint,
-                Style(UIFont, hintSize, TextAnchor.MiddleRight, FontStyle.Italic,
-                      new Color(0.66f, 0.64f, 0.74f)));
-        }
-
-        // 字体由全局 UIFonts 统一提供（方舟像素体；缺失时系统中文兜底）
-        private static Font UIFont   => UIFonts.UI;
-        private static Font NameFont => UIFont;
-
-        // ── IMGUI 工具 ────────────────────────────────────────────────────────
-        private static Texture2D _white;
-        private static Texture2D White
-        {
-            get
-            {
-                if (_white == null)
-                {
-                    _white = new Texture2D(1, 1);
-                    _white.SetPixel(0, 0, Color.white);
-                    _white.Apply();
-                    _white.hideFlags = HideFlags.HideAndDontSave;
-                }
-                return _white;
-            }
-        }
-
-        private static void FillRect(Rect r, Color c)
-        {
-            var prev = GUI.color;
-            GUI.color = c;
-            GUI.DrawTexture(r, White);
-            GUI.color = prev;
-        }
-
-        // 带投影的文字，提升在贴图背景上的可读性
-        private static void ShadowLabel(Rect r, string text, GUIStyle style)
-        {
-            var orig = style.normal.textColor;
-            style.normal.textColor = new Color(0f, 0f, 0f, 0.75f);
-            GUI.Label(new Rect(r.x + 1.5f, r.y + 1.5f, r.width, r.height), text, style);
-            style.normal.textColor = orig;
-            GUI.Label(r, text, style);
-        }
-
-        private static GUIStyle Style(Font font, int size, TextAnchor align, FontStyle fs, Color color)
-        {
-            var s = new GUIStyle(GUI.skin.label)
-            {
-                fontSize  = size,
-                alignment = align,
-                fontStyle = fs,
-                richText  = false,
-            };
-            if (font != null) s.font = font;
-            s.normal.textColor = color;
-            return s;
         }
     }
 }

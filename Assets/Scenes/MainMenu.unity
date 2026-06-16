@@ -152,7 +152,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   menuSceneName: MainMenu
-  dungeonSceneName: Test
+  dungeonSceneName: Dungeon
+  trainingSceneName: Training
 --- !u!4 &796734669
 Transform:
   m_ObjectHideFlags: 0
@@ -177,7 +178,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1904950320}
-  - component: {fileID: 1904950319}
   m_Layer: 0
   m_Name: Menu
   m_TagString: Untagged
@@ -185,18 +185,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1904950319
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1904950318}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5ca0660b877669e4d80ee30353415aa5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!4 &1904950320
 Transform:
   m_ObjectHideFlags: 0

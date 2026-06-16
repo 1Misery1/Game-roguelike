@@ -19,6 +19,7 @@ namespace Game.Bootstrap
         [SerializeField] private float playHalfH    = 7.2f; // 可走区域半高
         [SerializeField] private int   dummyCount   = 4;
 
+        private TrainingLayout _layout;       // 可视化布局锚点（有则用其坐标，无则用内置值）
         private GameObject _player;
         private Camera     _cam;
         private Vector3    _exitPos;
@@ -29,11 +30,15 @@ namespace Game.Bootstrap
 
         private string _msg = "";
         private float  _msgUntil;
-        private GUIStyle _center;
+        private Game.UI.TrainingHudView _hud;
 
         private void Start()
         {
             gameObject.AddComponent<DamageNumbers>();   // 伤害数字单例
+
+            _layout = FindObjectOfType<TrainingLayout>();
+            if (_layout != null)   // 用布局锚点覆盖可走边界
+            { playHalfW = _layout.boundaryHalf.x; playHalfH = _layout.boundaryHalf.y; }
 
             _hero = ResolveHero();
             BuildArena();
@@ -90,8 +95,10 @@ namespace Game.Bootstrap
             MakeWall(root.transform, new Vector3(-playHalfW, 0f, 0f), new Vector2(t, playHalfH * 2f));
             MakeWall(root.transform, new Vector3( playHalfW, 0f, 0f), new Vector2(t, playHalfH * 2f));
 
-            // 右下角大门 + 出口垫：走上去按 E 返回营地
-            _gatePos = new Vector3(playHalfW - 1.8f, -playHalfH + 0.9f, 0f);
+            // 右下角大门 + 出口垫：走上去按 E 返回营地（布局锚点可覆盖位置）
+            _gatePos = (_layout != null && _layout.HasReturnPoint)
+                ? _layout.returnPoint.position
+                : new Vector3(playHalfW - 1.8f, -playHalfH + 0.9f, 0f);
             _exitPos = _gatePos;
             var exit = MakeQuad(root.transform, "ExitPad", _exitPos, new Vector2(1f, 1f),
                                 new Color(0.95f, 0.7f, 0.35f, 0.28f), -90);
@@ -139,16 +146,34 @@ namespace Game.Bootstrap
         // ── 木桩：摆在中央较场上,一排面向玩家 ──────────────────────────
         private void SpawnDummies()
         {
+            // 布局锚点优先：每个非空锚点生成一个假人
+            if (_layout != null && _layout.dummySpawns != null && _layout.DummyCount > 0)
+            {
+                int k = 0;
+                foreach (var t in _layout.dummySpawns)
+                {
+                    if (t == null) continue;
+                    MakeDummy("StrawDummy_" + k++, t.position);
+                }
+                return;
+            }
+
+            // 回退：按数量横向铺开
             int n = Mathf.Max(1, dummyCount);
             float span = playHalfW * 1.0f;            // 横向铺开范围
             for (int i = 0; i < n; i++)
             {
                 float fx = n == 1 ? 0f : Mathf.Lerp(-span * 0.5f, span * 0.5f, i / (float)(n - 1));
-                var go = new GameObject("StrawDummy_" + i);
-                go.transform.position   = new Vector3(fx, 0.2f, 0f);   // 基座落在中央较场圆心一带
-                go.transform.localScale = new Vector3(0.46f, 0.46f, 1f);
-                go.AddComponent<TrainingDummy>();
+                MakeDummy("StrawDummy_" + i, new Vector3(fx, 0.2f, 0f));
             }
+        }
+
+        private void MakeDummy(string name, Vector3 pos)
+        {
+            var go = new GameObject(name);
+            go.transform.position   = pos;
+            go.transform.localScale = new Vector3(0.46f, 0.46f, 1f);
+            go.AddComponent<TrainingDummy>();
         }
 
         // ── 玩家真身（与地牢一致的装配，简化版）───────────────────────
@@ -162,8 +187,10 @@ namespace Game.Bootstrap
 
             _player = new GameObject("Player_" + hero.heroName);
             _player.tag                  = "Player";
-            // 自右下角大门进场:出现在门边、面朝场内
-            _player.transform.position   = _gatePos + Vector3.up * 1.8f;
+            // 出生点：布局锚点优先；否则自右下角大门进场(门边、面朝场内)
+            _player.transform.position   = (_layout != null && _layout.HasPlayerSpawn)
+                ? _layout.playerSpawn.position
+                : _gatePos + Vector3.up * 1.8f;
             _player.transform.localScale = new Vector3(0.8f, 0.8f, 1f);
 
             var sr = _player.AddComponent<SpriteRenderer>();
@@ -245,10 +272,22 @@ namespace Game.Bootstrap
 
         private void Update()
         {
-            if (_player == null) return;
-            _nearExit = ((Vector2)(_player.transform.position - _exitPos)).sqrMagnitude <= 1.6f * 1.6f;
-            if ((_nearExit && Input.GetKeyDown(KeyCode.E)) || Input.GetKeyDown(KeyCode.Escape))
-                ReturnToHub();
+            if (_player != null)
+            {
+                _nearExit = ((Vector2)(_player.transform.position - _exitPos)).sqrMagnitude <= 1.6f * 1.6f;
+                if ((_nearExit && Input.GetKeyDown(KeyCode.E)) || Input.GetKeyDown(KeyCode.Escape))
+                    ReturnToHub();
+            }
+            EnsureHud();
+            _hud.SetExitPrompt(_nearExit);
+            _hud.SetBanner(Time.unscaledTime < _msgUntil && !string.IsNullOrEmpty(_msg), _msg);
+        }
+
+        private void EnsureHud()
+        {
+            if (_hud != null) return;
+            _hud = new GameObject("TrainingHud").AddComponent<Game.UI.TrainingHudView>();
+            _hud.SetControls(Controls);
         }
 
         private void ReturnToHub()
@@ -267,32 +306,18 @@ namespace Game.Bootstrap
 
         private void Flash(string msg, float dur) { _msg = msg; _msgUntil = Time.unscaledTime + dur; }
 
-        private void OnGUI()
+        // 控制提示行（key, action）—— 完整列出训练场可用操作
+        private static readonly string[,] Controls =
         {
-            if (_center == null)
-                _center = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter };
+            { "WASD",            "Move" },
+            { "Space / LMB",     "Attack" },
+            { "R / RMB",         "Weapon Skill" },
+            { "F",               "Hero Skill" },
+            { "Q",               "Swap Weapon" },
+            { "E",               "Interact" },
+            { "Esc",             "Return to Camp" },
+        };
 
-            GUI.color = new Color(0.95f, 0.85f, 0.55f);
-            GUI.Label(new Rect(12, 8, 400, 26), "Embers of the Three Realms — Training Arena");
-            GUI.color = Color.white;
-            GUI.Label(new Rect(12, 32, 600, 22), "WASD move · Space/Left-click attack · R weapon skill · F hero skill · Q swap weapon · Esc back");
-
-            if (_nearExit)
-            {
-                var r = new Rect(Screen.width * 0.5f - 200, Screen.height - 64, 400, 26);
-                GUI.color = new Color(0f, 0f, 0f, 0.5f); GUI.Box(r, GUIContent.none);
-                GUI.color = new Color(0.7f, 0.95f, 1f); GUI.Label(r, "[E] Return to Camp", _center);
-                GUI.color = Color.white;
-            }
-
-            if (Time.unscaledTime < _msgUntil && !string.IsNullOrEmpty(_msg))
-            {
-                var r = new Rect(Screen.width * 0.5f - 380, Screen.height * 0.5f + 130, 760, 28);
-                GUI.color = new Color(0f, 0f, 0f, 0.55f); GUI.Box(r, GUIContent.none);
-                GUI.color = new Color(0.95f, 0.9f, 0.8f); GUI.Label(r, _msg, _center);
-                GUI.color = Color.white;
-            }
-        }
 
         private static Sprite _unit;
         private static Sprite UnitSquare()

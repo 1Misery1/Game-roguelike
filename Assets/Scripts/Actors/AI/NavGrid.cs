@@ -21,6 +21,11 @@ namespace Game.AI
         /// 是否已构建过有效地图（未建图的场景如训练场不应阻挡敌人移动）
         public static bool HasMap { get; private set; }
 
+        /// 敌人寻路是否无视墙体/石柱与岩浆危险格（走直线穿过）。
+        /// 默认 false：保留 hazard-aware A*（敌人绕墙/绕岩浆）。被击退飞出墙外的「卡死」
+        /// 由 EnemyStuckRecovery 兜底（拉回最近可走格），而非靠穿墙。
+        public static bool IgnoreObstacles = false;
+
         public static void Build(string[] rows)
         {
             HasMap = true;
@@ -75,16 +80,37 @@ namespace Game.AI
         public static Vector2 CellToWorld(Vector2Int cell)
             => new Vector2(cell.x - W * 0.5f + 0.5f, H * 0.5f - cell.y - 0.5f);
 
+        /// 距离 world 最近的「真实可走」格的世界坐标（供卡墙兜底拉回用）。
+        public static Vector2 NearestWalkableWorld(Vector2 world)
+        {
+            var c = WorldToCell(world);
+            if (IsWalkable(c.x, c.y)) return CellToWorld(c);
+            for (int rad = 1; rad < 14; rad++)
+            for (int dy = -rad; dy <= rad; dy++)
+            for (int dx = -rad; dx <= rad; dx++)
+            {
+                if (Mathf.Abs(dx) != rad && Mathf.Abs(dy) != rad) continue;   // 只看当前环
+                if (IsWalkable(c.x + dx, c.y + dy)) return CellToWorld(new Vector2Int(c.x + dx, c.y + dy));
+            }
+            return CellToWorld(c);
+        }
+
+        /// 真实地形可走性（墙/石柱 = 不可走）。供放置/footprint 校验等使用——不受 IgnoreObstacles 影响。
         public static bool IsWalkable(int c, int r)
             => c >= 0 && c < W && r >= 0 && r < H && _w[c, r];
+
+        /// 寻路/移动专用可走性：IgnoreObstacles 时无视墙/柱（敌人走直线穿过）。
+        /// 仅给 A* 内部与 EnemyNavigator 用，别用于物体放置。
+        public static bool PathWalkable(int c, int r)
+            => c >= 0 && c < W && r >= 0 && r < H && (IgnoreObstacles || _w[c, r]);
 
         // Returns world-space waypoints from 'from' to 'to', excluding the start position.
         public static List<Vector2> FindPath(Vector2 from, Vector2 to)
         {
             var start = WorldToCell(from);
             var goal  = WorldToCell(to);
-            if (!IsWalkable(goal.x,  goal.y))  goal  = NearestWalkable(goal);
-            if (!IsWalkable(start.x, start.y)) start = NearestWalkable(start);
+            if (!PathWalkable(goal.x,  goal.y))  goal  = NearestWalkable(goal);
+            if (!PathWalkable(start.x, start.y)) start = NearestWalkable(start);
             if (start == goal) return new List<Vector2>();
 
             var open   = new List<(float f, Vector2Int n)>();
@@ -129,7 +155,7 @@ namespace Game.AI
         static float MoveCost(Vector2Int a, Vector2Int b)
         {
             float baseCost = (a.x != b.x && a.y != b.y) ? 1.414f : 1f;
-            return baseCost + _hazard[b.x, b.y];
+            return baseCost + (IgnoreObstacles ? 0 : _hazard[b.x, b.y]);
         }
 
         static IEnumerable<Vector2Int> Neighbors(Vector2Int c)
@@ -139,10 +165,10 @@ namespace Game.AI
             {
                 if (dx == 0 && dy == 0) continue;
                 int nx = c.x + dx, ny = c.y + dy;
-                if (!IsWalkable(nx, ny)) continue;
+                if (!PathWalkable(nx, ny)) continue;
                 // Block diagonal movement through wall corners
                 if (dx != 0 && dy != 0 &&
-                    (!IsWalkable(c.x + dx, c.y) || !IsWalkable(c.x, c.y + dy)))
+                    (!PathWalkable(c.x + dx, c.y) || !PathWalkable(c.x, c.y + dy)))
                     continue;
                 yield return new Vector2Int(nx, ny);
             }
@@ -156,7 +182,7 @@ namespace Game.AI
             {
                 if (Mathf.Abs(dx) != rad && Mathf.Abs(dy) != rad) continue;
                 var c = new Vector2Int(cell.x + dx, cell.y + dy);
-                if (IsWalkable(c.x, c.y)) return c;
+                if (PathWalkable(c.x, c.y)) return c;
             }
             return cell;
         }

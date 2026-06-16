@@ -58,6 +58,12 @@ UpgradeLog*.htm
 *.aab
 *.unitypackage
 *.app
+*.zip
+
+# ── AI tooling config & local working/notes folders (not part of the submission) ──
+.claude/
+/Docs/
+photo/
 
 # Crashlytics generated file
 crashlytics-build.properties

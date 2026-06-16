@@ -50,6 +50,7 @@ namespace Game.AI
         private void OnTriggerEnter2D(Collider2D other)
         {
             if (owner != null && other.gameObject == owner) return;
+            if (Game.AI.EnemyTag.IsFlyingEnemy(other)) return;   // 飞行怪免疫岩浆
             var d = other.GetComponent<IDamageable>();
             if (d != null) _inside.Add(d);
         }

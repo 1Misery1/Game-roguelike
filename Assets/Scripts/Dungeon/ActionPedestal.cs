@@ -75,53 +75,31 @@ namespace Game.Dungeon
             if (_sr != null) _sr.color = original;
         }
 
-        private void OnGUI()
+        private WorldLabel _label;
+
+        private void LateUpdate()
         {
-            if (usesLeft <= 0) return;
-            if (Camera.main == null) return;
-            UIFonts.ApplyToSkin();
+            if (usesLeft <= 0) { _label?.Hide(); return; }
+            if (_label == null) _label = gameObject.AddComponent<WorldLabel>();
 
-            Vector3 screen = Camera.main.WorldToScreenPoint(transform.position + Vector3.up * 0.9f);
-            if (screen.z < 0) return;
-            float x = screen.x - 90f;
-            float y = Screen.height - screen.y - 20f;
-
-            string label;
-            Color labelColor;
-            string detail;
+            string label; Color labelColor; string detail;
             switch (action)
             {
                 case ActionType.Forge:
                     label = "Forge"; labelColor = new Color(1f, 0.65f, 0.2f);
-                    detail = $"[{price}c]  {usesLeft} left";
-                    break;
+                    detail = $"[{price}c]  {usesLeft} left"; break;
                 case ActionType.Enchant:
                     label = "Enchant"; labelColor = new Color(0.6f, 0.4f, 1f);
-                    detail = $"[{price}c]  {usesLeft} left";
-                    break;
+                    detail = $"[{price}c]  {usesLeft} left"; break;
                 default: // HealthPotion
                     label = "Health Potion"; labelColor = new Color(0.2f, 0.95f, 0.4f);
-                    detail = $"[{price}c]  restore 40% HP";
-                    break;
+                    detail = $"[{price}c]  restore 40% HP"; break;
             }
 
-            var titleStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 13, alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold,
-                normal = { textColor = labelColor }
-            };
-            GUI.Label(new Rect(x, y, 180, 20), $"{label}  {detail}", titleStyle);
-
-            if (_inRange)
-            {
-                var hint = new GUIStyle(GUI.skin.label)
-                {
-                    fontSize = 12, alignment = TextAnchor.MiddleCenter,
-                    normal = { textColor = Color.white }
-                };
-                string hintText = action == ActionType.HealthPotion ? "[E] Use" : "[E] Use (current weapon first)";
-                GUI.Label(new Rect(x, y + 20f, 180, 18), hintText, hint);
-            }
+            string hint = action == ActionType.HealthPotion ? "[E] Use" : "[E] Use (active weapon)";
+            string content = $"<b><color=#{WorldLabel.Hex(labelColor)}>{label}   {detail}</color></b>";
+            if (_inRange) content += $"\n<color=#BFFFBF>{hint}</color>";
+            _label.Set(transform.position + Vector3.up * 0.9f, labelColor, content);
         }
     }
 }

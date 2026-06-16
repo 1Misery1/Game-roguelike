@@ -2516,6 +2516,7 @@ MonoBehaviour:
   sealCrackBaseWidth: 1.5
   moveSpeed: 6
   interactRadius: 1.7
+  labelRevealRadius: 2.9
   playerRadius: 0.42
   obstacleMask:
     serializedVersion: 2
@@ -23999,7 +24000,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   menuSceneName: Hub
-  dungeonSceneName: Test
+  dungeonSceneName: Dungeon
   trainingSceneName: Training
 --- !u!4 &2146311225
 Transform:
