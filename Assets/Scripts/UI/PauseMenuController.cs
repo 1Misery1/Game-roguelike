@@ -50,5 +50,16 @@ namespace Game.UI
             if (gm != null) gm.ReturnToMenu();
             else SceneManager.LoadScene("Hub");
         }
+
+        /// Quit the application (returns to the OS). Stops play mode inside the editor.
+        public void QuitGame()
+        {
+            Time.timeScale = 1f;
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
+        }
     }
 }
