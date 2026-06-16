@@ -196,13 +196,7 @@ namespace Game.Bootstrap
         public enum EndingTier { Normal, Truth, Crown }
 
         private EndingTier _endingTier;
-        private int        _debugEndingIdx;   // 调试：F9 循环结局档位用
-#if UNITY_EDITOR
-        // 调试后门：按过 F10（强制隐藏 Boss）后，F9 结局预览直接锁定王冠结局「王国之罪」。
-        // 详见 Docs/DEBUG_BACKDOORS.md，发布前清除。
-        private bool       _debugForceCrownEnding;
-#endif
-        private bool       _isTrueEnding;   // 兼容旧逻辑：Truth/Crown 都视作 true
+        private bool       _isTrueEnding;   // Truth/Crown both count as a true ending
         private int        _endingTruthCount;
         private float      _cutsceneDuration;   // 仅用于结局开始事件通知（音频淡入等）
         private int        _cutsceneFrame;      // 手动推进的当前帧索引
@@ -2588,27 +2582,6 @@ namespace Game.Bootstrap
         // 摄像机跟随玩家，并夹紧到地图边界
         private void LateUpdate()
         {
-#if UNITY_EDITOR
-            // 调试快捷键（仅编辑器）：F9 直接跳到结局过场，循环 Normal→Truth→Crown，便于预览多帧+字幕。
-            var dbgKb = UnityEngine.InputSystem.Keyboard.current;
-            if (dbgKb != null && dbgKb.f9Key.wasPressedThisFrame)
-            {
-                // 后门：按过 F10（隐藏 Boss）后，F9 直接预览「王国之罪」王冠结局；否则循环三档
-                if (_debugForceCrownEnding) _endingTier = EndingTier.Crown;
-                else                        _endingTier = (EndingTier)(_debugEndingIdx++ % 3);
-                _isTrueEnding = _endingTier != EndingTier.Normal;
-                _endingTruthCount = _persistent != null && _persistent.TruthFlags != null ? _persistent.TruthFlags.Count : 0;
-                ShowBanner($"[DEBUG] Ending preview: {_endingTier}  ({(_debugForceCrownEnding ? "F10 backdoor → Crown" : "F9 to cycle")})");
-                EnterEndingCutscene();
-                return;
-            }
-            // F10：直接调出隐藏 Boss「王国之罪」战斗（无需集旗/通关，仅编辑器）。
-            if (dbgKb != null && dbgKb.f10Key.wasPressedThisFrame && _player != null)
-            {
-                DebugForceHiddenBoss();
-                return;
-            }
-#endif
             // HUD: only shown and refreshed while Playing; hidden in other states (summary / cutscene use overlays).
             EnsureHud();
             _hud.SetVisible(_state == State.Playing);
@@ -2661,31 +2634,6 @@ namespace Game.Bootstrap
             float cy  = Mathf.Clamp(py, -ArenaHalfH + hh, ArenaHalfH - hh);
             cam.transform.position = new Vector3(cx, cy, cam.transform.position.z);
         }
-
-#if UNITY_EDITOR
-        // 调试：一键调出隐藏 Boss「王国之罪」战斗——跳到最终层、重建 Boss 矩形竞技场、立即召唤，
-        // 跳过 4 真相旗与三层流程。仅编辑器内可用（F10）。打赢同样记 truth_final_boss_defeated → 王冠结局。
-        private void DebugForceHiddenBoss()
-        {
-            if (_player == null) return;
-            if (_state == State.EndingCutscene) return;
-
-            _debugForceCrownEnding = true;                 // 后门：之后按 F9 直接预览王冠结局
-            CurrentFloor = maxFloor;                       // 用最终层缩放
-            RebuildArenaGeometry(forceRect: true, clean: true); // Boss 房：规整矩形 + 纯地板外墙
-            _arenaIsRect = true; _arenaIsClean = true;
-            SetFloorBackground();
-
-            if (_currentRoomRoot != null) Destroy(_currentRoomRoot);
-            _currentRoomRoot = new GameObject("Room_DebugHiddenBoss");
-            _player.transform.position = _mapInfo.PlayerSpawn;
-
-            _hiddenBossSpawned = false;
-            _state = State.Playing;
-            ShowBanner("[DEBUG] Summoning Kingdom's Guilt…  (F10)");
-            SpawnHiddenBoss();                              // 含 4 句战前铭文，对话结束后实体登场
-        }
-#endif
 
         private static readonly string[] _variantLetters = { "A", "B", "C" };
 
