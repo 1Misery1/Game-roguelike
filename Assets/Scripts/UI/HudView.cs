@@ -11,17 +11,6 @@ namespace Game.UI
     {
         /// 左侧栏一行：左竖条 + 标题 + 副标题。
         public struct Chip { public Color color; public string title; public string subtitle; }
-        /// 武器槽快照（文本由 GameBootstrap 预先算好，HUD 不碰武器内部逻辑）。
-        public struct WeaponSlot
-        {
-            public bool   occupied;
-            public bool   active;
-            public Sprite icon;
-            public Color  color;
-            public string line1;
-            public string line2;
-        }
-
         private Canvas _canvas;
 
         // 顶栏
@@ -35,22 +24,13 @@ namespace Game.UI
         private GameObject _corrGroup; private Text _corrTier, _corrValue; private Image _corrFill;
         // 英雄技能
         private GameObject _heroSkillGroup; private Image _heroSkillFill; private Text _heroSkillText;
-        // 武器面板
-        private GameObject _weaponPanel;
-        private SlotWidgets[] _slots;
-        private GameObject _wSkillGroup; private Image _wSkillFill; private Text _wSkillText;
+        // 武器面板（可复用部件，Dungeon / Training 共用）
+        private WeaponPanelView _weapon;
         // 左侧栏
         private Transform _talentsPanel, _itemsPanel, _synergiesPanel;
         private string _talentsSig, _itemsSig, _synergiesSig;
         // 横幅
         private GameObject _bannerGroup; private Text _bannerText;
-
-        private class SlotWidgets
-        {
-            public GameObject highlight, accent;
-            public Image icon;
-            public Text  line1, line2;
-        }
 
         private void Awake() => Build();
 
@@ -71,7 +51,7 @@ namespace Game.UI
             BuildHpBar(root);
             BuildGoldCorruption(root);
             BuildHeroSkill(root);
-            BuildWeaponPanel(root);
+            _weapon = new WeaponPanelView(); _weapon.Build(root);
             BuildLeftColumn(root);
             BuildBanner(root);
         }
@@ -178,54 +158,6 @@ namespace Game.UI
             _heroSkillGroup.SetActive(false);
         }
 
-        private void BuildWeaponPanel(Transform root)
-        {
-            const float PW = 190f;   // 贴底放在血条右侧
-            var p = UIFactory.Image("WeaponPanel", root, new Color(0f, 0f, 0f, 0.72f));
-            var prt = p.rectTransform;
-            prt.anchorMin = prt.anchorMax = new Vector2(1f, 0f); prt.pivot = new Vector2(1f, 0f);
-            prt.sizeDelta = new Vector2(PW, 46f); prt.anchoredPosition = new Vector2(-8f, 8f);
-            _weaponPanel = p.gameObject;
-
-            var top = UIFactory.Image("Accent", p.transform, new Color(0.5f, 0.5f, 0.6f, 0.4f));
-            Top(top.rectTransform, 0f, 0f, PW, 2f);
-
-            _slots = new SlotWidgets[2];
-            for (int i = 0; i < 2; i++)
-            {
-                var s = new SlotWidgets();
-                float slotY = i * 16f;   // 2 槽各 15 高,共 0~31
-
-                var hl = UIFactory.Image($"Hl{i}", p.transform, new Color(0.18f, 0.22f, 0.38f, 0.7f));
-                Top(hl.rectTransform, 0f, slotY, PW, 15f);
-                s.highlight = hl.gameObject;
-
-                var ac = UIFactory.Image($"Ac{i}", p.transform, new Color(0.45f, 0.75f, 1f));
-                Top(ac.rectTransform, 0f, slotY + 1f, 2f, 13f);
-                s.accent = ac.gameObject;
-
-                s.icon = UIFactory.Image($"Icon{i}", p.transform, new Color(0.08f, 0.08f, 0.1f));
-                Top(s.icon.rectTransform, 3f, slotY + 2f, 12f, 12f);
-
-                s.line1 = UIFactory.Label($"L1_{i}", p.transform, "", 9, TextAnchor.MiddleLeft);
-                Top(s.line1.rectTransform, 16f, slotY + 0f, PW - 18f, 9f);
-                s.line2 = UIFactory.Label($"L2_{i}", p.transform, "", 7, TextAnchor.MiddleLeft);
-                Top(s.line2.rectTransform, 16f, slotY + 8f, PW - 18f, 8f);
-
-                _slots[i] = s;
-            }
-
-            _wSkillFill = Bar(p.transform, "WSkill", new Color(0.12f, 0.12f, 0.18f),
-                new Color(0.25f, 0.4f, 0.85f), out var sbar);
-            Top(sbar, 0f, 32f, PW, 13f);   // 技能条放在两槽之下(32~45),刚好落在 46 内
-            _wSkillGroup = sbar.gameObject;
-            _wSkillText = UIFactory.Label("WSkillTxt", p.transform, "", 8, TextAnchor.MiddleCenter,
-                FontStyle.Normal, Color.white);
-            Top(_wSkillText.rectTransform, 0f, 32f, PW, 13f);
-
-            _weaponPanel.SetActive(false);
-        }
-
         private void BuildLeftColumn(Transform root)
         {
             var col = UIFactory.Rect("LeftColumn", root);
@@ -326,43 +258,9 @@ namespace Game.UI
             _heroSkillText.color = ready ? new Color(1f, 0.96f, 0.45f) : Color.white;
         }
 
-        public void SetWeapon(bool visible, WeaponSlot slot0, WeaponSlot slot1,
+        public void SetWeapon(bool visible, WeaponPanelView.WeaponSlot slot0, WeaponPanelView.WeaponSlot slot1,
                               bool skillVisible, bool skillReady, float skillFill, string skillLabel)
-        {
-            if (_weaponPanel == null || _slots == null) return;   // 防御:画布未完整构建时不抛异常中断整个 HUD 刷新
-            _weaponPanel.SetActive(visible);
-            if (!visible) return;
-
-            if (_slots[0] != null) ApplySlot(_slots[0], slot0);
-            if (_slots[1] != null) ApplySlot(_slots[1], slot1);
-
-            _wSkillGroup.SetActive(skillVisible);
-            _wSkillText.gameObject.SetActive(skillVisible);
-            if (skillVisible)
-            {
-                SetFill(_wSkillFill, skillFill);
-                _wSkillFill.color = skillReady ? new Color(0.25f, 0.8f, 0.28f) : new Color(0.25f, 0.4f, 0.85f);
-                _wSkillText.text = skillLabel;
-                _wSkillText.color = skillReady ? new Color(0.55f, 1f, 0.55f) : new Color(0.75f, 0.8f, 1f);
-            }
-        }
-
-        private void ApplySlot(SlotWidgets w, WeaponSlot data)
-        {
-            w.highlight.SetActive(data.active);
-            w.accent.SetActive(data.active);
-
-            if (data.occupied && data.icon != null) { w.icon.sprite = data.icon; w.icon.color = Color.white; }
-            else { w.icon.sprite = null; w.icon.color = data.occupied ? data.color * 0.5f : new Color(0.2f, 0.2f, 0.22f); }
-
-            w.line1.text  = data.line1;
-            w.line1.color = data.color;
-            w.line1.fontStyle = data.active ? FontStyle.Bold : FontStyle.Normal;
-
-            w.line2.text  = data.line2 ?? "";
-            w.line2.color = data.color * 0.82f;
-            w.line2.gameObject.SetActive(!string.IsNullOrEmpty(data.line2));
-        }
+            => _weapon?.SetWeapon(visible, slot0, slot1, skillVisible, skillReady, skillFill, skillLabel);
 
         public void SetTalents(List<Chip> chips)
             => RebuildChips(_talentsPanel, ref _talentsSig, chips, null, default, new Color(0.95f, 0.85f, 0.4f, 0.6f));

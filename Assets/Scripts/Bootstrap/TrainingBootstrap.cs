@@ -276,12 +276,13 @@ namespace Game.Bootstrap
             if (_player != null)
             {
                 _nearExit = ((Vector2)(_player.transform.position - _exitPos)).sqrMagnitude <= 1.6f * 1.6f;
-                if ((_nearExit && Input.GetKeyDown(KeyCode.E)) || Input.GetKeyDown(KeyCode.Escape))
+                if (_nearExit && Input.GetKeyDown(KeyCode.E))   // ESC is handled by the shared pause menu
                     ReturnToHub();
             }
             EnsureHud();
             _hud.SetExitPrompt(_nearExit);
             _hud.SetBanner(Time.unscaledTime < _msgUntil && !string.IsNullOrEmpty(_msg), _msg);
+            RefreshWeapon();
         }
 
         private void EnsureHud()
@@ -289,6 +290,43 @@ namespace Game.Bootstrap
             if (_hud != null) return;
             _hud = new GameObject("TrainingHud").AddComponent<Game.UI.TrainingHudView>();
             _hud.SetControls(Controls);
+        }
+
+        // Feed the shared weapon panel each frame from the possessed hero's weapons.
+        private void RefreshWeapon()
+        {
+            var handler = _player != null ? _player.GetComponent<PlayerWeaponHandler>() : null;
+            if (handler == null) { _hud.SetWeapon(false, default, default, false, false, 0f, null); return; }
+
+            bool   hasSkill = handler.ActiveWeapon?.Data?.HasSkill == true;
+            bool   ready    = handler.SkillReady;
+            float  fill     = 1f - handler.SkillCooldownRatio;
+            string label    = hasSkill
+                ? (ready ? $"[R] {handler.ActiveWeapon.Data.skill.skillName}  ✦ Ready!"
+                         : $"[R] {handler.ActiveWeapon.Data.skill.skillName}  CD {handler.SkillCooldownRemaining:0.0}s")
+                : null;
+            _hud.SetWeapon(true, BuildWeaponSlot(handler, 0), BuildWeaponSlot(handler, 1),
+                           hasSkill, ready, fill, label);
+        }
+
+        private Game.UI.WeaponPanelView.WeaponSlot BuildWeaponSlot(PlayerWeaponHandler handler, int i)
+        {
+            var wi      = handler.Slots[i];
+            bool active = handler.ActiveSlotIndex == i;
+            var slot    = new Game.UI.WeaponPanelView.WeaponSlot { occupied = wi != null, active = active };
+            if (wi == null)
+            {
+                slot.color = new Color(0.38f, 0.38f, 0.42f);
+                slot.line1 = $"{(active ? "▶ " : "   ")}Slot {i + 1}  [Empty]";
+                return slot;
+            }
+            Color rc = WeaponData.GetRarityColor(wi.Data.rarity);
+            if (!active) rc *= 0.65f;
+            slot.color = rc;
+            slot.icon  = WeaponSprites.Get(wi.Data.weaponName);
+            slot.line1 = $"{(active ? "▶ " : "   ")}{wi.ShortName}  {wi.EffectiveDamage:0} dmg  {wi.Data.attackSpeed:0.0}/s";
+            slot.line2 = $"Forge+{wi.UpgradeLevel}/{wi.Data.maxUpgradeLevel}";
+            return slot;
         }
 
         private void ReturnToHub()

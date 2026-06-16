@@ -3025,11 +3025,11 @@ namespace Game.Bootstrap
             _hud.SetBanner(bannerOn, _bannerMessage);
         }
 
-        private Game.UI.HudView.WeaponSlot BuildWeaponSlot(PlayerWeaponHandler handler, int i)
+        private Game.UI.WeaponPanelView.WeaponSlot BuildWeaponSlot(PlayerWeaponHandler handler, int i)
         {
             var wi     = handler.Slots[i];
             bool active = handler.ActiveSlotIndex == i;
-            var slot   = new Game.UI.HudView.WeaponSlot { occupied = wi != null, active = active };
+            var slot   = new Game.UI.WeaponPanelView.WeaponSlot { occupied = wi != null, active = active };
             if (wi == null)
             {
                 slot.color = new Color(0.38f, 0.38f, 0.42f);

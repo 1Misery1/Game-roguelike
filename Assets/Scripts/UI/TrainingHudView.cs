@@ -11,6 +11,7 @@ namespace Game.UI
         private GameObject _exitGroup, _bannerGroup;
         private Text _banner;
         private bool _controlsBuilt;
+        private WeaponPanelView _weapon;
 
         private void Awake()
         {
@@ -19,7 +20,12 @@ namespace Game.UI
             _root = _canvas.transform;
             BuildExit();
             BuildBanner();
+            _weapon = new WeaponPanelView(); _weapon.Build(_root);   // same weapon panel as the combat HUD
         }
+
+        public void SetWeapon(bool visible, WeaponPanelView.WeaponSlot slot0, WeaponPanelView.WeaponSlot slot1,
+                              bool skillVisible, bool skillReady, float skillFill, string skillLabel)
+            => _weapon?.SetWeapon(visible, slot0, slot1, skillVisible, skillReady, skillFill, skillLabel);
 
         public void SetControls(string[,] controls)
         {
