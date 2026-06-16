@@ -34,6 +34,7 @@ namespace Game.Bootstrap
 
         private void Start()
         {
+            Game.UI.PauseMenuController.Ensure();        // ESC pause menu (shared across Hub / Training / Dungeon)
             gameObject.AddComponent<DamageNumbers>();   // 伤害数字单例
 
             _layout = FindObjectOfType<TrainingLayout>();

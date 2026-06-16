@@ -72,6 +72,8 @@ namespace Game.UI
 
         private void Start()
         {
+            PauseMenuController.Ensure();   // ESC pause menu (shared across Hub / Training / Dungeon)
+
             if (heroDatabase == null)
                 heroDatabase = Resources.Load<HeroDatabase>("Heroes/HeroDatabase");
             _heroes = heroDatabase != null && heroDatabase.heroes != null

@@ -48,6 +48,7 @@ namespace Game.Narrative
             _labels         = labels;
             _onPick         = onPick;
             _open           = true;
+            Game.Core.GameSignals.ChoiceActive = true;
             _savedTimeScale = Time.timeScale;
             Time.timeScale  = 0f;
 
@@ -60,6 +61,7 @@ namespace Game.Narrative
         {
             if (!_open) return;
             _open          = false;
+            Game.Core.GameSignals.ChoiceActive = false;
             Time.timeScale = _savedTimeScale > 0f ? _savedTimeScale : 1f;
             if (_canvas != null) _canvas.gameObject.SetActive(false);
             var cb = _onPick;

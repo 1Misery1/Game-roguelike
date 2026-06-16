@@ -12,6 +12,9 @@ namespace Game.Core
         // 对话框是否打开（打开时冻结玩家输入）。由 DialogueBox 写、PlayerController 读。
         public static bool DialogueActive { get; set; }
 
+        // 选项弹窗是否打开。由 ChoiceBox 写；暂停菜单据此避让 ESC。
+        public static bool ChoiceActive { get; set; }
+
         // 横幅消息请求；Bootstrap 在启动时订阅并渲染。
         public static event Action<string> BannerRequested;
 

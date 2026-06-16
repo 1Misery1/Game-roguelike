@@ -221,6 +221,7 @@ namespace Game.Bootstrap
         private void EnterEndingCutscene()
         {
             _state          = State.EndingCutscene;
+            Game.UI.PauseMenuController.Suppress = true;   // ESC skips the cutscene, not opens pause
             _cutsceneFrame  = 0;
             _cutsceneAlpha  = 0f;
             _cutsceneReveal = 0f;
@@ -260,6 +261,7 @@ namespace Game.Bootstrap
         private void FinishEndingCutscene()
         {
             if (_state != State.EndingCutscene) return;
+            Game.UI.PauseMenuController.Suppress = false;
             OnEndingCutsceneEnd?.Invoke();
             _state = State.Victory;
         }
