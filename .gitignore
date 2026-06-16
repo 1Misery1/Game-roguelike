@@ -64,6 +64,7 @@ UpgradeLog*.htm
 .claude/
 /Docs/
 photo/
+Packages/Coplay/
 
 # Crashlytics generated file
 crashlytics-build.properties
