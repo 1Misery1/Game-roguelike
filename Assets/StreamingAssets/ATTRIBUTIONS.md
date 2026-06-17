@@ -6,6 +6,12 @@ enemy, and weapon sprites in `Assets/Resources/` were produced by extracting and
 re-packing frames from the reference sheets listed below (see `extract_sprites.py`,
 `_RawSprites/fix_sprites.py`).
 
+> **AI-generated key art.** Separately from the third-party sprites above, the game's **key art** —
+> the floor backgrounds (`Resources/Backgrounds/`), hero portraits (`Resources/Portraits/`), ending
+> illustrations (`Resources/Endings/`), and the hidden-boss art (`Resources/Enemies/KingdomGuilt`) —
+> was **generated with ChatGPT (OpenAI image generation)**, not sourced from third-party packs. It
+> carries no third-party licence and is disclosed in `AI_USAGE.md`.
+
 > **Provenance note.** Exact per-sprite source was **not recorded** during
 > development. The table below is a best-effort attribution by *source pack*, with a
 > confidence flag. Until provenance is confirmed per sprite, the project must be

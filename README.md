@@ -159,11 +159,13 @@ AI coding tools were used during development (implementation, refactoring, and d
 |---|---|
 | Game Design & Programming | 1Misery1 |
 | Engine | Unity Technologies — Unity 2022.3 LTS |
-| Art / Audio / Font assets | Third-party packs (0x72, Kenney, LPC/wulax, CraftPix, DCSS/Gervais, Ark Pixel font, OpenGameArt) — see [`ATTRIBUTIONS.md`](ATTRIBUTIONS.md) |
+| Sprites / Audio / Font | Third-party packs (0x72, Kenney, LPC/wulax, CraftPix, DCSS/Gervais, Ark Pixel font, OpenGameArt) — see [`ATTRIBUTIONS.md`](ATTRIBUTIONS.md) |
+| Key art (backgrounds / portraits / endings / boss) | **AI-generated with ChatGPT (OpenAI)** — see [`AI_USAGE.md`](AI_USAGE.md) |
 | Sprite processing tooling | `extract_sprites.py` — extracts/re-packs frames from the third-party reference sheets above (not original artwork) |
 | Inspiration | Hades (Supergiant Games), Binding of Isaac |
 
-> **Note on art:** the in-game sprites are **derived from third-party asset packs**,
-> not original or procedurally generated artwork. Some sources (LPC, CraftPix) carry
-> attribution / ShareAlike obligations that must be met before public release — see
-> [`ATTRIBUTIONS.md`](ATTRIBUTIONS.md) for the per-source status and required actions.
+> **Note on art:** the in-game **sprites** are **derived from third-party asset packs**
+> (not original artwork). The larger **key art** — floor backgrounds, hero portraits, ending
+> illustrations and the hidden-boss art — is **AI-generated with ChatGPT (OpenAI)**, declared in
+> [`AI_USAGE.md`](AI_USAGE.md). Some sprite sources (LPC, CraftPix) carry attribution / ShareAlike
+> obligations — see [`ATTRIBUTIONS.md`](ATTRIBUTIONS.md) for the per-source status and required actions.
